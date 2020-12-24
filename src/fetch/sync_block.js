@@ -8,7 +8,7 @@ const { default: Queue } = pQueue
 
 const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
 const redisWriteQueue = new Queue({ concurrency: 60, interval: 10 })
-const fetchQueue = new Queue({ concurrency: 120, interval: 100 })
+const fetchQueue = new Queue({ concurrency: 60, interval: 100 })
 
 const STATES = toEnum([
 	'IDLE',
