@@ -1,7 +1,7 @@
 import toEnum from "@/utils/to_enum"
 import Finity from "finity"
 import pQueue from 'p-queue'
-import Block from '@/models/Block'
+import Block from '@/models/block'
 import wait from '@/utils/wait'
 
 const { default: Queue } = pQueue
