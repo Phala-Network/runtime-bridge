@@ -1,7 +1,7 @@
 import toEnum from "@/utils/to_enum"
 import Finity from "finity"
 import pQueue from 'p-queue'
-import Block from '@/models/block'
+
 import wait from '@/utils/wait'
 
 const { default: Queue } = pQueue
@@ -18,26 +18,25 @@ const STATES = toEnum([
 
 const EVENTS = toEnum([
 	'RECEIVING_BLOCK_HEADER',
-	'SYNCHED_BLOCK',
 	'FINISHING_SYNCHING_OLD_BLOCKS'
 ])
 
-const _setBlock = async ({ api, redis, number, timeout = 0 }) => {
+const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel }) => {
 	await wait(timeout)
-	let block = (await redisReadQueue.add(() => Block.find({ number })))[0]
+	let block = (await redisReadQueue.add(() => BlockModel.find({ number })))[0]
 	if (!block) {
 		const hash = await fetchQueue.add(() => api.rpc.chain.getBlockHash(number))
 		const blockData = await fetchQueue.add(() => api.rpc.chain.getBlock(hash))
-		block = new Block()
+		block = new BlockModel()
 		block.property({
 			number,
 			hash: hash.toHex(),
 			blob: blockData.toHex()
 		})
 		await redisWriteQueue.add(() => block.save())
-		$logger.info(`Fetched block #${number}.`)
+		$logger.info(`Fetched block #${number}.`, { label: chainName })
 	} else {
-		$logger.info(`Block #${number} found in cache.`)
+		$logger.info(`Block #${number} found in cache.`, { label: chainName })
 	}
 }
 const setBlock = (...args) => {
@@ -48,15 +47,14 @@ const setBlock = (...args) => {
 	})
 }
 
-const syncBlock = ({ api, redis }) => {
+const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve => {
 	let oldHighest = 0
-	// const queue = new Queue({ concurrency: 200, interval: 20 })
 
 	const syncOldBlocks = async () => {
 		const tasks = []
 		for (let number = 0; number < oldHighest; number++) {
 			await wait(1)
-			tasks.push(setBlock({ api, redis, number }))
+			tasks.push(setBlock({ api, redis, number, chainName, BlockModel }))
 		}
 		return Promise.all(tasks)
 	}
@@ -65,24 +63,33 @@ const syncBlock = ({ api, redis }) => {
 		.initialState(STATES.IDLE)
 			.on(EVENTS.RECEIVING_BLOCK_HEADER)
 				.transitionTo(STATES.SYNCHING_OLD_BLOCKS)
-				.withAction((...{ 2: { eventPayload } }) => {
-					oldHighest = eventPayload.number.toNumber()
+				.withAction((...{ 2: { eventPayload: header } }) => {
+					$logger.info('Start synching blocks...', { label: chainName })
+					oldHighest = header.number.toNumber()
 					syncOldBlocks()
+						.then(() => worker.handle(EVENTS.FINISHING_SYNCHING_OLD_BLOCKS))
 				})
 		.state(STATES.SYNCHING_OLD_BLOCKS)
+			.on(STATES.FINISHING_SYNCHING_OLD_BLOCKS)
+				.transitionTo(STATES.SYNCHING_FINALIZED)
+				.withAction(() => {
+					$logger.info('Old blocks synched.', { label: chainName })
+					resolve()
+				})
 			.onAny().ignore()
-			.on(STATES.RECEIVING_BLOCK_HEADER).ignore()
-			.on(STATES.SYNCHED_BLOCK).ignore()
-			.on(STATES.FINISHING_SYNCHING_OLD_BLOCKS).ignore()
 		.state(STATES.SYNCHING_FINALIZED)
 			.onAny().ignore()
 
 	const worker = stateMachine.start()
-	return api.rpc.chain.subscribeFinalizedHeads(header => {
-		worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
+	api.rpc.chain.subscribeFinalizedHeads(header => {
 		const number = header.number.toNumber()
-		setBlock({ api, redis, number })
+
+		if (oldHighest <= 0) {
+			worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
+		}
+		
+		setBlock({ api, redis, number, chainName, BlockModel })
 	})
-}
+})
 
 export default syncBlock

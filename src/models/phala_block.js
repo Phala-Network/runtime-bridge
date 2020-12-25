@@ -1,6 +1,6 @@
 import { Nohm } from "nohm";
 
-const Block = Nohm.model('Block', {
+const PhalaBlock = Nohm.model('PhalaBlock', {
 	properties: {
 		number: {
 			type: 'integer',
@@ -22,4 +22,4 @@ const Block = Nohm.model('Block', {
 	}
 })
 
-export default Block
+export default PhalaBlock

@@ -1,26 +1,33 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import types from '@/utils/typedefs.json'
+import phalaTypes from '@/utils/typedefs.json'
 import createRedisClient from '@/utils/redis'
 import syncBlock from './sync_block'
+import PhalaBlockModel from '@/models/phala_block'
 
-const startFetch = async ({ phalaRpc, redisEndpoint }) => {
+const fetchPhala = async ({ phalaRpc, redis }) => {
+  const phalaProvider = new WsProvider(phalaRpc)
+  const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
+  globalThis.$phalaApi = phalaApi
+
+  const [phalaChain, phalaNodeName, phalaNodeVersion] = (await Promise.all([
+    phalaApi.rpc.system.chain(),
+    phalaApi.rpc.system.name(),
+    phalaApi.rpc.system.version()
+  ])).map(i => i.toString())
+
+  $logger.info(`You are connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
+
+  await syncBlock({ api: phalaApi, redis, chainName: phalaChain, BlockModel: PhalaBlockModel })
+  $logger.info(`Synched to current highest finalized block.`, { label: phalaChain })
+}
+
+const startFetch = ({ phalaRpc, redisEndpoint }) => {
   const redis = createRedisClient(redisEndpoint)
-
-  const provider = new WsProvider(phalaRpc)
-  const api = await ApiPromise.create({ provider, types })
-
-  const [chain, nodeName, nodeVersion] = await Promise.all([
-    api.rpc.system.chain(),
-    api.rpc.system.name(),
-    api.rpc.system.version()
-  ])
-
-  $logger.info(`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`)
-
-  globalThis.$api = api
   globalThis.$redis = redis
 
-  syncBlock({ api, redis })
+  return Promise.all([
+    fetchPhala({ phalaRpc, redis })
+  ])
 }
 
 export default startFetch

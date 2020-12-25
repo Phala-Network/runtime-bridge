@@ -1,3 +1,3 @@
-import './block'
+import './phala_block'
 
-export const Block = 'Block'
+export const PhalaBlock = 'PhalaBlock'
