@@ -6,14 +6,17 @@ import wait from '@/utils/wait'
 
 const { default: Queue } = pQueue
 
+const APP_VERIFIED_HEIGHT = 'APP_VERIFIED_HEIGHT'
+
 const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
-const redisWriteQueue = new Queue({ concurrency: 60, interval: 10 })
+const redisWriteQueue = new Queue({ concurrency: 60, interval: 1 })
 const fetchQueue = new Queue({ concurrency: 60, interval: 100 })
 
 const STATES = toEnum([
 	'IDLE',
 	'SYNCHING_OLD_BLOCKS',
-	'SYNCHING_FINALIZED'
+	'SYNCHING_FINALIZED',
+	'ERROR'
 ])
 
 const EVENTS = toEnum([
@@ -38,25 +41,42 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel }) =>
 	} else {
 		$logger.info(`Block #${number} found in cache.`, { label: chainName })
 	}
+	return
 }
 const setBlock = (...args) => {
 	return _setBlock(...args).catch(e => {
-		console.log(args, e)
+		console.error('setBlock', args, e)
 		$logger.error(e)
+		if (e.errors?.number?.indexOf('notUnique') > -1 ||
+			e.errors?.hash?.indexOf('notUnique') > -1) {
+				$logger.info(`Fetched block #${args[0].number}.(D)`, { label: chainName })
+				return
+			}
 		return setBlock(...args)
 	})
 }
 
 const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve => {
 	let oldHighest = 0
+	const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
 
 	const syncOldBlocks = async () => {
-		const tasks = []
-		for (let number = 0; number < oldHighest; number++) {
-			await wait(1)
-			tasks.push(setBlock({ api, redis, number, chainName, BlockModel }))
+		const queue = new Queue({ concurrency: Infinity, interval: 1 })
+		globalThis.$q = queue
+
+		const verifiedHeight = ((await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
+		console.log(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
+		$logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
+		
+		for (let number = verifiedHeight; number < oldHighest; number++) {
+			queue.add(() => setBlock({ api, redis, number, chainName, BlockModel }))
 		}
-		return Promise.all(tasks)
+
+		await queue.onIdle().catch(console.error)
+		await redis.set(CHAIN_APP_VERIFIED_HEIGHT, oldHighest)
+		$logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${await redis.get(CHAIN_APP_VERIFIED_HEIGHT)}`)
+
+		return
 	}
 
 	const stateMachine = Finity.configure()
@@ -66,18 +86,23 @@ const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve
 				.withAction((...{ 2: { eventPayload: header } }) => {
 					$logger.info('Start synching blocks...', { label: chainName })
 					oldHighest = header.number.toNumber()
-					syncOldBlocks()
-						.then(() => worker.handle(EVENTS.FINISHING_SYNCHING_OLD_BLOCKS))
 				})
 		.state(STATES.SYNCHING_OLD_BLOCKS)
-			.on(STATES.FINISHING_SYNCHING_OLD_BLOCKS)
-				.transitionTo(STATES.SYNCHING_FINALIZED)
-				.withAction(() => {
+			.do(() => syncOldBlocks())
+				.onSuccess().transitionTo(STATES.SYNCHING_FINALIZED).withAction(() => {
 					$logger.info('Old blocks synched.', { label: chainName })
 					resolve()
 				})
+				.onFailure().transitionTo(STATES.ERROR).withAction((from, to, context) => {
+					console.error('error', context.error)
+					$logger.error(context.error, { label: chainName })
+				})
 			.onAny().ignore()
 		.state(STATES.SYNCHING_FINALIZED)
+			.onAny().ignore()
+		.state(STATES.ERROR)
+			.do(() => process.exit(-2))
+				.onSuccess().selfTransition()
 			.onAny().ignore()
 
 	const worker = stateMachine.start()
