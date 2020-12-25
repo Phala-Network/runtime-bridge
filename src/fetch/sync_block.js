@@ -31,10 +31,12 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel }) =>
 		const hash = await fetchQueue.add(() => api.rpc.chain.getBlockHash(number))
 		const blockData = await fetchQueue.add(() => api.rpc.chain.getBlock(hash))
 		block = new BlockModel()
+		block.id = number
 		block.property({
 			number,
 			hash: hash.toHex(),
-			blob: blockData.toHex()
+			header: blockData.block.header.toHex(),
+			hasJustification: !!blockData.justification.length,
 		})
 		await redisWriteQueue.add(() => block.save())
 		$logger.info(`Fetched block #${number}.`, { label: chainName })
@@ -61,7 +63,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve
 	const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
 
 	const syncOldBlocks = async () => {
-		const queue = new Queue({ concurrency: Infinity, interval: 1 })
+		const queue = new Queue({ concurrency: 10000, interval: 10 })
 		globalThis.$q = queue
 
 		const verifiedHeight = ((await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1

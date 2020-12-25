@@ -13,11 +13,14 @@ const PhalaBlock = Nohm.model('PhalaBlock', {
 			index: true,
 			validations: ['notEmpty']
 		},
-		blob: {
+		header: {
 			type: 'string',
 			unique: false,
 			index: false,
 			validations: ['notEmpty']
+		},
+		hasJustification: {
+			type: 'boolean'
 		}
 	}
 })
