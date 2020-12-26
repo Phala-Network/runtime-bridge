@@ -115,7 +115,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 			.on(EVENTS.RECEIVING_BLOCK_HEADER)
 				.transitionTo(STATES.SYNCHING_OLD_BLOCKS)
 				.withAction((...{ 2: { eventPayload: header } }) => {
-					$logger.info('Start synching blocks...', { label: chainName })
+					$logger.info('Start synching blocks...It may take a long time...', { label: chainName })
 					oldHighest = header.number.toNumber()
 				})
 		.state(STATES.SYNCHING_OLD_BLOCKS)
@@ -144,7 +144,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 			worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
 		}
 		
-		fetchQueue.add(() => setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue }))
+		setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue })
 	})
 })
 

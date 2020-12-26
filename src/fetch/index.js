@@ -18,7 +18,7 @@ const fetchPhala = async ({ phalaRpc, redis, parallelBlocks }) => {
   ])).map(i => i.toString())
 
   await redis.set(PHALA_CHAIN_NAME, phalaChain)
-  $logger.info(`You are connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
+  $logger.info(`Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
 
   await syncBlock({ api: phalaApi, redis, chainName: phalaChain, BlockModel: PhalaBlockModel, parallelBlocks })
   $logger.info(`Synched to current highest finalized block.`, { label: phalaChain })
