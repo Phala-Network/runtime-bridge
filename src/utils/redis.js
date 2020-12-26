@@ -2,8 +2,11 @@ import { Nohm } from 'nohm'
 import promiseRedis from 'promise-redis'
 const redis = promiseRedis()
 
-const createClient = redisEndpoint => {
-  const client = redis.createClient(redisEndpoint)
+const createClient = (redisEndpoint, options = {}) => {
+  const client = redis.createClient({
+    url: redisEndpoint,
+    ...options
+  })
 
   client.on('connect', () => {
     Nohm.setClient(client)
@@ -11,6 +14,12 @@ const createClient = redisEndpoint => {
   })
 
   return client
+}
+
+export const bufferType = (value, key, old) => {
+  console.log(key)
+  // console.log(value)
+  return value
 }
 
 export default createClient

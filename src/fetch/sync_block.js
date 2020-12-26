@@ -7,10 +7,12 @@ import wait from '@/utils/wait'
 const { default: Queue } = pQueue
 
 const APP_VERIFIED_HEIGHT = 'APP_VERIFIED_HEIGHT'
+const EVENTS_STORAGE_KEY = 'EVENTS_STORAGE_KEY'
+const GRANDPA_AUTHORITIES_KEY = ':grandpa_authorities'
 
 const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
-const redisWriteQueue = new Queue({ concurrency: 60, interval: 1 })
-const fetchQueue = new Queue({ concurrency: 60, interval: 100 })
+const redisWriteQueue = new Queue({ concurrency: 80, interval: 1 })
+const fetchQueue = new Queue({ concurrency: 50, interval: 100 })
 
 const STATES = toEnum([
 	'IDLE',
@@ -24,19 +26,64 @@ const EVENTS = toEnum([
 	'FINISHING_SYNCHING_OLD_BLOCKS'
 ])
 
-const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel }) => {
+const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, eventsStorageKey }) => {
 	await wait(timeout)
 	let block = (await redisReadQueue.add(() => BlockModel.find({ number })))[0]
 	if (!block) {
-		const hash = await fetchQueue.add(() => api.rpc.chain.getBlockHash(number))
-		const blockData = await fetchQueue.add(() => api.rpc.chain.getBlock(hash))
+		const [
+			hash,
+			blockData,
+			events,
+			eventsStorageProof,
+			grandpaAuthorities,
+			grandpaAuthoritiesStorageProof
+		] = await fetchQueue.add(async () => {
+			const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
+			const [
+				blockData,
+				events,
+				eventsStorageProofData,
+				grandpaAuthoritiesData,
+				grandpaAuthoritiesStorageProofData
+			] = await Promise.all([
+				api.rpc.chain.getBlock(hash),
+				api.rpc.state.getStorage(eventsStorageKey, hash),
+				api.rpc.state.getReadProof([eventsStorageKey], hash),
+				api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash),
+				api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash),
+			])
+
+			const eventsStorageProof = api.createType(
+				'StorageProof',
+				eventsStorageProofData.proof.map(i => Array.from(i.toU8a()))
+			).toHex()
+			const grandpaAuthorities = grandpaAuthoritiesData.value.toHex()
+			const grandpaAuthoritiesStorageProof = api.createType(
+				'StorageProof',
+				grandpaAuthoritiesStorageProofData.proof.map(i => Array.from(i.toU8a()))
+			).toHex()
+
+			return [
+				hash,
+				blockData,
+				events,
+				eventsStorageProof,
+				grandpaAuthorities,
+				grandpaAuthoritiesStorageProof
+			]
+		})
+
 		block = new BlockModel()
 		block.id = number
 		block.property({
 			number,
-			hash: hash.toHex(),
+			hash,
 			header: blockData.block.header.toHex(),
-			hasJustification: !!blockData.justification.length,
+			justification: blockData.justification.toHex(),
+			events,
+			eventsStorageProof,
+			grandpaAuthorities,
+			grandpaAuthoritiesStorageProof
 		})
 		await redisWriteQueue.add(() => block.save())
 		$logger.info(`Fetched block #${number}.`, { label: chainName })
@@ -61,17 +108,20 @@ const setBlock = (...args) => {
 const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve => {
 	let oldHighest = 0
 	const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
+	const CHAIN_EVENTS_STORAGE_KEY = `${chainName}:${EVENTS_STORAGE_KEY}`
+	const eventsStorageKey = api.query.system.events.key()
 
 	const syncOldBlocks = async () => {
-		const queue = new Queue({ concurrency: 10000, interval: 10 })
+		await redis.set(CHAIN_EVENTS_STORAGE_KEY, eventsStorageKey)
+
+		const queue = new Queue({ concurrency: 10000, interval: 0 })
 		globalThis.$q = queue
 
 		const verifiedHeight = ((await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
-		console.log(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 		$logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 		
 		for (let number = verifiedHeight; number < oldHighest; number++) {
-			queue.add(() => setBlock({ api, redis, number, chainName, BlockModel }))
+			queue.add(() => setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey }))
 		}
 
 		await queue.onIdle().catch(console.error)
@@ -115,7 +165,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve
 			worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
 		}
 		
-		setBlock({ api, redis, number, chainName, BlockModel })
+		setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey })
 	})
 })
 

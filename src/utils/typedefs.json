@@ -46,5 +46,10 @@
     "computeWorkers": "u32",
     "fracTargetOnlineReward": "u32",
     "totalPower": "u32"
+  },
+  "StorageProof": "Vec<Vec<u8>>",
+  "HeaderToSync": {
+    "header": "Header",
+    "justification": "Option<Vec<u8>>"
   }
 }

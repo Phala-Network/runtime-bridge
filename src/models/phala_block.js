@@ -16,11 +16,32 @@ const PhalaBlock = Nohm.model('PhalaBlock', {
 		header: {
 			type: 'string',
 			unique: false,
-			index: false,
-			validations: ['notEmpty']
+			index: false
 		},
-		hasJustification: {
-			type: 'boolean'
+		justification: {
+			type: 'string',
+			unique: false,
+			index: false,
+		},
+		events: {
+			type: 'string',
+			unique: false,
+			index: false,
+		},
+		eventsStorageProof: {
+			type: 'string',
+			unique: false,
+			index: false,
+		},
+		grandpaAuthorities: {
+			type: 'string',
+			unique: false,
+			index: false,
+		},
+		grandpaAuthoritiesStorageProof: {
+			type: 'string',
+			unique: false,
+			index: false,
 		}
 	}
 })

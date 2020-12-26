@@ -4,6 +4,8 @@ import createRedisClient from '@/utils/redis'
 import syncBlock from './sync_block'
 import PhalaBlockModel from '@/models/phala_block'
 
+const PHALA_CHAIN_NAME = 'PHALA_CHAIN_NAME'
+
 const fetchPhala = async ({ phalaRpc, redis }) => {
   const phalaProvider = new WsProvider(phalaRpc)
   const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
@@ -15,6 +17,7 @@ const fetchPhala = async ({ phalaRpc, redis }) => {
     phalaApi.rpc.system.version()
   ])).map(i => i.toString())
 
+  await redis.set(PHALA_CHAIN_NAME, phalaChain)
   $logger.info(`You are connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
 
   await syncBlock({ api: phalaApi, redis, chainName: phalaChain, BlockModel: PhalaBlockModel })
