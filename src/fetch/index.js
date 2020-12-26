@@ -6,7 +6,7 @@ import PhalaBlockModel from '@/models/phala_block'
 
 const PHALA_CHAIN_NAME = 'PHALA_CHAIN_NAME'
 
-const fetchPhala = async ({ phalaRpc, redis }) => {
+const fetchPhala = async ({ phalaRpc, redis, parallelBlocks }) => {
   const phalaProvider = new WsProvider(phalaRpc)
   const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
   globalThis.$phalaApi = phalaApi
@@ -20,16 +20,16 @@ const fetchPhala = async ({ phalaRpc, redis }) => {
   await redis.set(PHALA_CHAIN_NAME, phalaChain)
   $logger.info(`You are connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
 
-  await syncBlock({ api: phalaApi, redis, chainName: phalaChain, BlockModel: PhalaBlockModel })
+  await syncBlock({ api: phalaApi, redis, chainName: phalaChain, BlockModel: PhalaBlockModel, parallelBlocks })
   $logger.info(`Synched to current highest finalized block.`, { label: phalaChain })
 }
 
-const startFetch = ({ phalaRpc, redisEndpoint }) => {
+const startFetch = ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
   const redis = createRedisClient(redisEndpoint)
   globalThis.$redis = redis
 
   return Promise.all([
-    fetchPhala({ phalaRpc, redis })
+    fetchPhala({ phalaRpc, redis, parallelBlocks })
   ])
 }
 

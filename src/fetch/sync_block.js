@@ -12,7 +12,6 @@ const GRANDPA_AUTHORITIES_KEY = ':grandpa_authorities'
 
 const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
 const redisWriteQueue = new Queue({ concurrency: 80, interval: 1 })
-const fetchQueue = new Queue({ concurrency: 50, interval: 100 })
 
 const STATES = toEnum([
 	'IDLE',
@@ -26,7 +25,7 @@ const EVENTS = toEnum([
 	'FINISHING_SYNCHING_OLD_BLOCKS'
 ])
 
-const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, eventsStorageKey }) => {
+const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, eventsStorageKey, fetchQueue }) => {
 	await wait(timeout)
 	let block = (await redisReadQueue.add(() => BlockModel.find({ number })))[0]
 	if (!block) {
@@ -39,28 +38,18 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, even
 			grandpaAuthoritiesStorageProof
 		] = await fetchQueue.add(async () => {
 			const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
-			const [
-				blockData,
-				events,
-				eventsStorageProofData,
-				grandpaAuthoritiesData,
-				grandpaAuthoritiesStorageProofData
-			] = await Promise.all([
-				api.rpc.chain.getBlock(hash),
-				api.rpc.state.getStorage(eventsStorageKey, hash),
-				api.rpc.state.getReadProof([eventsStorageKey], hash),
-				api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash),
-				api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash),
-			])
-
+			const blockData = await api.rpc.chain.getBlock(hash)
+			const events = (await api.rpc.state.getStorage(eventsStorageKey, hash)).value.toHex()
 			const eventsStorageProof = api.createType(
 				'StorageProof',
-				eventsStorageProofData.proof.map(i => Array.from(i.toU8a()))
+				(await api.rpc.state.getReadProof([eventsStorageKey], hash))
+					.proof.map(i => Array.from(i.toU8a()))
 			).toHex()
-			const grandpaAuthorities = grandpaAuthoritiesData.value.toHex()
+			const grandpaAuthorities = (await api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)).value.toHex()
 			const grandpaAuthoritiesStorageProof = api.createType(
 				'StorageProof',
-				grandpaAuthoritiesStorageProofData.proof.map(i => Array.from(i.toU8a()))
+				(await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash))
+					.proof.map(i => Array.from(i.toU8a()))
 			).toHex()
 
 			return [
@@ -105,11 +94,13 @@ const setBlock = (...args) => {
 	})
 }
 
-const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve => {
+const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new Promise(resolve => {
 	let oldHighest = 0
 	const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
 	const CHAIN_EVENTS_STORAGE_KEY = `${chainName}:${EVENTS_STORAGE_KEY}`
 	const eventsStorageKey = api.query.system.events.key()
+
+	const fetchQueue = new Queue({ concurrency: parallelBlocks, interval: 1 })
 
 	const syncOldBlocks = async () => {
 		await redis.set(CHAIN_EVENTS_STORAGE_KEY, eventsStorageKey)
@@ -121,7 +112,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve
 		$logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 		
 		for (let number = verifiedHeight; number < oldHighest; number++) {
-			queue.add(() => setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey }))
+			queue.add(() => setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue }))
 		}
 
 		await queue.onIdle().catch(console.error)
@@ -165,7 +156,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel }) => new Promise(resolve
 			worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
 		}
 		
-		setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey })
+		fetchQueue.add(() => setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue }))
 	})
 })
 
