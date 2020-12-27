@@ -32,17 +32,9 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, even
 		const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
 		const blockData = await api.rpc.chain.getBlock(hash)
 		const events = (await api.rpc.state.getStorage(eventsStorageKey, hash)).value.toHex()
-		const eventsStorageProof = api.createType(
-			'StorageProof',
-			(await api.rpc.state.getReadProof([eventsStorageKey], hash))
-				.proof.map(i => Array.from(i.toU8a()))
-		).toHex()
+		const eventsStorageProof = (await api.rpc.state.getReadProof([eventsStorageKey], hash)).proof.toHex()
 		const grandpaAuthorities = (await api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)).value.toHex()
-		const grandpaAuthoritiesStorageProof = api.createType(
-			'StorageProof',
-			(await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash))
-				.proof.map(i => Array.from(i.toU8a()))
-		).toHex()
+		const grandpaAuthoritiesStorageProof = (await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)).proof.toHex()
 
 		block = new BlockModel()
 		block.id = number
@@ -111,32 +103,37 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 	}
 
 	const stateMachine = Finity.configure()
-		.initialState(STATES.IDLE)
-			.on(EVENTS.RECEIVING_BLOCK_HEADER)
-				.transitionTo(STATES.SYNCHING_OLD_BLOCKS)
-				.withAction((...{ 2: { eventPayload: header } }) => {
-					$logger.info('Start synching blocks...It may take a long time...', { label: chainName })
-					oldHighest = header.number.toNumber()
-				})
-		.state(STATES.SYNCHING_OLD_BLOCKS)
-			.do(() => syncOldBlocks())
-				.onSuccess().transitionTo(STATES.SYNCHING_FINALIZED).withAction(() => {
-					$logger.info('Old blocks synched.', { label: chainName })
-					resolve()
-				})
-				.onFailure().transitionTo(STATES.ERROR).withAction((from, to, context) => {
-					console.error('error', context.error)
-					$logger.error(context.error, { label: chainName })
-				})
-			.onAny().ignore()
-		.state(STATES.SYNCHING_FINALIZED)
-			.onAny().ignore()
-		.state(STATES.ERROR)
-			.do(() => process.exit(-2))
-				.onSuccess().selfTransition()
-			.onAny().ignore()
+
+	stateMachine.initialState(STATES.IDLE)
+		.on(EVENTS.RECEIVING_BLOCK_HEADER)
+			.transitionTo(STATES.SYNCHING_OLD_BLOCKS)
+			.withAction((...{ 2: { eventPayload: header } }) => {
+				$logger.info('Start synching blocks...It may take a long time...', { label: chainName })
+				oldHighest = header.number.toNumber()
+			})
+
+	stateMachine.state(STATES.SYNCHING_OLD_BLOCKS)
+		.do(() => syncOldBlocks())
+			.onSuccess().transitionTo(STATES.SYNCHING_FINALIZED).withAction(() => {
+				$logger.info('Old blocks synched.', { label: chainName })
+				resolve()
+			})
+			.onFailure().transitionTo(STATES.ERROR).withAction((from, to, context) => {
+				console.error('error', context.error)
+				$logger.error(context.error, { label: chainName })
+			})
+		.onAny().ignore()
+
+	stateMachine.state(STATES.SYNCHING_FINALIZED)
+		.onAny().ignore()
+
+	stateMachine.state(STATES.ERROR)
+		.do(() => process.exit(-2))
+			.onSuccess().selfTransition()
+		.onAny().ignore()
 
 	const worker = stateMachine.start()
+
 	api.rpc.chain.subscribeFinalizedHeads(header => {
 		const number = header.number.toNumber()
 
