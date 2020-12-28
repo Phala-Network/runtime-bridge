@@ -42,6 +42,11 @@ const PhalaBlock = Nohm.model('PhalaBlock', {
 			type: 'string',
 			unique: false,
 			index: false,
+		},
+		setId: {
+			type: 'integer',
+			unique: false,
+			index: true
 		}
 	}
 })

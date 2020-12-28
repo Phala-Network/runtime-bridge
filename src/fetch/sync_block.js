@@ -3,12 +3,9 @@ import Finity from "finity"
 import pQueue from 'p-queue'
 
 import wait from '@/utils/wait'
+import { GRANDPA_AUTHORITIES_KEY, APP_VERIFIED_HEIGHT, EVENTS_STORAGE_KEY } from "@/utils/constants"
 
 const { default: Queue } = pQueue
-
-const APP_VERIFIED_HEIGHT = 'APP_VERIFIED_HEIGHT'
-const EVENTS_STORAGE_KEY = 'EVENTS_STORAGE_KEY'
-const GRANDPA_AUTHORITIES_KEY = ':grandpa_authorities'
 
 const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
 const redisWriteQueue = new Queue({ concurrency: 80, interval: 1 })
@@ -28,6 +25,7 @@ const EVENTS = toEnum([
 const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, eventsStorageKey }) => {
 	await wait(timeout)
 	let block = (await redisReadQueue.add(() => BlockModel.find({ number })))[0]
+
 	if (!block) {
 		const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
 		const blockData = await api.rpc.chain.getBlock(hash)
@@ -35,6 +33,7 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, even
 		const eventsStorageProof = (await api.rpc.state.getReadProof([eventsStorageKey], hash)).proof.toHex()
 		const grandpaAuthorities = (await api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)).value.toHex()
 		const grandpaAuthoritiesStorageProof = (await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)).proof.toHex()
+		const setId = (await api.query.grandpa.currentSetId.at(hash)).toJSON()
 
 		block = new BlockModel()
 		block.id = number
@@ -46,7 +45,8 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, even
 			events,
 			eventsStorageProof,
 			grandpaAuthorities,
-			grandpaAuthoritiesStorageProof
+			grandpaAuthoritiesStorageProof,
+			setId
 		})
 		await redisWriteQueue.add(() => block.save())
 		$logger.info(`Fetched block #${number}.`, { label: chainName })
@@ -88,7 +88,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 		const queue = new Queue({ concurrency: 10000, interval: 0 })
 		globalThis.$q = queue
 
-		const verifiedHeight = ((await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
+		const verifiedHeight = (parseInt(await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
 		$logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 		
 		for (let number = verifiedHeight; number < oldHighest; number++) {

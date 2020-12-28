@@ -48,6 +48,10 @@
     "totalPower": "u32"
   },
   "StorageProof": "Vec<Vec<u8>>",
+  "VersionedAuthorityList": {
+    "version": "u8",
+    "authorityList": "AuthorityList"
+  },
   "HeaderToSync": {
     "header": "Header",
     "justification": "Option<Vec<u8>>"

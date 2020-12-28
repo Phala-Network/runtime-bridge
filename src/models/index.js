@@ -1,5 +1,5 @@
 import './phala_block'
-import './phala_event'
+import './runtime_window'
 
 export const PhalaBlock = 'PhalaBlock'
-export const PhalaEvent = 'PhalaEvent'
+export const RuntimeWindow = 'RuntimeWindow'
