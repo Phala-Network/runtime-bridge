@@ -1,14 +1,8 @@
 import RuntimeWindow from '@/models/runtime_window'
 import { APP_VERIFIED_WINDOW_ID } from '@/utils/constants'
 import wait from '@/utils/wait'
-// import pQueue from 'p-queue'
 
-// const { default: Queue } = pQueue
-
-// const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
-// const redisWriteQueue = new Queue({ concurrency: 80, interval: 1 })
-
-const computeWindows = async ({ api, chainName, redis, BlockModel }) => {
+const computeWindows = async ({ chainName, redis, BlockModel }) => {
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
 
   let latestWindowId = parseInt(await redis.get(CHAIN_APP_VERIFIED_WINDOW_ID) || 0) - 1
