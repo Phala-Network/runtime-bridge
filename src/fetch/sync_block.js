@@ -69,7 +69,7 @@ const setBlock = (...args) => {
 		})
 }
 
-const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new Promise(resolve => {
+const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, resolve }) => {
 	let oldHighest = 0
 	const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
 	const CHAIN_EVENTS_STORAGE_KEY = `${chainName}:${EVENTS_STORAGE_KEY}`
@@ -134,7 +134,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 
 	const worker = stateMachine.start()
 
-	api.rpc.chain.subscribeFinalizedHeads(header => {
+	const onSub = header => {
 		const number = header.number.toNumber()
 
 		if (oldHighest <= 0) {
@@ -142,7 +142,17 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 		}
 		
 		setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue })
-	}).catch(console.error)
-})
+	}
+
+	await api.rpc.chain.subscribeFinalizedHeads(onSub)
+
+	api.on('disconnected', () => {
+		process.exit(-4)
+	})
+}
+
+const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) =>
+	new Promise(resolve =>
+		_syncBlock({ api, redis, chainName, BlockModel, parallelBlocks, resolve }))
 
 export default syncBlock
