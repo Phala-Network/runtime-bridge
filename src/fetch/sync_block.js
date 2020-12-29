@@ -142,7 +142,7 @@ const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) => new
 		}
 		
 		setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue })
-	})
+	}).catch(console.error)
 })
 
 export default syncBlock
