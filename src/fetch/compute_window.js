@@ -2,11 +2,10 @@ import RuntimeWindow from '@/models/runtime_window'
 import { APP_VERIFIED_WINDOW_ID } from '@/utils/constants'
 import wait from '@/utils/wait'
 
-const computeWindows = async ({ chainName, redis, BlockModel }) => {
+const computeWindow = async ({ chainName, redis, BlockModel }) => {
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
 
   let latestWindowId = parseInt(await redis.get(CHAIN_APP_VERIFIED_WINDOW_ID) || 0) - 1
-  $logger.info(`${CHAIN_APP_VERIFIED_WINDOW_ID}: ${latestWindowId}`)
 
   const getBlock = number => {
     return BlockModel.load(`${number}`)
@@ -15,14 +14,9 @@ const computeWindows = async ({ chainName, redis, BlockModel }) => {
           $logger.error(e)
           process.exit(-2)
         }
-        await wait(6000)
+        await wait(3000)
         return getBlock(number)
       })
-  }
-
-  const setLatestWindowId = id => {
-    latestWindowId = id
-    return redis.set(CHAIN_APP_VERIFIED_WINDOW_ID, id)
   }
 
   const doComputeWindow = async ({ id, previousWindow }) => {
@@ -31,7 +25,8 @@ const computeWindows = async ({ chainName, redis, BlockModel }) => {
     try {
       currentWindow = await RuntimeWindow.load(`${id}`)
       if (currentWindow.property('finished')) {
-        await setLatestWindowId(id)
+        $logger.info(`Window #${id} found in cache.`)
+        latestWindowId = id
         return doComputeWindow({ id: (id + 1), previousWindow: currentWindow })
       }
     } catch (e) {
@@ -47,6 +42,7 @@ const computeWindows = async ({ chainName, redis, BlockModel }) => {
 
       if (!previousBlock) {
         $logger.info(`Starting new window #${id} at block #${number}...`)
+        console.log(`Starting new window #${id} at block #${number}...`)
 
         currentWindow.property({
           currentBlock: number,
@@ -102,7 +98,7 @@ const computeWindows = async ({ chainName, redis, BlockModel }) => {
       await doProcessBlock({ number: startBlockNumber })
     }
 
-    await setLatestWindowId(latestWindowId + 1)
+    latestWindowId += 1
 
     return doComputeWindow({
       id: latestWindowId + 1,
@@ -116,4 +112,4 @@ const computeWindows = async ({ chainName, redis, BlockModel }) => {
   })
 }
 
-export default computeWindows
+export default computeWindow

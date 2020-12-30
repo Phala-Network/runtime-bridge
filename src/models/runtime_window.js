@@ -1,4 +1,4 @@
-import { Nohm } from "nohm";
+import { Nohm } from "nohm"
 
 const RuntimeWindow = Nohm.model('RuntimeWindow', {
 	properties: {
