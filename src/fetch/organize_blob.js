@@ -28,17 +28,17 @@ const getBlob = id => {
 }
 
 const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
+  const oldBlobs = await redis.keys('*OrganizedBlob*')
+  await Promise.all(oldBlobs.map(i => redis.del(i)))
+
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
   const CHAIN_APP_LATEST_BLOB_ID = `${chainName}:${APP_LATEST_BLOB_ID}`
   const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`
 
   const eventsStorageKey = api.query.system.events.key()
 
-  // let latestWindowId = parseInt(await redis.get(CHAIN_APP_VERIFIED_WINDOW_ID) || 0) - 1
-
   let latestWindowId = -1
   let latestBlobId = -1
-  $logger.info(`${CHAIN_APP_VERIFIED_WINDOW_ID}: ${latestWindowId}`)
 
   const getBlock = number => {
     return BlockModel.load(`${number}`)
@@ -172,7 +172,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
           } else {
             if (
               (syncHeaderData.headers.length >= 1000) ||
-              ((parseInt(await $redis.get(CHAIN_APP_RECEIVED_HEIGHT)) - currentBlock) < 3000)
+              ((parseInt(await $redis.get(CHAIN_APP_RECEIVED_HEIGHT)) - currentBlock) < 100)
             ) {
               await saveBlob({
                 windowId: id,
