@@ -27,12 +27,6 @@ const getBlob = id => {
     })
 }
 
-const getBlobByStartBlock = async startBlock => {
-  const blobId = (await OrganizedBlob.find({ startBlock }))[0]
-  if (!blobId) { return null }
-  return getBlob(blobId)
-}
-
 const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
   const CHAIN_APP_LATEST_BLOB_ID = `${chainName}:${APP_LATEST_BLOB_ID}`
@@ -178,7 +172,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
           } else {
             if (
               (syncHeaderData.headers.length >= 1000) ||
-              ((parseInt(await $redis.get(CHAIN_APP_RECEIVED_HEIGHT)) - currentBlock) < 5)
+              ((parseInt(await $redis.get(CHAIN_APP_RECEIVED_HEIGHT)) - currentBlock) < 3000)
             ) {
               await saveBlob({
                 windowId: id,
