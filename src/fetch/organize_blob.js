@@ -1,6 +1,6 @@
 import OrganizedBlob from '@/models/organized_blob'
 import RuntimeWindow from '@/models/runtime_window'
-import { APP_VERIFIED_WINDOW_ID, APP_LATEST_BLOB_ID, SYNC_HEADER_REQ_EMPTY, DISPATCH_BLOCK_REQ_EMPTY } from '@/utils/constants'
+import { APP_VERIFIED_WINDOW_ID, APP_RECEIVED_HEIGHT, APP_LATEST_BLOB_ID, SYNC_HEADER_REQ_EMPTY, DISPATCH_BLOCK_REQ_EMPTY } from '@/utils/constants'
 import wait from '@/utils/wait'
 import { bytesToBase64, base64ToBytes } from 'byte-base64'
 
@@ -36,6 +36,8 @@ const getBlobByStartBlock = async startBlock => {
 const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
   const CHAIN_APP_LATEST_BLOB_ID = `${chainName}:${APP_LATEST_BLOB_ID}`
+  const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`
+
   const eventsStorageKey = api.query.system.events.key()
 
   // let latestWindowId = parseInt(await redis.get(CHAIN_APP_VERIFIED_WINDOW_ID) || 0) - 1
@@ -110,23 +112,6 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
 
     const prepareBlob = async () => {
       const blobStartBlock = currentBlock
-      const blob = await getBlobByStartBlock(currentBlock)
-      if (blob) {
-        await setBlobId(latestBlobId + 1)
-        const currentStopBlock = blob.property('stopBlock')
-        if (stopBlock > -1) {
-          if (blob.property('windowId') !== id) {
-            $logger.error(new Error(`Window mismatch at #${currentBlock}, data might be corrupted.`))
-            process.exit(-2)
-          }
-          if (currentStopBlock > stopBlock) {
-            $logger.error(new Error(`Invalid stop block #${currentStopBlock}, data might be corrupted.`))
-            process.exit(-2)
-          }
-          currentBlock = currentStopBlock + 1
-          return prepareBlob()
-        }
-      }
 
       const generateGenesisBlob = async () => {
         const blockData = await getBlock(currentBlock)
@@ -191,7 +176,10 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
               dispatchBlockData
             })
           } else {
-            if (syncHeaderData.headers.length >= 1000) {
+            if (
+              (syncHeaderData.headers.length >= 1000) ||
+              ((parseInt(await $redis.get(CHAIN_APP_RECEIVED_HEIGHT)) - currentBlock) < 5)
+            ) {
               await saveBlob({
                 windowId: id,
                 startBlock: blobStartBlock,

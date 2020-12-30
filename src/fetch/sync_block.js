@@ -3,7 +3,7 @@ import Finity from "finity"
 import pQueue from 'p-queue'
 
 import wait from '@/utils/wait'
-import { GRANDPA_AUTHORITIES_KEY, APP_VERIFIED_HEIGHT, EVENTS_STORAGE_KEY } from "@/utils/constants"
+import { GRANDPA_AUTHORITIES_KEY, APP_RECEIVED_HEIGHT, APP_VERIFIED_HEIGHT, EVENTS_STORAGE_KEY } from "@/utils/constants"
 
 const { default: Queue } = pQueue
 
@@ -71,8 +71,10 @@ const setBlock = (...args) => {
 
 const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, resolve }) => {
 	let oldHighest = 0
+	const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`
 	const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
 	const CHAIN_EVENTS_STORAGE_KEY = `${chainName}:${EVENTS_STORAGE_KEY}`
+	
 	const eventsStorageKey = api.query.system.events.key()
 
 	const fetchQueue = new Queue({
@@ -140,6 +142,7 @@ const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, r
 		if (oldHighest <= 0) {
 			worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
 		}
+		$redis.set(CHAIN_APP_RECEIVED_HEIGHT, number)
 		
 		setBlock({ api, redis, number, chainName, BlockModel, eventsStorageKey, fetchQueue })
 	}
