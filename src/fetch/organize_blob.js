@@ -27,7 +27,7 @@ const getBlob = id => {
     })
 }
 
-const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
+const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) => {
   const oldBlobs = await redis.keys('*OrganizedBlob*')
   await Promise.all(oldBlobs.map(i => redis.del(i)))
 
@@ -52,7 +52,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
       })
   }
   const getWindowInfo = async id => (await getWindow(id)).allProperties()
-	
+
 	const setLatestWindowId = id => {
 		latestWindowId = id
 		return redis.set(CHAIN_APP_VERIFIED_WINDOW_ID, id)
@@ -91,7 +91,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
         bridge_genesis_info_b64: bytesToBase64(genesisInfoData.toU8a())
       }))
     }
-    
+
     $logger.info(`Generated blob #${targetBlobId} from block #${startBlock} to #${stopBlock} in window #${windowId}.`)
 
     await blob.save()
@@ -119,19 +119,19 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
           validators: api.createType('VersionedAuthorityList', validators).authorityList,
           proof: validatorsProof
         })
-  
+
         await saveBlob({
           windowId: id,
           startBlock: blobStartBlock,
           stopBlock: currentBlock,
           genesisInfoData: genesisInfo
         })
-  
+
         $logger.info('Generated blob for genesis block.')
         currentBlock += 1
         return prepareBlob()
       }
-  
+
       const generateBlob = async ({ previousBlockData, syncHeaderData, dispatchBlockData }) => {
         const blockData = await getBlock(currentBlock)
         const _previousBlockData = previousBlockData || (await getBlock(currentBlock - 1))
@@ -172,7 +172,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
           } else {
             if (
               (syncHeaderData.headers.length >= 1000) ||
-              ((parseInt(await $redis.get(CHAIN_APP_RECEIVED_HEIGHT)) - currentBlock) < 100)
+              ((initHeight - currentBlock) < 100)
             ) {
               await saveBlob({
                 windowId: id,
@@ -199,7 +199,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
           currentBlock += 1
           return prepareBlob()
         }
-  
+
         currentBlock += 1
         return generateBlob({
           previousBlockData: blockData,
@@ -212,7 +212,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel }) => {
         if ((id === 0) && (currentBlock === 0)) {
           return generateGenesisBlob()
         }
-        
+
         return generateBlob({
           syncHeaderData: {
             ...SYNC_HEADER_REQ_EMPTY,

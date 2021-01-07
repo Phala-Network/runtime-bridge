@@ -5,7 +5,7 @@ import syncBlock from './sync_block'
 import computeWindow from './compute_window'
 import PhalaBlockModel from '@/models/phala_block'
 import { PHALA_CHAIN_NAME } from '@/utils/constants'
-import organizeBlob from './organize_blob'
+import wait from '@/utils/wait'
 
 const fetchPhala = async ({ api, redis, chainName, parallelBlocks }) => {
   await syncBlock({ api, redis, chainName, BlockModel: PhalaBlockModel, parallelBlocks })
@@ -31,8 +31,7 @@ const startFetch = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
 
   await Promise.all([
     fetchPhala({ api: phalaApi, chainName: phalaChain, redis, parallelBlocks }),
-    computeWindow({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel }),
-    organizeBlob({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel })
+    computeWindow({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel })
   ])
 }
 
