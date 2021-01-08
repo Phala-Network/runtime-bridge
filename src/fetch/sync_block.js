@@ -24,9 +24,20 @@ const EVENTS = toEnum([
   'FINISHING_SYNCHING_OLD_BLOCKS'
 ])
 
+const tryGetBlock = (BlockModel, number) => {
+  return BlockModel.load(`${number}`)
+    .catch(async e => {
+      if (!(e?.message === 'not found')) {
+        $logger.error(e)
+        process.exit(-2)
+      }
+      return null
+    })
+}
+
 const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, eventsStorageKey }) => {
   await wait(timeout)
-  let block = (await redisReadQueue.add(() => BlockModel.find({ number })))[0]
+  let block = (await redisReadQueue.add(() => tryGetBlock(BlockModel, number)))
 
   if (!block) {
     const hash = (await api.rpc.chain.getBlockHash(number)).toHex()

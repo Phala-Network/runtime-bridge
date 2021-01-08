@@ -14,6 +14,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
           $logger.error(e)
           process.exit(-2)
         }
+        $logger.info(`Waiting for block #${number}...`)
         await wait(3000)
         return getBlock(number)
       })
