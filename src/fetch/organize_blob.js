@@ -28,9 +28,6 @@ const getBlob = id => {
 }
 
 const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) => {
-  const oldBlobs = await redis.KEYS('*OrganizedBlob*')
-  await Promise.all(oldBlobs.map(i => redis.del(i)))
-
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
   const CHAIN_APP_LATEST_BLOB_ID = `${chainName}:${APP_LATEST_BLOB_ID}`
   const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`

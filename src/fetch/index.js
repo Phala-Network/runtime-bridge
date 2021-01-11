@@ -15,6 +15,9 @@ const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
   const redis = createRedisClient(redisEndpoint, true)
   globalThis.$redis = redis
 
+  const oldBlobs = await redis.keys('*OrganizedBlob*')
+  await Promise.all(oldBlobs.map(i => redis.del(i)))
+
   const phalaProvider = new WsProvider(phalaRpc)
   const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
   globalThis.$phalaApi = phalaApi
