@@ -12,7 +12,7 @@ const fetchPhala = async ({ api, redis, chainName, parallelBlocks }) => {
 }
 
 const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
-  const redis = createRedisClient(redisEndpoint)
+  const redis = createRedisClient(redisEndpoint, true)
   globalThis.$redis = redis
 
   const phalaProvider = new WsProvider(phalaRpc)

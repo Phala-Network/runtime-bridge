@@ -9,7 +9,7 @@ const apply = program => {
     .requiredOption('-p, --phala-rpc <url>', 'URL of Phala Blockchain WebSocket RPC')
     // .option('-r, --rococo-rpc <url>', 'URL of Rococo Blockchain WebSocket RPC')
     .option('-l --parallel-blocks <blocks>', 'number of parallel fetching tasks', cliParseInt, 50)
-    .action(({ phalaRpc, redisEndpoint, parallelBlocks }) => {
+    .action(({ phalaRpc, parallelBlocks, parent: { redisEndpoint } }) => {
       startFetch({ phalaRpc, redisEndpoint, parallelBlocks }).catch((...e) => {
         $logger.error(...e)
         process.exit(-1)

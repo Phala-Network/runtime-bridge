@@ -10,12 +10,9 @@
     "byte-base64": "^1.1.0",
     "commander": "^6.2.1",
     "finity": "^0.5.4",
+    "ioredis": "^4.19.4",
     "nohm": "^2.2.3",
-    "p-queue": "^6.6.2",
-    "promise-redis": "^0.0.5",
-    "redis": "^3.0.2",
-    "redis-commands": "^1.6.0",
-    "winston": "^3.3.3"
+    "p-queue": "^6.6.2"
   },
   "devDependencies": {},
   "bin": {

@@ -1,31 +1,27 @@
 import { Nohm } from 'nohm'
-import promiseRedis from 'promise-redis'
-import { list as redisCommands } from 'redis-commands'
 import pQueue from 'p-queue'
+import Redis from 'ioredis'
+import { list as redisCommands } from 'redis-commands'
+
 const { default: Queue } = pQueue
 
-const redis = promiseRedis()
-
-const createClient = (redisEndpoint, options = {}) => {
+const createClient = (redisEndpoint, setNohmDefaultClient = false) => {
   const queue = new Queue({
     timeout: 3000,
     throwOnTimeout: true
   })
 
-  const client = redis.createClient({
-    url: redisEndpoint,
-    ...options
-  })
-  const proto = redis.RedisClient.prototype
+  const client = new Redis(redisEndpoint)
+  // const proto = client.prototype
 
   redisCommands.forEach(i => {
     const command = i.split(' ')[0]
 
     if (command !== 'multi') {
-      const func = proto[i]
+      const func = client[i]
       const _func = (...args) => queue.add(() => func.apply(client, args))
 
-      proto[i] = function (...args) {
+      client[i] = function (...args) {
         if (typeof args[args.length - 1] === 'function') {
           return func.apply(client, args)
         } else {
@@ -41,10 +37,12 @@ const createClient = (redisEndpoint, options = {}) => {
     }
   })
 
-  client.on('connect', () => {
-    Nohm.setClient(client)
-    Nohm.setPrefix('PhalaRuntimeBridge')
-  })
+  if (setNohmDefaultClient) {
+    client.on('ready', () => {
+      Nohm.setClient(client)
+      Nohm.setPrefix('prb')
+    })
+  }
 
   return client
 }

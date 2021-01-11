@@ -6,7 +6,7 @@ const apply = program => {
     .alias('c')
     .description('start worker for communicating with TEE(pruntime)')
     .requiredOption('-q, --message-redis-endpoint <uri>', 'Redis endpoint for internal messages')
-    .action(({ redisEndpoint, messageRdisEndpoint }) => {
+    .action(({ messageRdisEndpoint, parent: { redisEndpoint } }) => {
       startCommunicate({ redisEndpoint, messageRdisEndpoint }).catch((...e) => {
         $logger.error(...e)
         process.exit(-1)
