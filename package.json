@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "@polkadot/api": "^3.1.1",
+    "bunyan": "^1.8.15",
     "byte-base64": "^1.1.0",
     "commander": "^6.2.1",
     "finity": "^0.5.4",

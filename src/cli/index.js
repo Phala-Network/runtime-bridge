@@ -1,22 +1,15 @@
 import packageJson from '../../package.json'
 import { Command } from 'commander'
-import winston from 'winston'
+import { createLogger } from 'bunyan'
 
 import applyFetch from './fetch'
 import applyCommunicate from './communicate'
 import applyTrade from './trade'
 import applyCommon from './common'
 
-globalThis.$logger = winston.createLogger({
+globalThis.$logger = createLogger({
   level: 'info',
-  format: winston.format.combine(
-    winston.format.errors({ stack: true }),
-    winston.format.timestamp(),
-    winston.format.prettyPrint()
-  ),
-  transports: [
-    new winston.transports.Console()
-  ]
+  name: 'prb'
 })
 
 const cli = new Command()

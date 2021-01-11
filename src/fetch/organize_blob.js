@@ -2,7 +2,7 @@ import OrganizedBlob from '@/models/organized_blob'
 import RuntimeWindow from '@/models/runtime_window'
 import { APP_VERIFIED_WINDOW_ID, APP_RECEIVED_HEIGHT, APP_LATEST_BLOB_ID, SYNC_HEADER_REQ_EMPTY, DISPATCH_BLOCK_REQ_EMPTY } from '@/utils/constants'
 import wait from '@/utils/wait'
-import { bytesToBase64, base64ToBytes } from 'byte-base64'
+import { bytesToBase64 } from 'byte-base64'
 
 const getWindow = id => {
   return RuntimeWindow.load(`${id}`)
@@ -28,7 +28,7 @@ const getBlob = id => {
 }
 
 const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) => {
-  const oldBlobs = await redis.keys('*OrganizedBlob*')
+  const oldBlobs = await redis.KEYS('*OrganizedBlob*')
   await Promise.all(oldBlobs.map(i => redis.del(i)))
 
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
