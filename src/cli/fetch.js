@@ -11,7 +11,7 @@ const apply = program => {
     .option('-l --parallel-blocks <blocks>', 'number of parallel fetching tasks', cliParseInt, 50)
     .action(({ phalaRpc, redisEndpoint, parallelBlocks }) => {
       startFetch({ phalaRpc, redisEndpoint, parallelBlocks }).catch((...e) => {
-        console.error(...e)
+        $logger.error(...e)
         process.exit(-1)
       })
     })

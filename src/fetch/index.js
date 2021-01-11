@@ -5,14 +5,13 @@ import syncBlock from './sync_block'
 import computeWindow from './compute_window'
 import PhalaBlockModel from '@/models/phala_block'
 import { PHALA_CHAIN_NAME } from '@/utils/constants'
-import wait from '@/utils/wait'
 
 const fetchPhala = async ({ api, redis, chainName, parallelBlocks }) => {
   await syncBlock({ api, redis, chainName, BlockModel: PhalaBlockModel, parallelBlocks })
   $logger.info(`Synched to current highest finalized block.`, { label: chainName })
 }
 
-const startFetch = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
+const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
   const redis = createRedisClient(redisEndpoint)
   globalThis.$redis = redis
 
@@ -35,4 +34,4 @@ const startFetch = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
   ])
 }
 
-export default startFetch
+export default start
