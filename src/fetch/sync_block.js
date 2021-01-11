@@ -1,9 +1,9 @@
 import toEnum from "@/utils/to_enum"
 import Finity from "finity"
 import pQueue from 'p-queue'
+import cluster from 'cluster'
 
 import wait from '@/utils/wait'
-import organizeBlob from './organize_blob'
 
 import { GRANDPA_AUTHORITIES_KEY, APP_RECEIVED_HEIGHT, APP_VERIFIED_HEIGHT, EVENTS_STORAGE_KEY } from "@/utils/constants"
 
@@ -106,12 +106,18 @@ const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, r
     const verifiedHeight = (parseInt(await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
     $logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 
-    organizeBlob({
-      api,
-      chainName,
-      redis,
-      BlockModel,
-      initHeight: oldHighest
+    const worker = cluster.fork({ INIT_HEIGHT: oldHighest })
+    worker.on('online', () => {
+      $logger.info('Started worker for organizing blob...')
+    })
+    worker.on('exit', (code, signal) => {
+      if (signal) {
+        console.log(`worker was killed by signal: ${signal}`)
+      } else if (code !== 0) {
+        console.log(`worker exited with error code: ${code}`)
+      } else {
+        console.log('worker success!')
+      }
     })
 
     for (let number = verifiedHeight; number < oldHighest; number++) {

@@ -5,6 +5,8 @@ import syncBlock from './sync_block'
 import computeWindow from './compute_window'
 import PhalaBlockModel from '@/models/phala_block'
 import { PHALA_CHAIN_NAME } from '@/utils/constants'
+import { isMaster } from 'cluster'
+import organizeBlob from './organize_blob'
 
 const fetchPhala = async ({ api, redis, chainName, parallelBlocks }) => {
   await syncBlock({ api, redis, chainName, BlockModel: PhalaBlockModel, parallelBlocks })
@@ -14,9 +16,6 @@ const fetchPhala = async ({ api, redis, chainName, parallelBlocks }) => {
 const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
   const redis = createRedisClient(redisEndpoint, true)
   globalThis.$redis = redis
-
-  const oldBlobs = await redis.keys('*OrganizedBlob*')
-  await Promise.all(oldBlobs.map(i => redis.del(i)))
 
   const phalaProvider = new WsProvider(phalaRpc)
   const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
@@ -28,13 +27,26 @@ const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
     phalaApi.rpc.system.version()
   ])).map(i => i.toString())
 
-  await redis.set(PHALA_CHAIN_NAME, phalaChain)
-  $logger.info(`Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
+  if (isMaster) {
+    await redis.set(PHALA_CHAIN_NAME, phalaChain)
+    $logger.info(`Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
 
-  await Promise.all([
-    fetchPhala({ api: phalaApi, chainName: phalaChain, redis, parallelBlocks }),
-    computeWindow({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel })
-  ])
+    await Promise.all([
+      fetchPhala({ api: phalaApi, chainName: phalaChain, redis, parallelBlocks }),
+      computeWindow({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel })
+    ])
+  } else {
+    const oldBlobs = await redis.keys('*OrganizedBlob*')
+    await Promise.all(oldBlobs.map(i => redis.del(i)))
+
+    await organizeBlob({
+      api: phalaApi,
+      chainName: phalaChain,
+      redis,
+      BlockModel: PhalaBlockModel,
+      initHeight: process.env.INIT_HEIGHT
+    })
+  }
 }
 
 export default start
