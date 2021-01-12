@@ -5,7 +5,9 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@polkadot/api": "^3.1.1",
+    "@polkadot/api": "^3.4.1",
+    "@polkadot/keyring": "^5.2.3",
+    "@polkadot/ui-keyring": "^0.65.1",
     "bunyan": "^1.8.15",
     "byte-base64": "^1.1.0",
     "commander": "^6.2.1",

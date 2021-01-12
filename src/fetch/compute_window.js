@@ -15,14 +15,14 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
           process.exit(-2)
         }
         $logger.info(`Waiting for block #${number}...`)
-        await wait(3000)
+        await wait(6000)
         return getBlock(number)
       })
   }
 
   const doComputeWindow = async ({ id, previousWindow }) => {
     let currentWindow
-    
+
     try {
       currentWindow = await RuntimeWindow.load(`${id}`)
       if (currentWindow.property('finished')) {
@@ -62,7 +62,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         await currentWindow.save()
         return doProcessBlock({ number: number + 1, previousBlock: block })
       }
-      
+
       currentWindow.property({
         currentBlock: number,
         stopBlock: number,

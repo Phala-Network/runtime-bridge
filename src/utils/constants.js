@@ -9,12 +9,14 @@ export const EVENTS_STORAGE_KEY = 'EVENTS_STORAGE_KEY'
 export const GRANDPA_AUTHORITIES_KEY = ':grandpa_authorities'
 
 export const SYNC_HEADER_REQ_EMPTY = Object.freeze({
-	headers_b64: null,
-	authority_set_change_b64: null,
-	headers: null,
-	authoritySetChange: null
+  headers_b64: null,
+  authority_set_change_b64: null,
+  headers: null,
+  authoritySetChange: null
 })
 export const DISPATCH_BLOCK_REQ_EMPTY = Object.freeze({
-	blocks_b64: null,
-	blocks: null
+  blocks_b64: null,
+  blocks: null
 })
+
+export const PHALA_SS58_FORMAT = 30

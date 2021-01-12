@@ -3,19 +3,25 @@ import { Nohm } from "nohm"
 const name = 'Machine'
 const options = {
   properties: {
-    alias: {
+    nickname: {
       type: 'string',
       unique: false,
       index: true
     },
-    ss58Address: {
+    phalaSs58Address: {
       type: 'string',
       unique: true,
       index: true,
       validations: ['notEmpty']
     },
-    privateKey: {
+    publicKey: {
       type: 'string',
+      unique: true,
+      index: true,
+      validations: ['notEmpty']
+    },
+    polkadotJson: {
+      type: 'json',
       unique: false,
       index: false,
       validations: ['notEmpty']
@@ -30,8 +36,4 @@ const options = {
 }
 
 export default Nohm.model(name, options)
-export const createModel = (client, _o = {}) => new Promise(resolve => {
-  client.on('ready', () => {
-    resolve(Nohm.model(name, { ...options, ..._o, client }))
-  })
-})
+export const createModel = (_o = {}) => Nohm.model(name, { ...options, ..._o })

@@ -14,7 +14,7 @@ const fetchPhala = async ({ api, redis, chainName, parallelBlocks }) => {
 }
 
 const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
-  const redis = createRedisClient(redisEndpoint, true)
+  const redis = await createRedisClient(redisEndpoint, true)
   globalThis.$redis = redis
 
   const phalaProvider = new WsProvider(phalaRpc)
@@ -36,7 +36,7 @@ const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
       computeWindow({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel })
     ])
   } else {
-    const oldBlobs = await redis.keys('*OrganizedBlob*')
+    const oldBlobs = await redis.KEYS('*OrganizedBlob*')
     await Promise.all(oldBlobs.map(i => redis.del(i)))
 
     await organizeBlob({

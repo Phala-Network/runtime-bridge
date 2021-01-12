@@ -9,8 +9,8 @@ import { GRANDPA_AUTHORITIES_KEY, APP_RECEIVED_HEIGHT, APP_VERIFIED_HEIGHT, EVEN
 
 const { default: Queue } = pQueue
 
-const redisReadQueue = new Queue({ concurrency: 3000, interval: 1 })
-const redisWriteQueue = new Queue({ concurrency: 80, interval: 1 })
+const redisReadQueue = new Queue({ concurrency: 1000, interval: 1 })
+const redisWriteQueue = new Queue({ concurrency: 30, interval: 1 })
 
 const STATES = toEnum([
   'IDLE',
@@ -62,9 +62,9 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, even
       setId
     })
     await redisWriteQueue.add(() => block.save())
-    $logger.info(`Fetched block #${number}.`, { label: chainName })
+    $logger.info({ chain: chainName }, `Fetched block #${number}.`)
   } else {
-    $logger.info(`Block #${number} found in cache.`, { label: chainName })
+    $logger.info({ chain: chainName }, `Block #${number} found in cache.`)
   }
   return
 }
@@ -75,7 +75,7 @@ const setBlock = (...args) => {
       $logger.error(e)
       if (e.errors?.number?.indexOf('notUnique') > -1 ||
         e.errors?.hash?.indexOf('notUnique') > -1) {
-          $logger.info(`Fetched block #${args[0].number}.(D)`, { label: chainName })
+          $logger.info({ chain: chainName }, `Fetched block #${args[0].number}.(D)`)
           return
         }
       return setBlock(...args)
@@ -118,6 +118,7 @@ const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, r
       } else {
         console.log('worker success!')
       }
+      process.exit(code)
     })
 
     for (let number = verifiedHeight; number < oldHighest; number++) {
@@ -137,19 +138,19 @@ const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, r
     .on(EVENTS.RECEIVING_BLOCK_HEADER)
       .transitionTo(STATES.SYNCHING_OLD_BLOCKS)
       .withAction((...{ 2: { eventPayload: header } }) => {
-        $logger.info('Start synching blocks...It may take a long time...', { label: chainName })
+        $logger.info({ chain: chainName }, 'Start synching blocks...It may take a long time...')
         oldHighest = header.number.toNumber()
       })
 
   stateMachine.state(STATES.SYNCHING_OLD_BLOCKS)
     .do(() => syncOldBlocks())
       .onSuccess().transitionTo(STATES.SYNCHING_FINALIZED).withAction(() => {
-        $logger.info('Old blocks synched.', { label: chainName })
+        $logger.info({ chain: chainName }, 'Old blocks synched.')
         resolve()
       })
       .onFailure().transitionTo(STATES.ERROR).withAction((from, to, context) => {
         console.error('error', context.error)
-        $logger.error(context.error, { label: chainName })
+        $logger.error({ chain: chainName }, context.error)
       })
     .onAny().ignore()
 
