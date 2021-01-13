@@ -1,16 +1,7 @@
-import { PHALA_SS58_FORMAT } from '@/utils/constants'
-import { Keyring } from '@polkadot/keyring'
-import { cryptoWaitReady, encodeAddress } from '@polkadot/util-crypto'
+import { encodeAddress } from '@polkadot/util-crypto'
 import createRedisClient from '@/utils/redis'
+import createKeyring from '@/utils/keyring'
 import Machine from '@/models/machine'
-
-const createKeyring = async () => {
-  await cryptoWaitReady()
-  return new Keyring({
-    type: 'sr25519',
-    ss58Format: PHALA_SS58_FORMAT
-  })
-}
 
 const setMachine = async ({ nickname, criticalRedisEndpoint, pruntimeEndpoint: runtimeEndpoint, controllerMnemonic }) => {
   const keyring = await createKeyring()
