@@ -29,7 +29,7 @@ const start = async ({ phalaRpc, redisEndpoint, parallelBlocks }) => {
 
   if (isMaster) {
     await redis.set(PHALA_CHAIN_NAME, phalaChain)
-    $logger.info(`Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`, { label: phalaChain })
+    $logger.info({ chain: phalaChain }, `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`)
 
     await Promise.all([
       fetchPhala({ api: phalaApi, chainName: phalaChain, redis, parallelBlocks }),

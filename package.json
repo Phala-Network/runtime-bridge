@@ -14,6 +14,7 @@
     "commander": "^6.2.1",
     "finity": "^0.5.4",
     "ioredis": "^4.19.4",
+    "node-fetch": "^2.6.1",
     "nohm": "^2.2.3",
     "p-queue": "^6.6.2"
   },

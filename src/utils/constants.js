@@ -4,6 +4,7 @@ export const APP_VERIFIED_WINDOW_ID = 'APP_VERIFIED_WINDOW_ID'
 export const APP_LATEST_BLOB_ID = 'APP_LATEST_BLOB_ID'
 
 export const PHALA_CHAIN_NAME = 'PHALA_CHAIN_NAME'
+export const PHALA_ZERO_ACCOUNT = '3zcnkmF6XjEogm8vAyPiL2ykPZHpeVtcfDcwTWJ2teqdSvjq'
 
 export const EVENTS_STORAGE_KEY = 'EVENTS_STORAGE_KEY'
 export const GRANDPA_AUTHORITIES_KEY = ':grandpa_authorities'

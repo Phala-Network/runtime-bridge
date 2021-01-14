@@ -1,6 +1,4 @@
-import createKeyring from "@/utils/keyring"
-
-const requestInitRuntime = async ({ identity }, { Machine }) => {
+const requestInitRuntime = async ({ identity }, { keyring, Machine }) => {
   let record
 
   try {
@@ -21,11 +19,11 @@ const requestInitRuntime = async ({ identity }, { Machine }) => {
     }
   }
 
-  const keyring = await createKeyring()
   const account = keyring.addFromJson(record.property('polkadotJson'))
   return {
     recordId: record.id,
-    runtimeEndpoint: record.property('runtimeEndpoint')
+    runtimeEndpoint: record.property('runtimeEndpoint'),
+    phalaSs58Address: record.property('phalaSs58Address')
   }
 }
 

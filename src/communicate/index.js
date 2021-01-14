@@ -1,5 +1,6 @@
 import createRedisClient from '@/utils/redis'
 import createMessageQueue from '@/utils/mq'
+import PRuntime from './pruntime'
 
 const start = async ({ redisEndpoint, messageRedisEndpoint, identity }) => {
   const redis = await createRedisClient(redisEndpoint, true)
@@ -12,7 +13,10 @@ const start = async ({ redisEndpoint, messageRedisEndpoint, identity }) => {
     payload: { identity }
   })
   $logger.info(initRuntimePayload, `Got initial information.`)
-  process.exit(0)
+  const { recordId, runtimeEndpoint, phalaSs58Address } = initRuntimePayload
+  const pRuntime = new PRuntime({ runtimeEndpoint, machineRecordId: recordId, redis, mq, phalaSs58Address })
+
+  await pRuntime.initRuntime()
 }
 
 export default start
