@@ -77,6 +77,19 @@ class PRuntime {
 
   async sendBlob (id = 1) {
     const blob = await this.getBlob(id)
+    const {
+      startBlock,
+      stopBlock,
+      windowId,
+      dispatchBlockBlob = {},
+      syncHeaderBlob = {}
+    } = blob.allProperties()
+    $logger.info({ blobId: blob.id, windowId }, `Sending headers from block #${startBlock} to #${stopBlock}...`)
+    await this.doRequest('/sync_header', JSON.parse(syncHeaderBlob))
+    $logger.info({ blobId: blob.id, windowId }, `Sending events from block #${startBlock} to #${stopBlock}...`)
+    await this.doRequest('/dispatch_block', JSON.parse(dispatchBlockBlob))
+    $logger.info(`Blob #${blob.id} finished.`)
+    return this.sendBlob(id + 1)
   }
 
   async getBlob (id = 0) {

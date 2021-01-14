@@ -17,6 +17,7 @@ const start = async ({ redisEndpoint, messageRedisEndpoint, identity }) => {
   const pRuntime = new PRuntime({ runtimeEndpoint, machineRecordId: recordId, redis, mq, phalaSs58Address })
 
   await pRuntime.initRuntime()
+  await pRuntime.sendBlob(1)
 }
 
 export default start
