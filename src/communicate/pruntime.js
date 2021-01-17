@@ -1,7 +1,6 @@
 import fetch from 'node-fetch'
 import OrganizedBlob from '@/models/organized_blob'
 import wait from '@/utils/wait'
-import { PHALA_ZERO_ACCOUNT } from '@/utils/constants'
 
 class PRuntime {
   #runtimeEndpoint
@@ -10,6 +9,7 @@ class PRuntime {
   #machineRecordId
   #phalaSs58Address
   #mq
+  #initInfo
 
   constructor (options) {
     this.#runtimeEndpoint = options.runtimeEndpoint
@@ -19,7 +19,18 @@ class PRuntime {
     this.#mq = options.mq
   }
 
-  async initRuntime (skipRa = false, debugSetKey = null) {
+  async startLifecycle (skipRa = false, debugSetKey = null) {
+    await this.initRuntime(skipRa, debugSetKey)
+    const { blocknum, headernum } = this.#runtimeInfo
+
+    let initBlobId = 1
+    initBlobId = (await OrganizedBlob.find({ startBlock: (headernum < blocknum ? headernum : blocknum) }))[0] || initBlobId
+    initBlobId = parseInt(initBlobId)
+
+    await this.sendBlob(initBlobId)
+  }
+
+  async initRuntime (skipRa, debugSetKey) {
     $logger.info(`Trying to initialize pRuntime...`)
     await this.getInfo()
 
@@ -27,15 +38,7 @@ class PRuntime {
 
     if (this.#runtimeInfo.initialized) {
       $logger.info({ initRuntimeInfo }, `Already initialized, skipping.`)
-      const machineId = this.#runtimeInfo['machine_id']
-      const machineOwner = await this.#mq.dispatch({
-        action: 'GET_MACHINE_OWNER',
-        payload: { machineId }
-      })
-
-      if (machineOwner.encoded !== this.#phalaSs58Address) {
-        ({ payload: initRuntimeInfo } = await this.doRequest('/get_runtime_info', payload))
-      }
+      ;({ payload: initRuntimeInfo } = await this.doRequest('/get_runtime_info'))
     } else {
       const blob = await this.getBlob()
       const payload = Object.assign(JSON.parse(blob.property('genesisInfoBlob')), {
@@ -46,8 +49,18 @@ class PRuntime {
       $logger.info({ initRuntimeInfo }, `Initialized pRuntime.`)
     }
 
-    if (initRuntimeInfo) {
-      const tx = await this.#mq.dispatch({
+    this.#initInfo = initRuntimeInfo
+
+    const machineId = this.#runtimeInfo['machine_id']
+    const machineOwner = await this.#mq.dispatch({
+      action: 'GET_MACHINE_OWNER',
+      payload: { machineId }
+    })
+
+    if (machineOwner.encoded === this.#phalaSs58Address) {
+      $logger.info({ machineOwner: machineOwner.encoded }, 'Worker already registered, skipping.')
+    } else {
+      let tx = await this.#mq.dispatch({
         action: 'REGISTER_WORKER',
         payload: {
           encodedRuntimeInfo: initRuntimeInfo.encoded_runtime_info,
@@ -55,7 +68,8 @@ class PRuntime {
           machineRecordId: this.#machineRecordId
         }
       })
-      $logger.info({ tx }, `Worker registered.`)
+      try { tx = JSON.parse(tx) } catch (e) { $logger.warn(e) }
+      $logger.info({ beforeMachineOwner: machineOwner.encoded, tx }, `Worker registered.`)
     }
 
     await this.getInfo()
@@ -75,6 +89,10 @@ class PRuntime {
     return this.#runtimeInfo
   }
 
+  get initInfo () {
+    return this.#initInfo
+  }
+
   async sendBlob (id = 1) {
     const blob = await this.getBlob(id)
     const {
@@ -92,7 +110,7 @@ class PRuntime {
     return this.sendBlob(id + 1)
   }
 
-  async getBlob (id = 0) {
+  async getBlob (id = 0, shouldWait = true) {
     try {
       const ret = await OrganizedBlob.load(`${id}`)
       $logger.info(`Loaded blob #${id}.`)
@@ -100,8 +118,11 @@ class PRuntime {
     } catch (e) {
       if (e?.message === 'not found') {
         $logger.info(`Waiting for blob #${id}...`)
-        await wait(6000)
-        return this.getBlob(id)
+        if (shouldWait) {
+          await wait(6000)
+          return this.getBlob(id)
+        }
+        return null
       }
       throw e
     }

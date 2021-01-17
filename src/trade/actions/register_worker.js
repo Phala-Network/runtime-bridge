@@ -1,6 +1,6 @@
 import { base64Decode } from '@polkadot/util-crypto'
 
-const getMachineOwner = ({ encodedRuntimeInfo, attestation, machineRecordId }, { Machine, keyring, api }) => {
+const registerWorker = ({ encodedRuntimeInfo, attestation, machineRecordId }, { Machine, keyring, api }) => {
   return new Promise(async (resolve, reject) => {
     const account = keyring.createFromJson(
       (await Machine.load(machineRecordId)).property('polkadotJson')
@@ -40,7 +40,8 @@ const getMachineOwner = ({ encodedRuntimeInfo, attestation, machineRecordId }, {
           }
         }
       })
+      .catch(reject)
   })
 }
 
-export default getMachineOwner
+export default registerWorker
