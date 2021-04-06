@@ -1,6 +1,6 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { start as startOttoman } from '@/utils/couchbase'
-import phalaTypes from '@phala/typedefs'
+import phalaTypes from '@/utils/typedefs'
 import createRedisClient from '@/utils/redis'
 import syncBlock from './sync_block'
 import computeWindow from './compute_window'
@@ -21,7 +21,7 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint, parallelBlock
   await startOttoman(couchbaseEndpoint)
 
   const phalaProvider = new WsProvider(phalaRpc)
-  const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes.typesChain['Phala PoC-4'] })
+  const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
   globalThis.$phalaApi = phalaApi
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (await Promise.all([
