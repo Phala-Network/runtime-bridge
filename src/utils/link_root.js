@@ -27,5 +27,7 @@ try {
     fs.symlinkSync(base, baseLink, 'junction')
   }
 } catch (error) {
-  throw error
+  if (!(error && error.code === 'EEXIST')) {
+    throw error
+  }
 }

@@ -22,3 +22,4 @@ export const DISPATCH_BLOCK_REQ_EMPTY = Object.freeze({
 
 export const PHALA_SS58_FORMAT = 30
 export const APP_MESSAGE_QUEUE_NAME = 'prbmq'
+export const FRNK = 1179799115
