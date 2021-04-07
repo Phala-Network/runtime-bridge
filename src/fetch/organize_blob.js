@@ -76,6 +76,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
       blob = await OrganizedBlob.findOne({ startBlock, stopBlock })
 
       if (
+        blob &&
         blob.fullBlob &&
         (blob.windowId === windowId) &&
         (blob.number === blobNumber)
@@ -128,7 +129,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
     }
 
     await blob.save()
-    $logger.info({ windowId, startBlock, stopBlock, shouldFulfill }, 'Blob saved')
+    $logger.info({ blobNumber, windowId, startBlock, stopBlock, shouldFulfill }, 'Blob saved')
     blobNumber += 1
 
     return blob.number
@@ -286,13 +287,10 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
     const lastBlob = await OrganizedBlob.findOne({}, { sort: { number: 'DESC', windowId: 'DESC' } })
     const lastWindow = lastBlob.windowId
     const lastNumber = (await OrganizedBlob.findOne({ windowId: lastWindow - 1 }, { sort: { number: 'DESC' } })).number
-
     blobNumber = lastNumber + 1
     latestWindowId = lastWindow - 1
-    // todo: check behavior when having sufficient data
   } catch (error) {
-    $logger.info('Failed to continue from the fulfilling point.')
-    $logger.debug(error)
+    $logger.info('Failed to continue from the fulfilling point.', error)
     latestWindowId = -1
     blobNumber = 0
   } finally {
