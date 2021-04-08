@@ -1,0 +1,3 @@
+[submodule "src/vendor/proto"]
+	path = src/vendor/proto
+	url = ../runtime-bridge-proto.git

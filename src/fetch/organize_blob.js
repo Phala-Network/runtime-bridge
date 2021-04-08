@@ -2,7 +2,7 @@
 import { APP_VERIFIED_WINDOW_ID, APP_RECEIVED_HEIGHT, SYNC_HEADER_REQ_EMPTY, DISPATCH_BLOCK_REQ_EMPTY } from '@/utils/constants'
 import wait from '@/utils/wait'
 import { bytesToBase64 } from 'byte-base64'
-import { getModel, start } from 'ottoman'
+import { getModel } from 'ottoman'
 
 const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) => {
   const RuntimeWindow = getModel('RuntimeWindow')
@@ -39,7 +39,6 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
   }
 
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
-  const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`
 
   const eventsStorageKey = api.query.system.events.key()
 
@@ -81,7 +80,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
         (blob.windowId === windowId) &&
         (blob.number === blobNumber)
       ) {
-        $logger.info(`Fulfilled blob found in window #${windowId} from block #${startBlock} to #${stopBlock}.`)
+        $logger.info({ blobNumber, windowId, startBlock, stopBlock }, `Fulfilled blob found.`)
         blobNumber += 1
         return
       }

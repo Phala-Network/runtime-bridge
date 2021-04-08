@@ -18,7 +18,8 @@
     "ioredis": "^4.19.4",
     "node-fetch": "^2.6.1",
     "ottoman": "^2.0.0-alpha.21",
-    "p-queue": "^6.6.2"
+    "p-queue": "^6.6.2",
+    "protobufjs": "^6.10.2"
   },
   "devDependencies": {
     "bull-arena": "^3.7.0",
@@ -27,5 +28,7 @@
   "bin": {
     "prb": "src/index.js"
   },
-  "scripts": {}
+  "scripts": {
+    "proto:build": "pbjs -t json --no-beautify -p ./src/vendor/proto -o ./src/utils/proto.json ./src/vendor/proto/message.proto"
+  }
 }
