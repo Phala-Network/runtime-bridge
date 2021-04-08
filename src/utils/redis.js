@@ -40,6 +40,10 @@ const createClient = redisEndpoint =>
     client.on('ready', () => {
       resolve(client)
     })
+
+    client.on('error', e => {
+      $logger.error('REDIS ERROR!', e)
+    })
   })
 
 
