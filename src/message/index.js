@@ -107,7 +107,7 @@ const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, disp
     if (typeof cb !== 'function') {
       throw new TypeError('Handler not found!')
     }
-    cb(message)
+    cb(message, tunnelConnection)
   }
 
   const queryCallback = async (message) => {
@@ -115,7 +115,7 @@ const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, disp
     if (typeof cb !== 'function') {
       throw new TypeError('Handler not found!')
     }
-    const reply = await cb(message)
+    const reply = await cb(message, tunnelConnection)
     await tunnelConnection.reply({
       ...reply,
       nonceRef: message.nonce
@@ -129,10 +129,12 @@ const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, disp
         $logger.warn('Received invalid reply message.', { message })
         return
       }
-      cb(message)
+      cb(message, tunnelConnection)
     } catch (error) {
       $logger.warn('Error occured while processing a reply message.', error, { message })
       // todo: handle error
+    } finally {
+      callbacks.delete(message.nonceRef)
     }
   }
 
