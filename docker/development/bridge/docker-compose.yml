@@ -1,0 +1,109 @@
+version: '3'
+
+services:
+  fetch:
+    image: phala/prb:development
+    build:
+      context: ../../..
+      dockerfile: docker/development/Dockerfile
+    hostname: fetch
+    volumes:
+      - ../../..:/opt/app
+    environment:
+      - NODE_ENV=development
+      - DB_WAIT=0
+    depends_on:
+      - redis
+      - couchbase
+    command: [
+      "/opt/app/src/index.js", "f",
+      "-r", "redis://redis:6379",
+      "-c", "couchbase://couchbase/phala@phala:phalaphala",
+      "-p", "wss://poc4.phala.network/ws"
+    ]
+
+  lifecycle:
+    image: phala/prb:development
+    hostname: lifecycle
+    volumes:
+      - ../../..:/opt/app
+    environment:
+      - NODE_ENV=development
+      - DB_WAIT=0
+    depends_on:
+      - redis
+      - couchbase
+    ports:
+      - 9229:9229
+    command: [
+      "node", "--inspect=0.0.0.0:9229",
+      "--experimental-json-modules", "--es-module-specifier-resolution=node", "--harmony-top-level-await", "--no-warnings",
+      "/opt/app/src/index.js", "lifecycle",
+      "-r", "redis://redis:6379",
+      "-c", "couchbase://couchbase/phala@phala:phalaphala"
+    ]
+
+  schedule_trade:
+    image: phala/prb:development
+    hostname: schedule_trade
+    volumes:
+      - ../../..:/opt/app
+    environment:
+      - NODE_ENV=development
+      - DB_WAIT=0
+    depends_on:
+      - redis
+    command: [
+      "/opt/app/src/index.js", "trade",
+      "-r", "redis://redis:6379",
+      "-c", "couchbase://couchbase/phala@phala:phalaphala"
+    ]
+
+  trade:
+    image: phala/prb:development
+    hostname: trade
+    deploy:
+      replicas: 3
+    volumes:
+      - ../../..:/opt/app
+    environment:
+      - NODE_ENV=development
+      - DB_WAIT=0
+    depends_on:
+      - redis
+    command: [
+      "/opt/app/src/index.js", "trade",
+      "-r", "redis://redis:6379"
+    ]
+
+  couchbase:
+    image: couchbase:community-7.0.0-beta
+    hostname: couchbase
+    volumes:
+      - couchbase-data:/opt/couchbase/var
+    ports:
+      - '18091:8091'
+    sysctls:
+      net.core.somaxconn: 65535
+    environment:
+      - USER=phala
+      - PASSWORD=phalaphala
+      - AUTOFAILOVER_TIMEOUT=60
+      - DISCOVERY_SERVICE=couchbase-0.local
+      - FTS_RAM_SIZE_MB=1024
+      - INDEX_RAM_SIZE_MB=1024
+      - APP_NAME=phala
+      - RAM_SIZE_MB=2048
+      - REBALANCE_ON_NODE_ADDITION=1
+      - SERVICES=data,index,query,fts
+
+  redis:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "no"]
+    restart: always
+    hostname: redis
+    ports:
+      - '63791:6379' # debug
+
+volumes:
+  couchbase-data:

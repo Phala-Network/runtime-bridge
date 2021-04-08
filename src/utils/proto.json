@@ -1,0 +1,500 @@
+{
+  "nested": {
+    "prb": {
+      "nested": {
+        "MessageType": {
+          "values": {
+            "MTP_BROADCAST": 0,
+            "MTP_QUERY": 1,
+            "MTP_REPLY": 2,
+            "MTP_NOTIFY": 3
+          }
+        },
+        "MessageTarget": {
+          "values": {
+            "MTG_BROADCAST": 0,
+            "MTG_MANAGER": 1,
+            "MTG_TRADE_SCHEDULER": 2,
+            "MTG_TRADE_WORKER": 3,
+            "MTG_WORKER": 4,
+            "MTG_INTERNAL_PRESERVED": 5
+          }
+        },
+        "MessageContent": {
+          "oneofs": {
+            "type": {
+              "oneof": [
+                "encrypted",
+                "error",
+                "ack",
+                "workerStateUpdate",
+                "queryWorkerState",
+                "accountStateUpdate",
+                "queryAccountState",
+                "requestKickWorker",
+                "workerShouldExit",
+                "tradeSchedulerStateUpdate",
+                "callOnlineScheduler",
+                "fetcherStateUpdate",
+                "callOnlineFetcher",
+                "lifecycleManagerStateUpdate",
+                "callOnlineLifecycleManager",
+                "requestCreateWorker",
+                "requestUpdateWorker",
+                "requestStartWorkerLifecycle",
+                "areYouThere"
+              ]
+            }
+          },
+          "fields": {
+            "encrypted": {
+              "type": "bytes",
+              "id": 1
+            },
+            "error": {
+              "type": "Error",
+              "id": 2
+            },
+            "ack": {
+              "type": "Ack",
+              "id": 3
+            },
+            "workerStateUpdate": {
+              "type": "manager.WorkerStateUpdate",
+              "id": 4
+            },
+            "queryWorkerState": {
+              "type": "manager.QueryWorkerState",
+              "id": 5
+            },
+            "accountStateUpdate": {
+              "type": "manager.AccountStateUpdate",
+              "id": 6
+            },
+            "queryAccountState": {
+              "type": "manager.QueryAccountState",
+              "id": 7
+            },
+            "requestKickWorker": {
+              "type": "worker.RequestKickWorker",
+              "id": 8
+            },
+            "workerShouldExit": {
+              "type": "worker.WorkerShouldExit",
+              "id": 9
+            },
+            "tradeSchedulerStateUpdate": {
+              "type": "trade.TradeSchedulerStateUpdate",
+              "id": 10
+            },
+            "callOnlineScheduler": {
+              "type": "trade.CallOnlineScheduler",
+              "id": 11
+            },
+            "fetcherStateUpdate": {
+              "type": "trade.FetcherStateUpdate",
+              "id": 12
+            },
+            "callOnlineFetcher": {
+              "type": "trade.CallOnlineFetcher",
+              "id": 13
+            },
+            "lifecycleManagerStateUpdate": {
+              "type": "manager.LifecycleManagerStateUpdate",
+              "id": 14
+            },
+            "callOnlineLifecycleManager": {
+              "type": "manager.CallOnlineLifecycleManager",
+              "id": 15
+            },
+            "requestCreateWorker": {
+              "type": "manager.RequestCreateWorker",
+              "id": 16
+            },
+            "requestUpdateWorker": {
+              "type": "manager.RequestUpdateWorker",
+              "id": 17
+            },
+            "requestStartWorkerLifecycle": {
+              "type": "worker.RequestStartWorkerLifecycle",
+              "id": 18
+            },
+            "areYouThere": {
+              "type": "worker.AreYouThere",
+              "id": 19
+            }
+          }
+        },
+        "Message": {
+          "fields": {
+            "from": {
+              "type": "MessageTarget",
+              "id": 1
+            },
+            "to": {
+              "type": "MessageTarget",
+              "id": 2
+            },
+            "content": {
+              "type": "MessageContent",
+              "id": 3
+            },
+            "createdAt": {
+              "type": "google.protobuf.Timestamp",
+              "id": 4
+            },
+            "nonce": {
+              "type": "uint64",
+              "id": 5
+            },
+            "nonceRef": {
+              "type": "uint64",
+              "id": 6
+            },
+            "type": {
+              "type": "MessageType",
+              "id": 7
+            }
+          }
+        },
+        "Empty": {
+          "fields": {}
+        },
+        "Placeholder": {
+          "fields": {}
+        },
+        "Ack": {
+          "fields": {
+            "ack": {
+              "type": "bool",
+              "id": 1
+            }
+          }
+        },
+        "Error": {
+          "fields": {}
+        },
+        "worker": {
+          "nested": {
+            "RequestStartWorkerLifecycle": {
+              "fields": {
+                "identity": {
+                  "type": "WorkerIdentity",
+                  "id": 1
+                }
+              }
+            },
+            "AreYouThere": {
+              "fields": {
+                "identity": {
+                  "type": "WorkerIdentity",
+                  "id": 1
+                },
+                "isResponse": {
+                  "type": "bool",
+                  "id": 2
+                }
+              }
+            },
+            "RequestKickWorker": {
+              "fields": {
+                "identity": {
+                  "type": "WorkerIdentity",
+                  "id": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "WorkerShouldExit": {
+              "fields": {
+                "identity": {
+                  "type": "WorkerIdentity",
+                  "id": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            }
+          }
+        },
+        "WorkerCertificate": {
+          "fields": {
+            "privateKey": {
+              "type": "string",
+              "id": 1
+            },
+            "publicKey": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "WorkerIdentity": {
+          "fields": {
+            "uuid": {
+              "type": "string",
+              "id": 1
+            },
+            "certHash": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "Account": {
+          "fields": {
+            "privateKey": {
+              "type": "string",
+              "id": 1
+            }
+          }
+        },
+        "AccountPublic": {
+          "fields": {
+            "publicKey": {
+              "type": "string",
+              "id": 1
+            },
+            "ss58AddressPhala": {
+              "type": "string",
+              "id": 2
+            },
+            "ss58AddressRococo": {
+              "type": "string",
+              "id": 3
+            }
+          }
+        },
+        "manager": {
+          "nested": {
+            "BN": {
+              "fields": {
+                "value": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "WorkerState": {
+              "fields": {
+                "status": {
+                  "type": "Status",
+                  "id": 1
+                },
+                "latestSynchedHeaderPhala": {
+                  "type": "uint64",
+                  "id": 2
+                },
+                "latestSynchedHeaderRococo": {
+                  "type": "uint64",
+                  "id": 3
+                },
+                "latestSynchedBlock": {
+                  "type": "uint64",
+                  "id": 4
+                }
+              },
+              "nested": {
+                "Status": {
+                  "values": {
+                    "S_IDLE": 0,
+                    "S_STARTING": 1,
+                    "S_PENDING_SYNCHING": 2,
+                    "S_SYNCHING": 3,
+                    "S_ONLINE": 4,
+                    "S_KICKED": 5
+                  }
+                }
+              }
+            },
+            "AccountState": {
+              "fields": {
+                "balance": {
+                  "type": "BN",
+                  "id": 1
+                }
+              }
+            },
+            "WorkerStateUpdate": {
+              "fields": {
+                "values": {
+                  "rule": "repeated",
+                  "type": "WorkerState",
+                  "id": 1
+                }
+              }
+            },
+            "QueryWorkerState": {
+              "fields": {
+                "queries": {
+                  "rule": "repeated",
+                  "type": "WorkerIdentity",
+                  "id": 1
+                }
+              }
+            },
+            "AccountStateUpdate": {
+              "fields": {
+                "values": {
+                  "rule": "repeated",
+                  "type": "AccountState",
+                  "id": 1
+                }
+              }
+            },
+            "QueryAccountState": {
+              "fields": {
+                "queries": {
+                  "rule": "repeated",
+                  "type": "AccountPublic",
+                  "id": 2
+                }
+              }
+            },
+            "LifecycleManagerStateUpdate": {
+              "fields": {
+                "hostname": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "CallOnlineLifecycleManager": {
+              "fields": {
+                "isResponse": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "hostname": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "RequestCreateWorker": {
+              "fields": {
+                "identity": {
+                  "type": "WorkerIdentity",
+                  "id": 1
+                },
+                "cert": {
+                  "type": "WorkerCertificate",
+                  "id": 2
+                },
+                "stashAccount": {
+                  "type": "Account",
+                  "id": 3
+                },
+                "controllerAccount": {
+                  "type": "Account",
+                  "id": 4
+                }
+              }
+            },
+            "RequestUpdateWorker": {
+              "fields": {
+                "uuid": {
+                  "type": "string",
+                  "id": 1
+                },
+                "fullValue": {
+                  "type": "RequestCreateWorker",
+                  "id": 2
+                }
+              }
+            }
+          }
+        },
+        "trade": {
+          "nested": {
+            "TradeSchedulerStateUpdate": {
+              "fields": {
+                "hostname": {
+                  "type": "string",
+                  "id": 1
+                },
+                "onlineWorkerCount": {
+                  "type": "uint32",
+                  "id": 2
+                }
+              }
+            },
+            "CallOnlineScheduler": {
+              "fields": {
+                "isResponse": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "hostname": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "FetcherStateUpdate": {
+              "fields": {
+                "hostname": {
+                  "type": "string",
+                  "id": 1
+                },
+                "latestHeaderPhala": {
+                  "type": "uint64",
+                  "id": 2
+                },
+                "latestHeaderRococo": {
+                  "type": "uint64",
+                  "id": 3
+                },
+                "latestBlock": {
+                  "type": "uint64",
+                  "id": 4
+                },
+                "synching": {
+                  "type": "bool",
+                  "id": 5
+                }
+              }
+            },
+            "CallOnlineFetcher": {
+              "fields": {
+                "isResponse": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "hostname": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "google": {
+      "nested": {
+        "protobuf": {
+          "nested": {
+            "Timestamp": {
+              "fields": {
+                "seconds": {
+                  "type": "int64",
+                  "id": 1
+                },
+                "nanos": {
+                  "type": "int32",
+                  "id": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

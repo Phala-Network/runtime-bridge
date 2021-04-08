@@ -5,12 +5,9 @@ import cluster from 'cluster'
 
 import wait from '@/utils/wait'
 
-import { GRANDPA_AUTHORITIES_KEY, APP_RECEIVED_HEIGHT, APP_VERIFIED_HEIGHT, EVENTS_STORAGE_KEY } from "@/utils/constants"
+import { FRNK, GRANDPA_AUTHORITIES_KEY, APP_RECEIVED_HEIGHT, APP_VERIFIED_HEIGHT, EVENTS_STORAGE_KEY } from "@/utils/constants"
 
 const { default: Queue } = pQueue
-
-const redisReadQueue = new Queue({ concurrency: 1000, interval: 1 })
-const redisWriteQueue = new Queue({ concurrency: 30, interval: 1 })
 
 const STATES = toEnum([
   'IDLE',
@@ -24,44 +21,52 @@ const EVENTS = toEnum([
   'FINISHING_SYNCHING_OLD_BLOCKS'
 ])
 
-const tryGetBlock = (BlockModel, number) => {
-  return BlockModel.load(`${number}`)
-    .catch(async e => {
-      if (!(e?.message === 'not found')) {
-        $logger.error(e)
-        process.exit(-2)
+const tryGetBlockExistence = (BlockModel, number) => {
+  return BlockModel.count({ number })
+    .then(i => !!i)
+    .catch(e => {
+      if (e.message === 'path exists') {
+        $logger.warn('Index not found, retrying in 10s...')
+        return wait(10000).then(() => tryGetBlockExistence(BlockModel, number))
       }
-      return null
+      $logger.error('tryGetBlockExistence', e, { number })
+      process.exit(-2)
     })
 }
 
-const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, eventsStorageKey }) => {
+const _setBlock = async ({ api, number, timeout = 1, chainName, BlockModel, eventsStorageKey }) => {
   await wait(timeout)
-  let block = (await redisReadQueue.add(() => tryGetBlock(BlockModel, number)))
+  const block = await tryGetBlockExistence(BlockModel, number)
 
   if (!block) {
     const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
     const blockData = await api.rpc.chain.getBlock(hash)
+    let justification = blockData.justifications.toJSON()
+    if (justification) {
+      justification = justification
+        .reduce((acc, current) =>
+          current[0] === FRNK
+            ? current[1]
+            : acc, undefined)
+    }
+
     const events = (await api.rpc.state.getStorage(eventsStorageKey, hash)).value.toHex()
     const eventsStorageProof = (await api.rpc.state.getReadProof([eventsStorageKey], hash)).proof.toHex()
     const grandpaAuthorities = (await api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)).value.toHex()
     const grandpaAuthoritiesStorageProof = (await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)).proof.toHex()
     const setId = (await api.query.grandpa.currentSetId.at(hash)).toJSON()
 
-    block = new BlockModel()
-    block.id = number
-    block.property({
+    await BlockModel.create({
       number,
       hash,
       header: blockData.block.header.toHex(),
-      justification: blockData.justification.toHex(),
+      justification,
       events,
       eventsStorageProof,
       grandpaAuthorities,
       grandpaAuthoritiesStorageProof,
       setId
     })
-    await redisWriteQueue.add(() => block.save())
     $logger.info({ chain: chainName }, `Fetched block #${number}.`)
   } else {
     $logger.info({ chain: chainName }, `Block #${number} found in cache.`)
@@ -69,16 +74,10 @@ const _setBlock = async ({ api, number, timeout = 0, chainName, BlockModel, even
   return
 }
 const setBlock = (...args) => {
-  return args[0].fetchQueue.add(() => _setBlock(...args))
+  return _setBlock(...args)
     .catch(e => {
-      console.error('setBlock', args, e)
-      $logger.error(e)
-      if (e.errors?.number?.indexOf('notUnique') > -1 ||
-        e.errors?.hash?.indexOf('notUnique') > -1) {
-          $logger.info({ chain: chainName }, `Fetched block #${args[0].number}.(D)`)
-          return
-        }
-      return setBlock(...args)
+      $logger.error(e, { number })
+      process.exit(-2)
     })
 }
 
@@ -100,7 +99,7 @@ const _syncBlock = async ({ api, redis, chainName, BlockModel, parallelBlocks, r
   const syncOldBlocks = async () => {
     await redis.set(CHAIN_EVENTS_STORAGE_KEY, eventsStorageKey)
 
-    const queue = new Queue({ concurrency: 10000, interval: 0 })
+    const queue = new Queue({ concurrency: 60, interval: 1 })
     globalThis.$q = queue
 
     const verifiedHeight = (parseInt(await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1

@@ -1,54 +1,19 @@
-import { Nohm } from "nohm"
+import { Schema } from 'ottoman'
 
-const PhalaBlock = Nohm.model('PhalaBlock', {
-  properties: {
-    number: {
-      type: 'integer',
-      unique: true,
-      index: true
-    },
-    hash: {
-      type: 'string',
-      unique: true,
-      index: true,
-      validations: ['notEmpty']
-    },
-    header: {
-      type: 'string',
-      unique: false,
-      index: false
-    },
-    justification: {
-      type: 'string',
-      unique: false,
-      index: false,
-    },
-    events: {
-      type: 'string',
-      unique: false,
-      index: false,
-    },
-    eventsStorageProof: {
-      type: 'string',
-      unique: false,
-      index: false,
-    },
-    grandpaAuthorities: {
-      type: 'string',
-      unique: false,
-      index: false,
-    },
-    grandpaAuthoritiesStorageProof: {
-      type: 'string',
-      unique: false,
-      index: false,
-    },
-    setId: {
-      type: 'integer',
-      unique: false,
-      index: true
-    }
-  }
+const PhalaBlockSchema = new Schema({
+  number: { type: Number, required: true },
+  hash: { type: String, required: true },
+  header: String,
+  justification: String,
+  events: String,
+  eventsStorageProof: String,
+  grandpaAuthorities: String,
+  grandpaAuthoritiesStorageProof: String,
+  setId: Number
 })
 
-export default PhalaBlock
+PhalaBlockSchema.index.findN1qlByNumber = { by: 'number', type: 'n1ql' }
+PhalaBlockSchema.index.findRefNumber = { by: 'number', type: 'refdoc' }
+PhalaBlockSchema.index.findRefHash = { by: 'hash', type: 'refdoc' }
+
+export default PhalaBlockSchema

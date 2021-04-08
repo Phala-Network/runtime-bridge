@@ -3,7 +3,7 @@ import { Command } from 'commander'
 import { createLogger } from 'bunyan'
 
 import applyFetch from './fetch'
-import applyCommunicate from './communicate'
+import applyLifecycle from './lifecycle'
 import applyTrade from './trade'
 import applyCommon from './common'
 import applyAccount from './account'
@@ -19,7 +19,7 @@ cli.version(packageJson.version)
 
 applyCommon(cli)
 applyFetch(cli)
-applyCommunicate(cli)
+applyLifecycle(cli)
 applyTrade(cli)
 applyAccount(cli)
 

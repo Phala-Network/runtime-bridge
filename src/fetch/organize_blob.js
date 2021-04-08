@@ -1,70 +1,102 @@
-import OrganizedBlob from '@/models/organized_blob'
-import RuntimeWindow from '@/models/runtime_window'
-import { APP_VERIFIED_WINDOW_ID, APP_RECEIVED_HEIGHT, APP_LATEST_BLOB_ID, SYNC_HEADER_REQ_EMPTY, DISPATCH_BLOCK_REQ_EMPTY } from '@/utils/constants'
+
+import { APP_VERIFIED_WINDOW_ID, APP_RECEIVED_HEIGHT, SYNC_HEADER_REQ_EMPTY, DISPATCH_BLOCK_REQ_EMPTY } from '@/utils/constants'
 import wait from '@/utils/wait'
 import { bytesToBase64 } from 'byte-base64'
-
-const getWindow = id => {
-  return RuntimeWindow.load(`${id}`)
-    .catch(async e => {
-      if (!(e?.message === 'not found')) {
-        $logger.error(e)
-        process.exit(-2)
-      }
-      await wait(1000)
-      return getWindow(id)
-    })
-}
-
-const getBlob = id => {
-  return OrganizedBlob.load(`${id}`)
-    .catch(async e => {
-      if (!(e?.message === 'not found')) {
-        $logger.error(e)
-        process.exit(-2)
-      }
-      throw e
-    })
-}
+import { getModel } from 'ottoman'
 
 const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) => {
+  const RuntimeWindow = getModel('RuntimeWindow')
+  const OrganizedBlob = getModel('OrganizedBlob')
+
+  let shouldFulfill = true
+  let blobNumber = 0
+
+  $logger.info('Removing unfulfilled blobs...')
+  try {
+    const removeResult = await OrganizedBlob.removeMany({ fullBlob: false })
+    $logger.info('Removed unfulfilled blobs...', { removeResult })
+  } catch (e) {
+    if (e.message === 'path exists') {
+      $logger.warn('Index not found, skip removing...')
+    } else {
+      throw e
+    }
+  }
+
+  const getWindow = async (windowId) => {
+    const window = await RuntimeWindow.findOne({ windowId })
+      .catch(e => {
+        if (e.message === 'path exists') {
+          $logger.warn('Index not found, retrying in 10s...')
+          return wait(10000).then(() => getWindow(windowId))
+        }
+        $logger.error('getWindow', e, { windowId })
+        process.exit(-2)
+      })
+    if (window) { return window }
+    await wait(6000)
+    return getWindow(windowId)
+  }
+
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
-  const CHAIN_APP_LATEST_BLOB_ID = `${chainName}:${APP_LATEST_BLOB_ID}`
-  const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`
 
   const eventsStorageKey = api.query.system.events.key()
 
   let latestWindowId = -1
-  let latestBlobId = -1
 
-  const getBlock = number => {
-    return BlockModel.load(`${number}`)
-      .catch(async e => {
-        if (!(e?.message === 'not found')) {
-          $logger.error(e)
-          process.exit(-2)
+  const getBlock = async number => {
+    const block = await BlockModel.findOne({ number })
+      .catch(e => {
+        if (e.message === 'path exists') {
+          $logger.warn('Index not found, retrying in 10s...')
+          return wait(10000).then(() => getBlock(number))
         }
-        await wait(1000)
-        return getBlock(number)
+        $logger.error('getBlock', e, { number })
+        process.exit(-2)
       })
+    if (!block) {
+      shouldFulfill = false
+      $logger.info(`Waiting for block #${number}...`)
+      await wait(6000)
+      return getBlock(number)
+    }
+    return block
   }
-  const getWindowInfo = async id => (await getWindow(id)).allProperties()
 
-	const setLatestWindowId = id => {
-		latestWindowId = id
-		return redis.set(CHAIN_APP_VERIFIED_WINDOW_ID, id)
-	}
-  const setBlobId = id => {
-		latestBlobId = id
-		return redis.set(CHAIN_APP_LATEST_BLOB_ID, id)
-	}
+  const setLatestWindowId = id => {
+    latestWindowId = id
+    return redis.set(CHAIN_APP_VERIFIED_WINDOW_ID, id)
+  }
 
   const saveBlob = async ({ windowId, startBlock, stopBlock, syncHeaderData, dispatchBlockData, genesisInfoData }) => {
-    const targetBlobId = latestBlobId + 1
-    const blob = new OrganizedBlob()
-    blob.id = `${targetBlobId}`
+    let blob
 
-    blob.property({ windowId, startBlock, stopBlock })
+    if (shouldFulfill) {
+      blob = await OrganizedBlob.findOne({ startBlock, stopBlock })
+
+      if (
+        blob &&
+        blob.fullBlob &&
+        (blob.windowId === windowId) &&
+        (blob.number === blobNumber)
+      ) {
+        $logger.info({ blobNumber, windowId, startBlock, stopBlock }, `Fulfilled blob found.`)
+        blobNumber += 1
+        return
+      }
+    }
+
+    if (!blob) {
+      blob = new OrganizedBlob()
+    }
+
+    blob._applyData({
+      windowId,
+      startBlock,
+      stopBlock,
+      fullBlob: shouldFulfill,
+      number: blobNumber
+    })
 
     if (syncHeaderData) {
       syncHeaderData.headers_b64 = syncHeaderData.headers.map(i => bytesToBase64(i.toU8a()))
@@ -73,31 +105,45 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
       }
       delete syncHeaderData.headers
       delete syncHeaderData.authoritySetChange
-      blob.property('syncHeaderBlob', JSON.stringify(syncHeaderData))
+      blob._applyData({
+        syncHeaderBlob: JSON.stringify(syncHeaderData)
+      })
     }
 
     if (dispatchBlockData) {
       dispatchBlockData.blocks_b64 = dispatchBlockData.blocks.map(i => bytesToBase64(i.toU8a()))
       delete dispatchBlockData.blocks
-      blob.property('dispatchBlockBlob', JSON.stringify(dispatchBlockData))
+      blob._applyData({
+        dispatchBlockBlob: JSON.stringify(dispatchBlockData)
+      })
     }
 
     if (genesisInfoData) {
-      blob.property('genesisInfoBlob', JSON.stringify({
-        skip_ra: false,
-        bridge_genesis_info_b64: bytesToBase64(genesisInfoData.toU8a())
-      }))
+      blob._applyData({
+        genesisInfoBlob: JSON.stringify({
+          skip_ra: false,
+          bridge_genesis_info_b64: bytesToBase64(genesisInfoData.toU8a())
+        })
+      })
     }
 
-    $logger.info(`Generated blob #${targetBlobId} from block #${startBlock} to #${stopBlock} in window #${windowId}.`)
-
     await blob.save()
-    await setBlobId(targetBlobId)
+    $logger.info({ blobNumber, windowId, startBlock, stopBlock, shouldFulfill }, 'Blob saved')
+    blobNumber += 1
+
+    return blob.number
   }
 
   const processWindow = async id => {
-    let windowInfo = await getWindowInfo(id)
+    let windowInfo = await getWindow(id)
     const { startBlock } = windowInfo
+
+    if (!windowInfo.finished) {
+      if ((parseInt(initHeight) - startBlock) < 3600) {
+        shouldFulfill = false
+      }
+    }
+
     let { stopBlock } = windowInfo
     let currentBlock = startBlock
 
@@ -110,7 +156,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
           header,
           grandpaAuthorities: validators,
           grandpaAuthoritiesStorageProof: validatorsProof
-        } = blockData.allProperties()
+        } = blockData
         const genesisInfo = api.createType('ReqGenesisInfo', {
           header,
           validators: api.createType('VersionedAuthorityList', validators).authorityList,
@@ -121,7 +167,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
           windowId: id,
           startBlock: blobStartBlock,
           stopBlock: currentBlock,
-          genesisInfoData: genesisInfo
+          genesisInfoData: genesisInfo,
         })
 
         $logger.info('Generated blob for genesis block.')
@@ -132,8 +178,15 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
       const generateBlob = async ({ previousBlockData, syncHeaderData, dispatchBlockData }) => {
         const blockData = await getBlock(currentBlock)
         const _previousBlockData = previousBlockData || (await getBlock(currentBlock - 1))
-        const { header, justification, events, eventsStorageProof } = blockData.allProperties()
-        const hasJustification = justification.length > 2
+        const {
+          header,
+          justification,
+          events,
+          eventsStorageProof,
+          setId,
+          grandpaAuthoritiesStorageProof
+        } = blockData
+        const hasJustification = justification && (justification.length > 2)
 
         syncHeaderData.headers.push(api.createType('ReqHeaderToSync', {
           header,
@@ -149,16 +202,15 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
         }))
 
         if (hasJustification) {
-          if ((blockData.property('setId') > _previousBlockData.property('setId'))) {
+          if (setId > _previousBlockData.setId) {
             syncHeaderData.authoritySetChange = api.createType('AuthoritySetChange', {
               authoritySet: {
-                authoritySet: api.createType('VersionedAuthorityList', blockData.property('grandpaAuthorities')).authorityList,
-                setId: blockData.property('setId')
+                authoritySet: api.createType('VersionedAuthorityList', blockData.grandpaAuthorities).authorityList,
+                setId
               },
-              authorityProof: blockData.property('grandpaAuthoritiesStorageProof')
+              authorityProof: grandpaAuthoritiesStorageProof
             })
-            await wait(1000)
-            ;({ stopBlock } = await getWindowInfo(id))
+            ;({ stopBlock } = await getWindow(id))
             await saveBlob({
               windowId: id,
               startBlock: blobStartBlock,
@@ -169,7 +221,7 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
           } else {
             if (
               (syncHeaderData.headers.length >= 1000) ||
-              ((initHeight - currentBlock) < 100)
+              ((parseInt(initHeight) - currentBlock) < 100)
             ) {
               await saveBlob({
                 windowId: id,
@@ -230,7 +282,24 @@ const organizeBlob = async ({ api, chainName, redis, BlockModel, initHeight }) =
     return prepareBlob()
   }
 
-  return processWindow(latestWindowId + 1)
+  try {
+    const lastBlob = await OrganizedBlob.findOne({}, { sort: { number: 'DESC', windowId: 'DESC' } })
+    const lastWindow = lastBlob.windowId
+    const lastNumber = (await OrganizedBlob.findOne({ windowId: lastWindow - 1 }, { sort: { number: 'DESC' } })).number
+    blobNumber = lastNumber + 1
+    latestWindowId = lastWindow - 1
+  } catch (error) {
+    $logger.info('Failed to continue from the fulfilling point.', error)
+    latestWindowId = -1
+    blobNumber = 0
+  } finally {
+    if (latestWindowId <= -1) {
+      latestWindowId = -1
+      blobNumber = 0
+    }
+    $logger.info({ latestWindowId, blobNumber }, 'Starting processing windows...')
+    return processWindow(latestWindowId + 1)
+  }
 }
 
 export default organizeBlob

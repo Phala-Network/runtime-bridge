@@ -1,0 +1,22 @@
+{
+  "configurations": [
+  {
+    "address": "127.0.0.1",
+    "localRoot": "${workspaceFolder}",
+    "name": "Attach to Remote",
+    "port": 9229,
+    "remoteRoot": "/",
+    "request": "attach",
+    "skipFiles": [
+      "<node_internals>/**"
+    ],
+    "type": "pwa-node"
+  },
+    {
+      "type": "pwa-chrome",
+      "name": "localhost:9229",
+      "request": "launch",
+      "url": "localhost:9229"
+    }
+  ]
+}

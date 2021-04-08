@@ -1,41 +1,46 @@
-import { Nohm, NohmModel } from "nohm"
+import { Schema } from 'ottoman'
 
-class Machine extends NohmModel {}
-
-const name = 'Machine'
-const properties = {
+const MachineSchema = new Schema({
   nickname: {
-    type: 'string',
-    unique: false,
-    index: true
+    type: String,
+    require: false
   },
   phalaSs58Address: {
-    type: 'string',
-    unique: true,
-    index: true,
-    validations: ['notEmpty']
+    type: String,
+    require: true
   },
   publicKey: {
-    type: 'string',
-    unique: true,
-    index: true,
-    validations: ['notEmpty']
+    type: String,
+    require: true
   },
   polkadotJson: {
-    type: 'json',
-    unique: false,
-    index: false,
-    validations: ['notEmpty']
+    type: String,
+    require: true
   },
   runtimeEndpoint: {
-    type: 'string',
-    unique: false,
-    index: false,
-    validations: ['notEmpty']
-  }
+    type: String,
+    require: true
+  },
+})
+
+MachineSchema.index.findRefNickname = {
+  by: 'nickname',
+  type: 'refdoc'
 }
 
-Machine.modelName = name
-Machine.definitions = properties
+MachineSchema.index.findByAddress = {
+  by: 'phalaSs58Address',
+  type: 'view'
+}
 
-export default Nohm.register(Machine)
+MachineSchema.index.findByPublicKey = {
+  by: 'publicKey',
+  type: 'view'
+}
+
+MachineSchema.index.findByRuntimeEndpoint = {
+  by: 'runtimeEndpoint',
+  type: 'view'
+}
+
+export default MachineSchema

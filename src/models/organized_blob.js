@@ -1,38 +1,23 @@
-import { Nohm } from "nohm"
+import { Schema } from 'ottoman'
 
-const OrganizedBlob = Nohm.model('OrganizedBlob', {
-  properties: {
-    startBlock: {
-      type: 'integer',
-      unique: true,
-      index: true
-    },
-    stopBlock: {
-      type: 'integer',
-      unique: false,
-      index: true
-    },
-    windowId: {
-      type: 'integer',
-      unique: false,
-      index: true
-    },
-    syncHeaderBlob: {
-      type: 'string',
-      unique: false,
-      index: false
-    },
-    dispatchBlockBlob: {
-      type: 'string',
-      unique: false,
-      index: false
-    },
-    genesisInfoBlob: {
-      type: 'string',
-      unique: false,
-      index: false
-    }
-  }
+const OrganizedBlobSchema = new Schema({
+  startBlock: Number,
+  stopBlock: Number,
+  windowId: Number,
+  syncHeaderBlob: String,
+  dispatchBlockBlob: String,
+  genesisInfoBlob: String,
+  fullBlob: { type: Boolean, default: false },
+  number: Number
 })
 
-export default OrganizedBlob
+OrganizedBlobSchema.index.findByStartBlock = { by: 'startBlock', type: 'view' }
+OrganizedBlobSchema.index.findByStopBlock = { by: 'stopBlock', type: 'view' }
+OrganizedBlobSchema.index.findByWindowId = { by: 'windowId', type: 'view' }
+OrganizedBlobSchema.index.findN1qlByWindowId = { by: 'windowId', type: 'n1ql' }
+OrganizedBlobSchema.index.findN1qlByFullBlob = { by: 'fullBlob', type: 'n1ql' }
+OrganizedBlobSchema.index.findN1qlByBlock = { by: ['startBlock', 'stopBlock'], type: 'n1ql' }
+OrganizedBlobSchema.index.findN1qlByStartBlock = { by: ['startBlock'], type: 'n1ql' }
+OrganizedBlobSchema.index.findN1qlByNumber = { by: 'number', type: 'n1ql' }
+
+export default OrganizedBlobSchema

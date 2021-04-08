@@ -1,11 +1,10 @@
-import { Nohm } from 'nohm'
 import pQueue from 'p-queue'
 import Redis from 'ioredis'
 import { list as redisCommands } from 'redis-commands'
 
 const { default: Queue } = pQueue
 
-const createClient = (redisEndpoint, setNohmDefaultClient = false) =>
+const createClient = redisEndpoint =>
   new Promise(resolve => {
     const queue = new Queue({
       timeout: 3000,
@@ -39,18 +38,13 @@ const createClient = (redisEndpoint, setNohmDefaultClient = false) =>
     })
 
     client.on('ready', () => {
-      if (setNohmDefaultClient) {
-        Nohm.setClient(client)
-      }
-      Nohm.setPrefix('prb')
       resolve(client)
+    })
+
+    client.on('error', e => {
+      $logger.error('REDIS ERROR!', e)
     })
   })
 
-export const bufferType = (value, key, old) => {
-  console.log(key)
-  // console.log(value)
-  return value
-}
 
 export default createClient

@@ -1,34 +1,19 @@
-import { Nohm } from "nohm"
+import { Schema } from 'ottoman'
 
-const RuntimeWindow = Nohm.model('RuntimeWindow', {
-  properties: {
-    startBlock: {
-      type: 'integer',
-      unique: true,
-      index: true
-    },
-    stopBlock: {
-      type: 'integer',
-      unique: false,
-      index: false
-    },
-    currentBlock: {
-      type: 'integer',
-      unique: false,
-      index: false
-    },
-    setId: {
-      type: 'integer',
-      unique: false,
-      index: false
-    },
-    finished: {
-      defaultValue: false,
-      type: 'boolean',
-      unique: false,
-      index: true
-    },
-  }
+const RuntimeWindowSchema = new Schema({
+  startBlock: Number,
+  stopBlock: Number,
+  currentBlock: Number,
+  windowId: Number,
+  setId: Number,
+  finished: { type: Boolean, default: false }
 })
 
-export default RuntimeWindow
+RuntimeWindowSchema.index.findByStartBlock = { by: 'startBlock', type: 'view' }
+RuntimeWindowSchema.index.findByRefBlock = { by: 'stopBlock', type: 'refdoc' }
+RuntimeWindowSchema.index.findRefFinished = { by: 'finished', type: 'refdoc' }
+RuntimeWindowSchema.index.findN1qlByFinishedAndWindowId = { by: ['windowId', 'finished'], type: 'n1ql' }
+RuntimeWindowSchema.index.findN1qlByWindowId = { by: 'windowId', type: 'n1ql' }
+
+
+export default RuntimeWindowSchema
