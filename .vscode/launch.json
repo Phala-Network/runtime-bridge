@@ -1,11 +1,11 @@
 {
   "configurations": [
   {
-    "address": "127.0.0.1",
+    "address": "10.170.0.11",
     "localRoot": "${workspaceFolder}",
     "name": "Attach to Remote",
     "port": 9229,
-    "remoteRoot": "/",
+    "remoteRoot": "${workspaceFolder}",
     "request": "attach",
     "skipFiles": [
       "<node_internals>/**"

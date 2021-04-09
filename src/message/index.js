@@ -45,7 +45,10 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
         nonce,
         type: 1
       })
-      setTimeout(() => reject(new TimeoutError()), APP_MESSAGE_TUNNEL_QUERY_TIMEOUT)
+      setTimeout(() => {
+        callbacks.delete(nonce)
+        reject(new TimeoutError())
+      }, APP_MESSAGE_TUNNEL_QUERY_TIMEOUT)
       return nonce
     })())
   }

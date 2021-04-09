@@ -9,6 +9,10 @@ export const start = async (uri) => {
   const ottoman = new Ottoman()
   ottoman.connect(uri)
 
+  if (process.env.NODE_ENV === 'development') {
+    globalThis.ottoman = ottoman
+  }
+
   ottoman.model('Machine', MachineSchema)
   ottoman.model('OrganizedBlob', OrganizedBlobSchema)
   ottoman.model('PhalaBlock', PhalaBlockSchema)

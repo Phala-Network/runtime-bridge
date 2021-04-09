@@ -297,6 +297,10 @@
                 "latestSynchedBlock": {
                   "type": "uint64",
                   "id": 4
+                },
+                "initialized": {
+                  "type": "bool",
+                  "id": 5
                 }
               },
               "nested": {
@@ -307,16 +311,29 @@
                     "S_PENDING_SYNCHING": 2,
                     "S_SYNCHING": 3,
                     "S_ONLINE": 4,
-                    "S_KICKED": 5
+                    "S_KICKED": 5,
+                    "S_ERROR": 6
                   }
                 }
               }
             },
             "AccountState": {
               "fields": {
+                "account": {
+                  "type": "AccountPublic",
+                  "id": 1
+                },
                 "balance": {
                   "type": "BN",
-                  "id": 1
+                  "id": 2
+                },
+                "payoutAddress": {
+                  "type": "string",
+                  "id": 3
+                },
+                "intention": {
+                  "type": "bool",
+                  "id": 4
                 }
               }
             },
@@ -382,8 +399,8 @@
                   "type": "WorkerIdentity",
                   "id": 1
                 },
-                "cert": {
-                  "type": "WorkerCertificate",
+                "payoutAddress": {
+                  "type": "string",
                   "id": 2
                 },
                 "stashAccount": {
@@ -393,6 +410,10 @@
                 "controllerAccount": {
                   "type": "Account",
                   "id": 4
+                },
+                "pruntimeEndpoint": {
+                  "type": "string",
+                  "id": 5
                 }
               }
             },

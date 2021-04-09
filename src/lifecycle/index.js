@@ -2,12 +2,12 @@ import { start as startOttoman } from '@/utils/couchbase'
 import { createMessageTunnel, createDispatcher } from '@/message'
 
 const start = async ({ redisEndpoint, couchbaseEndpoint }) => {
+  const workerStates = new Map() // key => Machine.id from couchbase
+
   await startOttoman(couchbaseEndpoint)
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,
-    from: 2,
-    // encode: () => {},
-    // decode: () => {}
+    from: 2
   })
   const { subscribe } = tunnelConnection
 
@@ -32,8 +32,17 @@ const start = async ({ redisEndpoint, couchbaseEndpoint }) => {
     }
   })
 
+  // init rpc
   await subscribe(dispatcher)
   $logger.info('Now listening to the redis channel, old messages may be ignored.')
+
+  // todo: wait for fetcher
+  // todo: prepare accounts to monitor
+
+  // todo: init polkadotjs
+  // todo: monitor account
+
+  // todo: setup worker states
 }
 
 export default start
