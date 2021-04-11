@@ -3,7 +3,12 @@ import createRedisClient from '@/utils/redis'
 import createKeyring from '@/utils/keyring'
 import Machine from '@/models/machine'
 
-const setMachine = async ({ nickname, criticalRedisEndpoint, pruntimeEndpoint: runtimeEndpoint, controllerMnemonic }) => {
+const setMachine = async ({
+  nickname,
+  criticalRedisEndpoint,
+  pruntimeEndpoint: runtimeEndpoint,
+  controllerMnemonic,
+}) => {
   const keyring = await createKeyring()
   await createRedisClient(criticalRedisEndpoint, true)
 
@@ -15,7 +20,9 @@ const setMachine = async ({ nickname, criticalRedisEndpoint, pruntimeEndpoint: r
   let record = (await Machine.findAndLoad({ publicKey }))[0]
 
   if (record) {
-    $logger.info('Found previous record for this account, updating existing record...')
+    $logger.info(
+      'Found previous record for this account, updating existing record...'
+    )
   } else {
     record = new Machine()
     $logger.info('Creating new record...')
@@ -26,18 +33,21 @@ const setMachine = async ({ nickname, criticalRedisEndpoint, pruntimeEndpoint: r
     phalaSs58Address,
     publicKey,
     polkadotJson,
-    runtimeEndpoint
+    runtimeEndpoint,
   })
 
   await record.save()
 
-  $logger.info({
-    id: record.id,
-    nickname,
-    phalaSs58Address,
-    publicKey,
-    runtimeEndpoint
-  }, 'Successfully set.')
+  $logger.info(
+    {
+      id: record.id,
+      nickname,
+      phalaSs58Address,
+      publicKey,
+      runtimeEndpoint,
+    },
+    'Successfully set.'
+  )
   process.exit(0)
 }
 

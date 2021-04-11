@@ -2,42 +2,42 @@ import _phalaTypes from '@phala/typedefs'
 
 export const chainTypes = _phalaTypes.typesChain['Phala PoC-4']
 export const bridgeTypes = {
-  "SetId": "u64",
-  "Justification": "Vec<u8>",
-  "StorageProof": "Vec<Vec<u8>>",
-  "VersionedAuthorityList": {
-    "version": "u8",
-    "authorityList": "AuthorityList"
+  SetId: 'u64',
+  Justification: 'Vec<u8>',
+  StorageProof: 'Vec<Vec<u8>>',
+  VersionedAuthorityList: {
+    version: 'u8',
+    authorityList: 'AuthorityList',
   },
-  "AuthoritySet": {
-    "authoritySet": "AuthorityList",
-    "setId": "SetId"
+  AuthoritySet: {
+    authoritySet: 'AuthorityList',
+    setId: 'SetId',
   },
-  "AuthoritySetChange": {
-    "authoritySet": "AuthoritySet",
-    "authorityProof": "StorageProof"
+  AuthoritySetChange: {
+    authoritySet: 'AuthoritySet',
+    authorityProof: 'StorageProof',
   },
-  "ReqHeaderToSync": {
-    "header": "Header",
-    "justification": "Option<Justification>"
+  ReqHeaderToSync: {
+    header: 'Header',
+    justification: 'Option<Justification>',
   },
-  "ReqGenesisInfo": {
-    "header": "Header",
-    "validators": "AuthorityList",
-    "proof": "StorageProof"
+  ReqGenesisInfo: {
+    header: 'Header',
+    validators: 'AuthorityList',
+    proof: 'StorageProof',
   },
-  "ReqBlockHeaderWithEvents": {
-    "blockHeader": "Header",
-    "events": "Option<Vec<u8>>",
-    "proof": "Option<StorageProof>",
-    "key": "Option<Vec<u8>>"
+  ReqBlockHeaderWithEvents: {
+    blockHeader: 'Header',
+    events: 'Option<Vec<u8>>',
+    proof: 'Option<StorageProof>',
+    key: 'Option<Vec<u8>>',
   },
-  "PalletId": "Raw"
+  PalletId: 'Raw',
 }
 
 export const phalaTypes = {
   ...chainTypes,
-  ...bridgeTypes
+  ...bridgeTypes,
 }
 
 export default phalaTypes

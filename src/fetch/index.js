@@ -10,51 +10,70 @@ import { isMaster } from 'cluster'
 import { getModel } from 'ottoman'
 import { createMessageTunnel, createDispatcher } from '@/message'
 import { hostname } from 'os'
+import { MessageTarget } from '../message/proto'
 
-const fetchPhala = async ({ api, redis, chainName, BlockModel, parallelBlocks }) => {
+const fetchPhala = async ({
+  api,
+  redis,
+  chainName,
+  BlockModel,
+  parallelBlocks,
+}) => {
   await syncBlock({ api, redis, chainName, BlockModel, parallelBlocks })
-  $logger.info(`Synched to current highest finalized block.`, { label: chainName })
+  $logger.info(`Synched to current highest finalized block.`, {
+    label: chainName,
+  })
 }
 
-const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint, parallelBlocks }) => {
+const start = async ({
+  phalaRpc,
+  couchbaseEndpoint,
+  redisEndpoint,
+  parallelBlocks,
+}) => {
   const redis = await createRedisClient(redisEndpoint, true)
   globalThis.$redis = redis
 
   await startOttoman(couchbaseEndpoint)
 
   const phalaProvider = new WsProvider(phalaRpc)
-  const phalaApi = await ApiPromise.create({ provider: phalaProvider, types: phalaTypes })
+  const phalaApi = await ApiPromise.create({
+    provider: phalaProvider,
+    types: phalaTypes,
+  })
   globalThis.$phalaApi = phalaApi
 
-  const [phalaChain, phalaNodeName, phalaNodeVersion] = (await Promise.all([
-    phalaApi.rpc.system.chain(),
-    phalaApi.rpc.system.name(),
-    phalaApi.rpc.system.version()
-  ])).map(i => i.toString())
+  const [phalaChain, phalaNodeName, phalaNodeVersion] = (
+    await Promise.all([
+      phalaApi.rpc.system.chain(),
+      phalaApi.rpc.system.name(),
+      phalaApi.rpc.system.version(),
+    ])
+  ).map((i) => i.toString())
 
   const PhalaBlockModel = getModel('PhalaBlock')
 
   if (isMaster) {
     const tunnelConnection = await createMessageTunnel({
       redisEndpoint,
-      from: 2
+      from: MessageTarget.values.MTG_FETCHER,
     })
     const { subscribe } = tunnelConnection
 
     const dispatcher = createDispatcher({
       tunnelConnection,
       queryHandlers: {
-        callOnlineFetcher: message => {
+        callOnlineFetcher: (message) => {
           $logger.info('callOnlineFetcher', message)
           return {
             fetcherStateUpdate: {
-              hostname: hostname()
-            }
+              hostname: hostname(),
+            },
           }
-        }
+        },
       },
       plainHandlers: {},
-      dispatch: message => {
+      dispatch: (message) => {
         if (message.to === 'MTG_BROADCAST' || message.to === 'MTG_FETCHER') {
           switch (message.type) {
             case 'MTP_QUERY':
@@ -68,17 +87,33 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint, parallelBlock
               break
           }
         }
-      }
+      },
     })
     await subscribe(dispatcher)
-    $logger.info('Now listening to the redis channel, old messages may be ignored.')
+    $logger.info(
+      'Now listening to the redis channel, old messages may be ignored.'
+    )
 
     await redis.set(PHALA_CHAIN_NAME, phalaChain)
-    $logger.info({ chain: phalaChain }, `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`)
+    $logger.info(
+      { chain: phalaChain },
+      `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`
+    )
 
     await Promise.all([
-      fetchPhala({ api: phalaApi, chainName: phalaChain, redis, parallelBlocks, BlockModel: PhalaBlockModel }),
-      computeWindow({ api: phalaApi, chainName: phalaChain, redis, BlockModel: PhalaBlockModel })
+      fetchPhala({
+        api: phalaApi,
+        chainName: phalaChain,
+        redis,
+        parallelBlocks,
+        BlockModel: PhalaBlockModel,
+      }),
+      computeWindow({
+        api: phalaApi,
+        chainName: phalaChain,
+        redis,
+        BlockModel: PhalaBlockModel,
+      }),
     ])
   } else {
     await organizeBlob({
@@ -86,7 +121,7 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint, parallelBlock
       chainName: phalaChain,
       redis,
       BlockModel: PhalaBlockModel,
-      initHeight: process.env.INIT_HEIGHT
+      initHeight: process.env.INIT_HEIGHT,
     })
   }
 }

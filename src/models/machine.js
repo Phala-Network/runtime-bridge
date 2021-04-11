@@ -3,44 +3,44 @@ import { Schema } from 'ottoman'
 const MachineSchema = new Schema({
   nickname: {
     type: String,
-    require: false
+    require: false,
   },
   phalaSs58Address: {
     type: String,
-    require: true
+    require: true,
   },
   publicKey: {
     type: String,
-    require: true
+    require: true,
   },
   polkadotJson: {
     type: String,
-    require: true
+    require: true,
   },
   runtimeEndpoint: {
     type: String,
-    require: true
+    require: true,
   },
 })
 
 MachineSchema.index.findRefNickname = {
   by: 'nickname',
-  type: 'refdoc'
+  type: 'refdoc',
 }
 
 MachineSchema.index.findByAddress = {
   by: 'phalaSs58Address',
-  type: 'view'
+  type: 'view',
 }
 
 MachineSchema.index.findByPublicKey = {
   by: 'publicKey',
-  type: 'view'
+  type: 'view',
 }
 
 MachineSchema.index.findByRuntimeEndpoint = {
   by: 'runtimeEndpoint',
-  type: 'view'
+  type: 'view',
 }
 
 export default MachineSchema

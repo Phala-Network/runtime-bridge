@@ -10,7 +10,7 @@ import applyAccount from './account'
 
 globalThis.$logger = createLogger({
   level: 'info',
-  name: 'prb'
+  name: 'prb',
 })
 
 const cli = new Command()

@@ -9,7 +9,7 @@ const PhalaBlockSchema = new Schema({
   eventsStorageProof: String,
   grandpaAuthorities: String,
   grandpaAuthoritiesStorageProof: String,
-  setId: Number
+  setId: Number,
 })
 
 PhalaBlockSchema.index.findN1qlByNumber = { by: 'number', type: 'n1ql' }

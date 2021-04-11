@@ -6,7 +6,7 @@ const waitForFetcher = async (query) => {
   // todo: wait for synching
   await query({
     to: MessageTarget.values.MTG_FETCHER,
-    callOnlineFetcher: {}
+    callOnlineFetcher: {},
   })
 }
 
@@ -16,7 +16,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   await startOttoman(couchbaseEndpoint)
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,
-    from: 1
+    from: MessageTarget.values.MTG_MANAGER,
   })
   const { subscribe, query } = tunnelConnection
 
@@ -24,9 +24,13 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
     tunnelConnection,
     queryHandlers: {},
     plainHandlers: {},
-    dispatch: message => {
+    dispatch: (message) => {
       try {
-        if (message.to === 'MTG_BROADCAST' || message.to === 'MTG_MANAGER' || message.to === 'MTG_WORKER') {
+        if (
+          message.to === 'MTG_BROADCAST' ||
+          message.to === 'MTG_MANAGER' ||
+          message.to === 'MTG_WORKER'
+        ) {
           switch (message.type) {
             case 'MTP_QUERY':
               dispatcher.queryCallback(message)
@@ -42,12 +46,14 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
       } catch (error) {
         $logger.error(error)
       }
-    }
+    },
   })
 
   // init rpc
   await subscribe(dispatcher)
-  $logger.info('Now listening to the redis channel, old messages may be ignored.')
+  $logger.info(
+    'Now listening to the redis channel, old messages may be ignored.'
+  )
 
   await waitForFetcher(query)
   // todo: prepare accounts to monitor

@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   pruntime:
@@ -8,12 +8,12 @@ services:
     environment:
       - "ENABLE_KICK_API=1"
     volumes:
-      - 'pruntime-data:/root/data'
+      - "pruntime-data:/root/data"
     devices:
       - "/dev/sgx/enclave:/dev/sgx/enclave"
       - "/dev/sgx/provision:/dev/sgx/provision"
     ports:
-      - '8000:8000'
+      - "8000:8000"
 
 volumes:
   pruntime-data:

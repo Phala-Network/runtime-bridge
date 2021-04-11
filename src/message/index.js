@@ -1,9 +1,13 @@
 import createRedisClient from '@/utils/redis'
-import { APP_MESSAGE_TUNNEL_CHANNEL, APP_MESSAGE_TUNNEL_QUERY_TIMEOUT } from '@/utils/constants'
+import {
+  APP_MESSAGE_TUNNEL_CHANNEL,
+  APP_MESSAGE_TUNNEL_QUERY_TIMEOUT,
+} from '@/utils/constants'
 import { Message, MessageTarget, MessageType } from './proto'
 
-const defaultEncode = request => Message.encode(Message.create(request)).finish()
-const defaultDecode = message => Message.decode(message).toJSON()
+const defaultEncode = (request) =>
+  Message.encode(Message.create(request)).finish()
+const defaultDecode = (message) => Message.decode(message).toJSON()
 
 const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
   const pubClient = await createRedisClient(redisEndpoint)
@@ -16,7 +20,7 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
       to = MessageTarget.values.MTG_BROADCAST,
       nonce = 0,
       nonceRef = 0,
-      type = MessageType.values.MTP_BROADCAST
+      type = MessageType.values.MTP_BROADCAST,
     } = request
     const _nonce = nonce || Math.random * 1000000000
     const createdAt = Date.now()
@@ -28,50 +32,57 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
       nonce: _nonce,
       nonceRef,
       type,
-      content: request
+      content: request,
     })
 
     await pubClient.publish(APP_MESSAGE_TUNNEL_CHANNEL, data)
     return _nonce
   }
 
-  const broadcast = (request) => publish({
-    ...request,
-    type: MessageType.values.MTG_BROADCAST,
-    to: MessageTarget.values.MTP_BROADCAST
-  })
+  const broadcast = (request) =>
+    publish({
+      ...request,
+      type: MessageType.values.MTG_BROADCAST,
+      to: MessageTarget.values.MTP_BROADCAST,
+    })
 
   const query = (request) => {
-    return new Promise((resolve, reject) => (async () => {
-      const nonce = Math.floor(Math.random() * 1000000000)
-      callbacks.set(nonce, resolve)
-      setTimeout(() => {
-        callbacks.delete(nonce)
-        reject(new Error('Timeout!'))
-      }, APP_MESSAGE_TUNNEL_QUERY_TIMEOUT)
-      await publish({
-        ...request,
-        nonce,
-        type: MessageType.values.MTP_QUERY
-      })
-      return nonce
-    })())
+    return new Promise((resolve, reject) =>
+      (async () => {
+        const nonce = Math.floor(Math.random() * 1000000000)
+        callbacks.set(nonce, resolve)
+        setTimeout(() => {
+          callbacks.delete(nonce)
+          reject(new Error('Timeout!'))
+        }, APP_MESSAGE_TUNNEL_QUERY_TIMEOUT)
+        await publish({
+          ...request,
+          nonce,
+          type: MessageType.values.MTP_QUERY,
+        })
+        return nonce
+      })()
+    )
   }
 
-  const reply = (request) => publish({
-    ...request,
-    type: MessageType.values.MTP_REPLY
-  })
+  const reply = (request) =>
+    publish({
+      ...request,
+      type: MessageType.values.MTP_REPLY,
+    })
 
-  const notify = (request) => publish({
-    ...request,
-    type: MessageType.values.MTP_NOTIFY
-  })
+  const notify = (request) =>
+    publish({
+      ...request,
+      type: MessageType.values.MTP_NOTIFY,
+    })
 
-  const subscribe = dispatcher => {
+  const subscribe = (dispatcher) => {
     return new Promise((resolve, reject) => {
       subClient.subscribe(APP_MESSAGE_TUNNEL_CHANNEL, (err, count) => {
-        if (err) { return reject(err) }
+        if (err) {
+          return reject(err)
+        }
 
         subClient.on('messageBuffer', (channel, message) => {
           if (channel.compare(APP_MESSAGE_TUNNEL_CHANNEL)) {
@@ -85,7 +96,9 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
           } catch (error) {
             $logger.warn('Invalid message received.', error, { message })
           }
-          if (!_message) { return }
+          if (!_message) {
+            return
+          }
 
           dispatcher.dispatch(_message)
         })
@@ -103,11 +116,16 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
     callbacks,
     subscribe,
     pubClient,
-    subClient
+    subClient,
   }
 }
 
-const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, dispatch }) => {
+const createDispatcher = ({
+  tunnelConnection,
+  queryHandlers,
+  plainHandlers,
+  dispatch,
+}) => {
   const { callbacks } = tunnelConnection
 
   const plainCallback = (message) => {
@@ -122,14 +140,18 @@ const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, disp
   const queryCallback = async (message) => {
     const cb = queryHandlers[Object.keys(message.content)[0]]
     if (typeof cb !== 'function') {
-      $logger.error('Handler not found!', { queryHandlers, message, key: Object.keys(message.content)[0]})
+      $logger.error('Handler not found!', {
+        queryHandlers,
+        message,
+        key: Object.keys(message.content)[0],
+      })
       return
     }
     const reply = await cb(message, tunnelConnection)
     await tunnelConnection.reply({
       ...reply,
       to: message.from,
-      nonceRef: message.nonce
+      nonceRef: message.nonce,
     })
   }
 
@@ -142,7 +164,9 @@ const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, disp
       }
       cb(message, tunnelConnection)
     } catch (error) {
-      $logger.warn('Error occured while processing a reply message.', error, { message })
+      $logger.warn('Error occured while processing a reply message.', error, {
+        message,
+      })
       // todo: handle error
     } finally {
       callbacks.delete(message.nonceRef)
@@ -153,11 +177,8 @@ const createDispatcher = ({ tunnelConnection, queryHandlers, plainHandlers, disp
     queryCallback,
     replyCallback,
     plainCallback,
-    dispatch
+    dispatch,
   }
 }
 
-export {
-  createMessageTunnel,
-  createDispatcher
-}
+export { createMessageTunnel, createDispatcher }

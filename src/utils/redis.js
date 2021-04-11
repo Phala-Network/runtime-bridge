@@ -4,16 +4,16 @@ import { list as redisCommands } from 'redis-commands'
 
 const { default: Queue } = pQueue
 
-const createClient = redisEndpoint =>
-  new Promise(resolve => {
+const createClient = (redisEndpoint) =>
+  new Promise((resolve) => {
     const queue = new Queue({
       timeout: 3000,
-      throwOnTimeout: true
+      throwOnTimeout: true,
     })
 
     const client = new Redis(redisEndpoint)
 
-    redisCommands.forEach(i => {
+    redisCommands.forEach((i) => {
       const command = i.split(' ')[0]
 
       if (command !== 'multi') {
@@ -25,13 +25,12 @@ const createClient = redisEndpoint =>
           if (typeof args[args.length - 1] === 'function') {
             return func.apply(client, args)
           } else {
-            return _func(...args)
-              .catch(e => {
-                if (e?.name === 'TimeoutError') {
-                  return _func(...args)
-                }
-                throw e
-              })
+            return _func(...args).catch((e) => {
+              if (e?.name === 'TimeoutError') {
+                return _func(...args)
+              }
+              throw e
+            })
           }
         }
       }
@@ -41,10 +40,9 @@ const createClient = redisEndpoint =>
       resolve(client)
     })
 
-    client.on('error', e => {
+    client.on('error', (e) => {
       $logger.error('REDIS ERROR!', e)
     })
   })
-
 
 export default createClient

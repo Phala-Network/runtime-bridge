@@ -1,4 +1,4 @@
-import { Ottoman } from "ottoman"
+import { Ottoman } from 'ottoman'
 
 import MachineSchema from '@/models/machine'
 import OrganizedBlobSchema from '@/models/organized_blob'

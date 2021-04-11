@@ -11,6 +11,4 @@ export const Message = protoRoot.lookup('prb.Message')
 export const MessageType = protoRoot.lookup('prb.MessageType')
 export const MessageTarget = protoRoot.lookup('prb.MessageTarget')
 
-export {
-  protoRoot
-}
+export { protoRoot }
