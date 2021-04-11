@@ -6,7 +6,6 @@ import applyFetch from './fetch'
 import applyLifecycle from './lifecycle'
 import applyTrade from './trade'
 import applyCommon from './common'
-import applyAccount from './account'
 
 globalThis.$logger = createLogger({
   level: 'info',
@@ -21,6 +20,5 @@ applyCommon(cli)
 applyFetch(cli)
 applyLifecycle(cli)
 applyTrade(cli)
-applyAccount(cli)
 
 cli.parse(process.argv)

@@ -33,6 +33,11 @@ export const bridgeTypes = {
     key: 'Option<Vec<u8>>',
   },
   PalletId: 'Raw',
+  StashWorkerStats: {
+    slash: 'Balance',
+    computeReceived: 'Balance',
+    onlineReceived: 'Balance',
+  },
 }
 
 export const phalaTypes = {

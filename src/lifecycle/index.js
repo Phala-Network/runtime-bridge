@@ -1,6 +1,10 @@
 import { start as startOttoman } from '@/utils/couchbase'
 import { createMessageTunnel, createDispatcher } from '@/message'
 import { MessageTarget } from '../message/proto'
+import { getModel } from 'ottoman'
+import { createWorkerState } from './worker'
+import { ApiPromise, WsProvider } from '@polkadot/api'
+import phalaTypes from '@/utils/typedefs'
 
 const waitForFetcher = async (query) => {
   // todo: wait for synching
@@ -11,16 +15,58 @@ const waitForFetcher = async (query) => {
 }
 
 const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
+  let phalaApi, dispatcher
   const workerStates = new Map() // key => Machine.id from couchbase
 
-  await startOttoman(couchbaseEndpoint)
+  const ottoman = await startOttoman(couchbaseEndpoint)
+
+  const phalaProvider = new WsProvider(phalaRpc)
+  phalaApi = await ApiPromise.create({
+    provider: phalaProvider,
+    types: phalaTypes,
+  })
+
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,
     from: MessageTarget.values.MTG_MANAGER,
   })
   const { subscribe, query } = tunnelConnection
 
-  const dispatcher = createDispatcher({
+  const setupWorkerContexts = async () => {
+    const Machine = getModel('Machine')
+    const { rows: machines } = await Machine.find({})
+    machines.forEach((m) => {
+      if (workerStates.get(m.id)) {
+        return
+      }
+      workerStates.set(
+        m.id,
+        createWorkerState({
+          machine: m,
+          context: {
+            workerStates,
+            phalaApi,
+            setupWorkerContexts,
+            ottoman,
+            dispatcher,
+          },
+        })
+      )
+    })
+  }
+
+  const injectMessage = (message) =>
+    Object.assign(message, {
+      context: {
+        workerStates,
+        phalaApi,
+        setupWorkerContexts,
+        ottoman,
+        dispatcher,
+      },
+    })
+
+  dispatcher = createDispatcher({
     tunnelConnection,
     queryHandlers: {},
     plainHandlers: {},
@@ -33,13 +79,13 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
         ) {
           switch (message.type) {
             case 'MTP_QUERY':
-              dispatcher.queryCallback(message)
+              dispatcher.queryCallback(injectMessage(message))
               break
-            case 'MTP_REPLY': // REPLY
-              dispatcher.replyCallback(message)
+            case 'MTP_REPLY':
+              dispatcher.replyCallback(injectMessage(message))
               break
             default:
-              dispatcher.plainCallback(message)
+              dispatcher.plainCallback(injectMessage(message))
               break
           }
         }
@@ -49,19 +95,13 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
     },
   })
 
-  // init rpc
   await subscribe(dispatcher)
   $logger.info(
     'Now listening to the redis channel, old messages may be ignored.'
   )
 
   await waitForFetcher(query)
-  // todo: prepare accounts to monitor
-
-  // todo: init polkadotjs
-  // todo: monitor account
-
-  // todo: setup worker states
+  await setupWorkerContexts()
 }
 
 export default start

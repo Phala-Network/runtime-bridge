@@ -1,6 +1,5 @@
 import {
   APP_VERIFIED_WINDOW_ID,
-  APP_RECEIVED_HEIGHT,
   SYNC_HEADER_REQ_EMPTY,
   DISPATCH_BLOCK_REQ_EMPTY,
 } from '@/utils/constants'

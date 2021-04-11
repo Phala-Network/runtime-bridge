@@ -12,10 +12,10 @@ const apply = (program) => {
       '-p, --phala-rpc <url>',
       'URL of Phala Blockchain WebSocket RPC'
     )
-    .action(({ redisEndpoint, couchbaseEndpoint }) => {
+    .action(({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
       import('@/lifecycle')
         .then(({ default: start }) =>
-          start({ redisEndpoint, couchbaseEndpoint })
+          start({ phalaRpc, redisEndpoint, couchbaseEndpoint })
         )
         .catch((...e) => {
           $logger.error(...e)
