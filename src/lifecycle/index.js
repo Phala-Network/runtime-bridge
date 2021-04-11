@@ -1,33 +1,46 @@
 import { start as startOttoman } from '@/utils/couchbase'
 import { createMessageTunnel, createDispatcher } from '@/message'
+import { MessageTarget } from '../message/proto'
 
-const start = async ({ redisEndpoint, couchbaseEndpoint }) => {
+const waitForFetcher = async (query) => {
+  // todo: wait for synching
+  await query({
+    to: MessageTarget.values.MTG_FETCHER,
+    callOnlineFetcher: {}
+  })
+}
+
+const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   const workerStates = new Map() // key => Machine.id from couchbase
 
   await startOttoman(couchbaseEndpoint)
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,
-    from: 2
+    from: 1
   })
-  const { subscribe } = tunnelConnection
+  const { subscribe, query } = tunnelConnection
 
   const dispatcher = createDispatcher({
     tunnelConnection,
     queryHandlers: {},
     plainHandlers: {},
     dispatch: message => {
-      if (message.to === 0 || message.to === 1 || message.to === 4) { // BROADCAST, MANAGER, WORKER
-        switch (message.type) {
-          case 1: // QUERY
-            dispatcher.queryCallback(message)
-            break
-          case 2: // REPLY
-            dispatcher.replyCallback(message)
-            break
-          default:
-            dispatcher.plainCallback(message)
-            break
+      try {
+        if (message.to === 'MTG_BROADCAST' || message.to === 'MTG_MANAGER' || message.to === 'MTG_WORKER') {
+          switch (message.type) {
+            case 'MTP_QUERY':
+              dispatcher.queryCallback(message)
+              break
+            case 'MTP_REPLY': // REPLY
+              dispatcher.replyCallback(message)
+              break
+            default:
+              dispatcher.plainCallback(message)
+              break
+          }
         }
+      } catch (error) {
+        $logger.error(error)
       }
     }
   })
@@ -36,7 +49,7 @@ const start = async ({ redisEndpoint, couchbaseEndpoint }) => {
   await subscribe(dispatcher)
   $logger.info('Now listening to the redis channel, old messages may be ignored.')
 
-  // todo: wait for fetcher
+  await waitForFetcher(query)
   // todo: prepare accounts to monitor
 
   // todo: init polkadotjs

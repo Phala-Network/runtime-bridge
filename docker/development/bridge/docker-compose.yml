@@ -33,6 +33,7 @@ services:
     depends_on:
       - redis
       - couchbase
+      - fetch
     ports:
       - 9229:9229
     command: [
@@ -40,12 +41,15 @@ services:
       "--experimental-json-modules", "--es-module-specifier-resolution=node", "--harmony-top-level-await", "--no-warnings",
       "/opt/app/src/index.js", "lifecycle",
       "-r", "redis://redis:6379",
-      "-c", "couchbase://couchbase/phala@phala:phalaphala"
+      "-c", "couchbase://couchbase/phala@phala:phalaphala",
+      "-p", "wss://poc4.phala.network/ws"
     ]
 
-  schedule_trade:
+  trade:
     image: phala/prb:development
-    hostname: schedule_trade
+    hostname: trade
+    deploy:
+      replicas: 1 # for dev
     volumes:
       - ../../..:/opt/app
     environment:
@@ -56,24 +60,7 @@ services:
     command: [
       "/opt/app/src/index.js", "trade",
       "-r", "redis://redis:6379",
-      "-c", "couchbase://couchbase/phala@phala:phalaphala"
-    ]
-
-  trade:
-    image: phala/prb:development
-    hostname: trade
-    deploy:
-      replicas: 3
-    volumes:
-      - ../../..:/opt/app
-    environment:
-      - NODE_ENV=development
-      - DB_WAIT=0
-    depends_on:
-      - redis
-    command: [
-      "/opt/app/src/index.js", "trade",
-      "-r", "redis://redis:6379"
+      "-p", "wss://poc4.phala.network/ws"
     ]
 
   couchbase:
@@ -96,6 +83,12 @@ services:
       - RAM_SIZE_MB=2048
       - REBALANCE_ON_NODE_ADDITION=1
       - SERVICES=data,index,query,fts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   redis:
     image: redis:alpine

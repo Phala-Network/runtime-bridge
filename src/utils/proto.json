@@ -14,7 +14,7 @@
           "values": {
             "MTG_BROADCAST": 0,
             "MTG_MANAGER": 1,
-            "MTG_TRADE_SCHEDULER": 2,
+            "MTG_FETCHER": 2,
             "MTG_TRADE_WORKER": 3,
             "MTG_WORKER": 4,
             "MTG_INTERNAL_PRESERVED": 5
@@ -140,15 +140,15 @@
               "id": 3
             },
             "createdAt": {
-              "type": "google.protobuf.Timestamp",
+              "type": "uint64",
               "id": 4
             },
             "nonce": {
-              "type": "uint64",
+              "type": "uint32",
               "id": 5
             },
             "nonceRef": {
-              "type": "uint64",
+              "type": "uint32",
               "id": 6
             },
             "type": {

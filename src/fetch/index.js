@@ -8,6 +8,8 @@ import organizeBlob from './organize_blob'
 import { PHALA_CHAIN_NAME } from '@/utils/constants'
 import { isMaster } from 'cluster'
 import { getModel } from 'ottoman'
+import { createMessageTunnel, createDispatcher } from '@/message'
+import { hostname } from 'os'
 
 const fetchPhala = async ({ api, redis, chainName, BlockModel, parallelBlocks }) => {
   await syncBlock({ api, redis, chainName, BlockModel, parallelBlocks })
@@ -33,6 +35,44 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint, parallelBlock
   const PhalaBlockModel = getModel('PhalaBlock')
 
   if (isMaster) {
+    const tunnelConnection = await createMessageTunnel({
+      redisEndpoint,
+      from: 2
+    })
+    const { subscribe } = tunnelConnection
+
+    const dispatcher = createDispatcher({
+      tunnelConnection,
+      queryHandlers: {
+        callOnlineFetcher: message => {
+          $logger.info('callOnlineFetcher', message)
+          return {
+            fetcherStateUpdate: {
+              hostname: hostname()
+            }
+          }
+        }
+      },
+      plainHandlers: {},
+      dispatch: message => {
+        if (message.to === 'MTG_BROADCAST' || message.to === 'MTG_FETCHER') {
+          switch (message.type) {
+            case 'MTP_QUERY':
+              dispatcher.queryCallback(message)
+              break
+            case 'MTP_REPLY':
+              dispatcher.replyCallback(message)
+              break
+            default:
+              dispatcher.plainCallback(message)
+              break
+          }
+        }
+      }
+    })
+    await subscribe(dispatcher)
+    $logger.info('Now listening to the redis channel, old messages may be ignored.')
+
     await redis.set(PHALA_CHAIN_NAME, phalaChain)
     $logger.info({ chain: phalaChain }, `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`)
 

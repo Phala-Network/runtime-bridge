@@ -31,7 +31,8 @@ export const bridgeTypes = {
     "events": "Option<Vec<u8>>",
     "proof": "Option<StorageProof>",
     "key": "Option<Vec<u8>>"
-  }
+  },
+  "PalletId": "Raw"
 }
 
 export const phalaTypes = {
