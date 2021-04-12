@@ -1,0 +1,110 @@
+version: "3"
+
+services:
+  fetch:
+    image: phala/prb:tesing
+    build:
+      context: ../../..
+      dockerfile: docker/tesing/Dockerfile
+    hostname: fetch
+    environment:
+      - NODE_ENV=tesing
+      - DB_WAIT=0
+    depends_on:
+      - redis
+      - couchbase
+    command:
+      [
+        "/opt/app/src/index.js",
+        "f",
+        "-r",
+        "redis://redis:6379",
+        "-c",
+        "couchbase://couchbase/phala@phala:phalaphala",
+        "-p",
+        "wss://poc4.phala.network/ws",
+      ]
+
+  lifecycle:
+    image: phala/prb:tesing
+    hostname: lifecycle
+    environment:
+      - NODE_ENV=tesing
+      - DB_WAIT=0
+    depends_on:
+      - redis
+      - couchbase
+      - fetch
+    ports:
+      - 9229:9229
+    command:
+      [
+        "/opt/app/src/index.js",
+        "lifecycle",
+        "-r",
+        "redis://redis:6379",
+        "-c",
+        "couchbase://couchbase/phala@phala:phalaphala",
+        "-p",
+        "wss://poc4.phala.network/ws",
+      ]
+
+  trade:
+    image: phala/prb:tesing
+    hostname: trade
+    deploy:
+      replicas: 1 # for dev
+    environment:
+      - NODE_ENV=tesing
+      - DB_WAIT=0
+    depends_on:
+      - redis
+    command:
+      [
+        "/opt/app/src/index.js",
+        "trade",
+        "-r",
+        "redis://redis:6379",
+        "-c",
+        "couchbase://couchbase/phala@phala:phalaphala",
+        "-p",
+        "wss://poc4.phala.network/ws",
+      ]
+
+  couchbase:
+    image: couchbase:community-7.0.0-beta
+    hostname: couchbase
+    volumes:
+      - couchbase-data:/opt/couchbase/var
+    ports:
+      - "18091:8091"
+    sysctls:
+      net.core.somaxconn: 65535
+    environment:
+      - USER=phala
+      - PASSWORD=phalaphala
+      - AUTOFAILOVER_TIMEOUT=60
+      - DISCOVERY_SERVICE=couchbase-0.local
+      - FTS_RAM_SIZE_MB=1024
+      - INDEX_RAM_SIZE_MB=1024
+      - APP_NAME=phala
+      - RAM_SIZE_MB=2048
+      - REBALANCE_ON_NODE_ADDITION=1
+      - SERVICES=data,index,query,fts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  redis:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "no"]
+    restart: always
+    hostname: redis
+    ports:
+      - "63791:6379" # debug
+
+volumes:
+  couchbase-data:

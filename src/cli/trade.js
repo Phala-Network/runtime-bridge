@@ -1,15 +1,26 @@
-const apply = program => {
+const apply = (program) => {
   program
     .command('trade')
     .alias('t')
     .description('start worker for signing and sending transactions')
-    .requiredOption('-r, --redis-endpoint <uri>', 'Redis endpoint for non-critical data')
-    .requiredOption('-c, --critical-redis-endpoint <uri>', 'Redis endpoint for critical data')
-    .requiredOption('-m, --message-redis-endpoint <uri>', 'Redis endpoint for internal messages')
-    .requiredOption('-p, --phala-rpc <url>', 'URL of Phala Blockchain WebSocket RPC')
-    .action(({ messageRedisEndpoint, criticalRedisEndpoint, redisEndpoint }) => {
+    .requiredOption(
+      '-r, --redis-endpoint <uri>',
+      'Redis endpoint for non-critical data'
+    )
+    .requiredOption('-c, --couchbase-endpoint <uri>', 'Couchbase endpoint')
+    .requiredOption(
+      '-p, --phala-rpc <url>',
+      'URL of Phala Blockchain WebSocket RPC'
+    )
+    .action(({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
       import('@/trade')
-        .then(({ default: start }) => start({ redisEndpoint, messageRedisEndpoint, criticalRedisEndpoint }))
+        .then(({ default: start }) =>
+          start({
+            phalaRpc,
+            couchbaseEndpoint,
+            redisEndpoint,
+          })
+        )
         .catch((...e) => {
           $logger.error(...e)
           process.exit(-1)

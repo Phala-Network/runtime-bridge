@@ -1,9 +1,8 @@
 // edited from https://github.com/janniks/basetag
 
 import fs from 'fs'
-import path from 'path'
+import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.resolve(dirname(__filename), '..', '..')

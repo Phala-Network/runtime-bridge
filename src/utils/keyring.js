@@ -6,7 +6,7 @@ const createKeyring = async () => {
   await cryptoWaitReady()
   return new Keyring({
     type: 'sr25519',
-    ss58Format: PHALA_SS58_FORMAT
+    ss58Format: PHALA_SS58_FORMAT,
   })
 }
 
