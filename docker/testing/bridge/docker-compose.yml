@@ -5,7 +5,7 @@ services:
     image: phala/prb:tesing
     build:
       context: ../../..
-      dockerfile: docker/tesing/Dockerfile
+      dockerfile: docker/testing/Dockerfile
     hostname: fetch
     environment:
       - NODE_ENV=tesing

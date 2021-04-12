@@ -29,18 +29,14 @@
                 "ack",
                 "workerStateUpdate",
                 "queryWorkerState",
-                "accountStateUpdate",
-                "queryAccountState",
                 "requestKickWorker",
-                "workerShouldExit",
-                "tradeSchedulerStateUpdate",
-                "callOnlineScheduler",
                 "fetcherStateUpdate",
                 "callOnlineFetcher",
                 "lifecycleManagerStateUpdate",
                 "callOnlineLifecycleManager",
                 "requestCreateWorker",
                 "requestUpdateWorker",
+                "requestRemoveWorker",
                 "requestStartWorkerLifecycle",
                 "areYouThere"
               ]
@@ -67,61 +63,45 @@
               "type": "manager.QueryWorkerState",
               "id": 5
             },
-            "accountStateUpdate": {
-              "type": "manager.AccountStateUpdate",
-              "id": 6
-            },
-            "queryAccountState": {
-              "type": "manager.QueryAccountState",
-              "id": 7
-            },
             "requestKickWorker": {
               "type": "worker.RequestKickWorker",
-              "id": 8
-            },
-            "workerShouldExit": {
-              "type": "worker.WorkerShouldExit",
-              "id": 9
-            },
-            "tradeSchedulerStateUpdate": {
-              "type": "trade.TradeSchedulerStateUpdate",
-              "id": 10
-            },
-            "callOnlineScheduler": {
-              "type": "trade.CallOnlineScheduler",
-              "id": 11
+              "id": 6
             },
             "fetcherStateUpdate": {
               "type": "trade.FetcherStateUpdate",
-              "id": 12
+              "id": 7
             },
             "callOnlineFetcher": {
               "type": "trade.CallOnlineFetcher",
-              "id": 13
+              "id": 8
             },
             "lifecycleManagerStateUpdate": {
               "type": "manager.LifecycleManagerStateUpdate",
-              "id": 14
+              "id": 9
             },
             "callOnlineLifecycleManager": {
               "type": "manager.CallOnlineLifecycleManager",
-              "id": 15
+              "id": 10
             },
             "requestCreateWorker": {
               "type": "manager.RequestCreateWorker",
-              "id": 16
+              "id": 11
             },
             "requestUpdateWorker": {
               "type": "manager.RequestUpdateWorker",
-              "id": 17
+              "id": 12
+            },
+            "requestRemoveWorker": {
+              "type": "manager.RequestUpdateWorker",
+              "id": 13
             },
             "requestStartWorkerLifecycle": {
               "type": "worker.RequestStartWorkerLifecycle",
-              "id": 18
+              "id": 14
             },
             "areYouThere": {
               "type": "worker.AreYouThere",
-              "id": 19
+              "id": 15
             }
           }
         },
@@ -171,8 +151,62 @@
             }
           }
         },
+        "GenericError": {
+          "fields": {
+            "code": {
+              "type": "string",
+              "id": 1
+            },
+            "desc": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "NotFoundError": {
+          "fields": {
+            "desc": {
+              "type": "string",
+              "id": 1
+            }
+          }
+        },
+        "DuplicatedError": {
+          "fields": {
+            "desc": {
+              "type": "string",
+              "id": 1
+            }
+          }
+        },
         "Error": {
-          "fields": {}
+          "oneofs": {
+            "error": {
+              "oneof": [
+                "generic",
+                "notFound",
+                "duplicated"
+              ]
+            }
+          },
+          "fields": {
+            "extra": {
+              "type": "string",
+              "id": 1
+            },
+            "generic": {
+              "type": "GenericError",
+              "id": 2
+            },
+            "notFound": {
+              "type": "NotFoundError",
+              "id": 3
+            },
+            "duplicated": {
+              "type": "DuplicatedError",
+              "id": 4
+            }
+          }
         },
         "worker": {
           "nested": {
@@ -301,6 +335,18 @@
                 "initialized": {
                   "type": "bool",
                   "id": 5
+                },
+                "balance": {
+                  "type": "BN",
+                  "id": 7
+                },
+                "payoutAddress": {
+                  "type": "string",
+                  "id": 8
+                },
+                "intention": {
+                  "type": "bool",
+                  "id": 9
                 }
               },
               "nested": {
@@ -314,26 +360,6 @@
                     "S_KICKED": 5,
                     "S_ERROR": 6
                   }
-                }
-              }
-            },
-            "AccountState": {
-              "fields": {
-                "account": {
-                  "type": "AccountPublic",
-                  "id": 1
-                },
-                "balance": {
-                  "type": "BN",
-                  "id": 2
-                },
-                "payoutAddress": {
-                  "type": "string",
-                  "id": 3
-                },
-                "intention": {
-                  "type": "bool",
-                  "id": 4
                 }
               }
             },
@@ -352,24 +378,6 @@
                   "rule": "repeated",
                   "type": "WorkerIdentity",
                   "id": 1
-                }
-              }
-            },
-            "AccountStateUpdate": {
-              "fields": {
-                "values": {
-                  "rule": "repeated",
-                  "type": "AccountState",
-                  "id": 1
-                }
-              }
-            },
-            "QueryAccountState": {
-              "fields": {
-                "queries": {
-                  "rule": "repeated",
-                  "type": "AccountPublic",
-                  "id": 2
                 }
               }
             },
