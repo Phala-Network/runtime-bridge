@@ -4,6 +4,7 @@ import MachineSchema from '@/models/machine'
 import OrganizedBlobSchema from '@/models/organized_blob'
 import PhalaBlockSchema from '@/models/phala_block'
 import RuntimeWindowSchema from '@/models/runtime_window'
+import WorkerStateSchema from '@/models/worker_state'
 
 export const start = async (uri) => {
   const ottoman = new Ottoman()
@@ -17,6 +18,7 @@ export const start = async (uri) => {
   ottoman.model('OrganizedBlob', OrganizedBlobSchema)
   ottoman.model('PhalaBlock', PhalaBlockSchema)
   ottoman.model('RuntimeWindow', RuntimeWindowSchema)
+  ottoman.model('WorkerState', WorkerStateSchema)
 
   await ottoman.start()
   return ottoman
