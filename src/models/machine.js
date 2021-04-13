@@ -7,23 +7,23 @@ const MachineSchema = new Schema({
   },
   phalaSs58Address: {
     type: String,
-    require: true,
+    required: true,
   },
   publicKey: {
     type: String,
-    require: true,
+    required: true,
   },
   polkadotJson: {
     type: String,
-    require: true,
+    required: true,
   },
   runtimeEndpoint: {
     type: String,
-    require: true,
+    required: true,
   },
   payoutAddress: {
     type: String,
-    require: true,
+    required: true,
   },
 })
 

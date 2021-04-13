@@ -16,7 +16,6 @@ const EVENTS = toEnum([
 ])
 
 const onStarting = async (fromState, toState, context) => {
-  const phalaApi = context.stateMachine.workerContext.phalaApi
   // todo: check balance and throw error
   // todo: check payout address
   // todo: set payout address when not correct
@@ -120,11 +119,59 @@ const createWorkerState = async (options) => {
     stateId,
     state,
   })
+
+  const unsubBalancePromise = options.phalaApi.query.system.account(
+    options.machine.phalaSs58Address,
+    ({ data: { free: currentFree } }) =>
+      (async () => {
+        state._applyData({
+          balance: {
+            value: currentFree.toString(),
+          },
+        })
+        await state.save()
+      })()
+  )
+  const unsubStashStatePromise = options.phalaApi.query.phala.stashState(
+    options.machine.phalaSs58Address,
+    ({ payoutPrefs: { target } }) =>
+      (async () => {
+        state._applyData({
+          balance: {
+            value: target.toString(),
+          },
+        })
+        await state.save()
+      })()
+  )
+  const unsubWorkerStatePromise = options.phalaApi.query.phala.workerState(
+    options.machine.phalaSs58Address,
+    ({ state: _workerState }) =>
+      (async () => {
+        const workerState = Object.keys(_workerState.toJSON())[0]
+        state._applyData({ workerState })
+        await state.save()
+      })()
+  )
+
+  const destroy = async () =>
+    Promise.all(
+      (
+        await Promise.all([
+          unsubBalancePromise,
+          unsubStashStatePromise,
+          unsubWorkerStatePromise,
+        ])
+      ).map((unsub) => unsub())
+    )
+
   const sm = stateMachine.start()
   sm.workerContext = options
   sm.workerContext.pruntime = pruntime
   sm.workerContext.stateId = stateId
   sm.workerContext.state = state
+  sm.workerContext.destroy = destroy
+
   sm.handle(EVENTS.SHOULD_START)
 
   return sm

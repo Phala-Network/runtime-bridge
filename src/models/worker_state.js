@@ -3,7 +3,7 @@ import { Schema } from 'ottoman'
 const WorkerStateSchema = new Schema({
   workerId: {
     type: String,
-    require: true,
+    required: true,
   },
   status: {
     type: String,
@@ -40,9 +40,9 @@ const WorkerStateSchema = new Schema({
     },
   },
   payoutAddress: String,
-  intention: {
-    type: Boolean,
-    default: false,
+  workerState: {
+    type: String,
+    default: 'Unset',
   },
 })
 

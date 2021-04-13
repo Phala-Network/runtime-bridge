@@ -1,10 +1,11 @@
 import { start as startOttoman } from '@/utils/couchbase'
 import { createMessageTunnel, createDispatcher } from '@/message'
-import { MessageTarget } from '../message/proto'
+import { MessageTarget } from '@/message/proto'
 import { getModel } from 'ottoman'
 import { createWorkerState } from './worker'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import phalaTypes from '@/utils/typedefs'
+import createHandlers from './handlers'
 
 const waitForFetcher = async (query) => {
   // todo: wait for synching
@@ -35,24 +36,26 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   const setupWorkerContexts = async () => {
     const Machine = getModel('Machine')
     const { rows: machines } = await Machine.find({})
-    machines.forEach((m) => {
-      if (workerStates.get(m.id)) {
-        return
-      }
-      workerStates.set(
-        m.id,
-        createWorkerState({
-          machine: m,
-          context: {
-            workerStates,
-            phalaApi,
-            setupWorkerContexts,
-            ottoman,
-            dispatcher,
-          },
-        })
-      )
-    })
+    return Promise.all(
+      machines.map(async (m) => {
+        if (workerStates.get(m.id)) {
+          return
+        }
+        workerStates.set(
+          m.id,
+          await createWorkerState({
+            machine: m,
+            context: {
+              workerStates,
+              phalaApi,
+              setupWorkerContexts,
+              ottoman,
+              dispatcher,
+            },
+          })
+        )
+      })
+    )
   }
 
   const injectMessage = (message) =>
@@ -68,8 +71,13 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
 
   dispatcher = createDispatcher({
     tunnelConnection,
-    queryHandlers: {},
-    plainHandlers: {},
+    ...createHandlers({
+      workerStates,
+      phalaApi,
+      setupWorkerContexts,
+      ottoman,
+      dispatcher,
+    }),
     dispatch: (message) => {
       try {
         if (
