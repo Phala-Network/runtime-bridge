@@ -21,7 +21,11 @@ function fileExists(path) {
 
 try {
   const base = path.resolve(baseDir)
+  const baseModule = path.resolve(__dirname, modulesDir)
   const baseLink = path.resolve(__dirname, modulesDir, '@')
+  if (!fileExists(baseModule)) {
+    fs.mkdirSync(baseModule)
+  }
   if (!fileExists(baseLink)) {
     fs.symlinkSync(base, baseLink, 'junction')
   }

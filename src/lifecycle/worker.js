@@ -98,16 +98,35 @@ stateMachine.state(StatusEnumValues.S_KICKED)
 stateMachine.state(StatusEnumValues.S_ERROR)
 stateMachine.global().onTransition(onStateTransition)
 
-const createWorkerState = (options) => {
-  // todo: queue polkadotjs queries
+const createWorkerState = async (options) => {
+  const WorkerState = options.ottoman.getModel('WorkerState')
+  const stateId = WorkerState.findOneAndUpdate(
+    { workerId: options.machine.id },
+    {
+      workerId: options.machine.id,
+      status: 'S_IDLE',
+      balance: { value: '0' },
+    },
+    {
+      new: true,
+      strict: false,
+      upsert: true,
+    }
+  )
+  const state = await WorkerState.findById(stateId)
   const pruntime = new PRuntime({
     ...options.context,
     machine: options.machine,
+    stateId,
+    state,
   })
   const sm = stateMachine.start()
   sm.workerContext = options
   sm.workerContext.pruntime = pruntime
+  sm.workerContext.stateId = stateId
+  sm.workerContext.state = state
   sm.handle(EVENTS.SHOULD_START)
+
   return sm
 }
 
