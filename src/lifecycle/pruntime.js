@@ -1,6 +1,9 @@
 import fetch from 'node-fetch'
 import OrganizedBlob from '@/models/organized_blob'
 import wait from '@/utils/wait'
+import createKeyring from '@/utils/keyring'
+
+const keyring = await createKeyring()
 
 class PRuntime {
   #runtimeEndpoint
@@ -8,7 +11,7 @@ class PRuntime {
   #redis
   #machine
   #phalaSs58Address
-  #mq
+  #dispatchTx
   #initInfo
   #workerStates
   #phalaApi
@@ -24,6 +27,7 @@ class PRuntime {
     this.#redis = options.redis
     this.#machine = options.machine
     this.#phalaSs58Address = options.machine.phalaSs58Address
+    this.#dispatchTx = options.dispatchTx
   }
 
   async startLifecycle(skipRa = false, debugSetKey = null) {
@@ -64,6 +68,36 @@ class PRuntime {
     }
 
     this.#initInfo = initRuntimeInfo
+
+    const machineId = this.#runtimeInfo['machine_id']
+    const machineOwner = keyring.encodeAddress(
+      await this.#phalaApi.query.phalaModule.machineOwner(machineId)
+    )
+
+    if (machineOwner === this.#phalaSs58Address) {
+      $logger.info(
+        { machineOwner: machineOwner },
+        'Worker already registered, skipping.'
+      )
+    } else {
+      let tx = await this.#dispatchTx({
+        action: 'REGISTER_WORKER',
+        payload: {
+          encodedRuntimeInfo: initRuntimeInfo['encoded_runtime_info'],
+          attestation: initRuntimeInfo.attestation,
+          machineRecordId: this.#machine.id,
+        },
+      })
+      try {
+        tx = JSON.parse(tx)
+      } catch (e) {
+        $logger.warn(e)
+      }
+      $logger.info(
+        { beforeMachineOwner: machineOwner.encoded, tx },
+        `Worker registered.`
+      )
+    }
 
     await this.getInfo()
     setInterval(() => this.getInfo(), 6000)

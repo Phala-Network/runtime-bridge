@@ -42,8 +42,9 @@ const WorkerStateSchema = new Schema({
   payoutAddress: String,
   workerState: {
     type: String,
-    default: 'Unset',
+    default: 'unset',
   },
+  controller: String,
 })
 
 WorkerStateSchema.index.findRefWorkerId = {

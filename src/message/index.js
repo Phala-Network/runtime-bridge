@@ -22,7 +22,7 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
       nonceRef = 0,
       type = MessageType.values.MTP_BROADCAST,
     } = request
-    const _nonce = nonce || Math.random * 1000000000
+    const _nonce = nonce || Math.floor(Math.random() * 1000000000)
     const createdAt = Date.now()
 
     const data = (encode || defaultEncode)({
@@ -150,7 +150,7 @@ const createDispatcher = ({
     const reply = await cb(message, tunnelConnection)
     await tunnelConnection.reply({
       ...reply,
-      to: message.from,
+      to: MessageTarget.values[message.from],
       nonceRef: message.nonce,
     })
   }

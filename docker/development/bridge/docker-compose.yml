@@ -77,6 +77,8 @@ services:
         "trade",
         "-r",
         "redis://redis:6379",
+        "-c",
+        "couchbase://couchbase/phala@phala:phalaphala",
         "-p",
         "wss://poc4.phala.network/ws",
       ]

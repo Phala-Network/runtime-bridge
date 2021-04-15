@@ -9,10 +9,6 @@ const MachineSchema = new Schema({
     type: String,
     required: true,
   },
-  publicKey: {
-    type: String,
-    required: true,
-  },
   polkadotJson: {
     type: String,
     required: true,

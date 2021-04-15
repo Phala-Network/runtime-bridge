@@ -344,8 +344,8 @@
                   "type": "string",
                   "id": 8
                 },
-                "intention": {
-                  "type": "bool",
+                "workerState": {
+                  "type": "string",
                   "id": 9
                 }
               },

@@ -1,14 +1,13 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { start as startOttoman } from '@/utils/couchbase'
 import phalaTypes from '@/utils/typedefs'
-import createRedisClient from '@/utils/redis'
 import { createMessageTunnel, createDispatcher } from '@/message'
-import { MessageTarget } from '../message/proto'
+import { MessageTarget } from '@/message/proto'
+import createTradeQueue from '@/utils/trade_queue'
+import createKeyring from '@/utils/keyring'
+import * as actions from './actions'
 
 const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
-  const redis = await createRedisClient(redisEndpoint, true)
-  globalThis.$redis = redis
-
   await startOttoman(couchbaseEndpoint)
 
   const phalaProvider = new WsProvider(phalaRpc)
@@ -16,13 +15,20 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
     provider: phalaProvider,
     types: phalaTypes,
   })
-  globalThis.$phalaApi = phalaApi
+  if (process.env.NODE_ENV === 'development') {
+    globalThis.$phalaApi = phalaApi
+  }
+
+  const keyring = await createKeyring()
 
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,
     from: MessageTarget.values.MTG_FETCHER,
   })
   const { subscribe } = tunnelConnection
+
+  const txQueue = createTradeQueue(redisEndpoint)
+  await txQueue.ready()
 
   const dispatcher = createDispatcher({
     tunnelConnection,
@@ -48,6 +54,24 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
   $logger.info(
     'Now listening to the redis channel, old messages may be ignored.'
   )
+
+  txQueue.process(async (job) => {
+    $logger.info(job.data, `Processing job #${job.id}...`)
+    const actionFn = actions[job.data.action]
+
+    try {
+      const ret = await actionFn(job.data.payload, {
+        txQueue,
+        keyring,
+        api: phalaApi,
+      })
+      $logger.info(`Job #${job.id} finished.`)
+      return ret
+    } catch (e) {
+      $logger.warn(e, `Job #${job.id} failed with error.`)
+      throw e
+    }
+  })
 }
 
 export default start

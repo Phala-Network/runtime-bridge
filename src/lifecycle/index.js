@@ -6,6 +6,7 @@ import { createWorkerState } from './worker'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import phalaTypes from '@/utils/typedefs'
 import createHandlers from './handlers'
+import createTradeQueue from '@/utils/trade_queue'
 
 const waitForFetcher = async (query) => {
   // todo: wait for synching
@@ -33,6 +34,9 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   })
   const { subscribe, query } = tunnelConnection
 
+  const txQueue = createTradeQueue(redisEndpoint)
+  await txQueue.ready()
+
   const setupWorkerContexts = async () => {
     const Machine = getModel('Machine')
     const { rows: machines } = await Machine.find({})
@@ -51,6 +55,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
               setupWorkerContexts,
               ottoman,
               dispatcher,
+              txQueue,
             },
           })
         )
@@ -66,6 +71,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
         setupWorkerContexts,
         ottoman,
         dispatcher,
+        txQueue,
       },
     })
 
@@ -77,6 +83,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
       setupWorkerContexts,
       ottoman,
       dispatcher,
+      txQueue,
     }),
     dispatch: (message) => {
       try {

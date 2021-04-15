@@ -11,7 +11,8 @@ RUN apt-get install -y \
     zlib1g-dev liblzma-dev libgmp-dev patch \
     protobuf-compiler \
     curl \
-    python
+    python \
+    git-core
 
 RUN yarn install
 
