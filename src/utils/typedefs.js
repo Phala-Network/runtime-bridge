@@ -3,7 +3,6 @@ import _phalaTypes from '@phala/typedefs'
 export const chainTypes = _phalaTypes.typesChain['Phala PoC-4']
 export const bridgeTypes = {
   SetId: 'u64',
-  Justification: 'Vec<u8>',
   StorageProof: 'Vec<Vec<u8>>',
   VersionedAuthorityList: {
     version: 'u8',
@@ -19,7 +18,7 @@ export const bridgeTypes = {
   },
   ReqHeaderToSync: {
     header: 'Header',
-    justification: 'Option<Justification>',
+    justification: 'Option<EncodedJustification>',
   },
   ReqGenesisInfo: {
     header: 'Header',
@@ -30,7 +29,15 @@ export const bridgeTypes = {
     blockHeader: 'Header',
     events: 'Option<Vec<u8>>',
     proof: 'Option<StorageProof>',
-    key: 'Option<Vec<u8>>',
+    workerSnapshot: 'Option<OnlineWorkerSnapshot>',
+  },
+  StorageKey: 'Vec<u8>',
+  OnlineWorkerSnapshot: {
+    workerStateKv: 'Vec<(StorageKey, WorkerInfo)>',
+    stakeReceivedKv: 'Vec<(StorageKey, Balance)>',
+    onlineWorkersKv: '(StorageKey,u32)',
+    computeWorkersKv: '(StorageKey,u32)',
+    proof: 'StorageProof',
   },
   PalletId: 'Raw',
   StashWorkerStats: {

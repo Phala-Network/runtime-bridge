@@ -15,8 +15,16 @@ services:
     depends_on:
       - redis
       - couchbase
+    ports:
+      - 9228:9228
     command:
       [
+        "node",
+        "--inspect=0.0.0.0:9228",
+        "--experimental-json-modules",
+        "--es-module-specifier-resolution=node",
+        "--harmony-top-level-await",
+        "--no-warnings",
         "/opt/app/src/index.js",
         "f",
         "-r",
@@ -39,6 +47,7 @@ services:
       - redis
       - couchbase
       - fetch
+      - trade
     ports:
       - 9229:9229
     command:
@@ -48,7 +57,6 @@ services:
         "--experimental-json-modules",
         "--es-module-specifier-resolution=node",
         "--harmony-top-level-await",
-        "--no-warnings",
         "/opt/app/src/index.js",
         "lifecycle",
         "-r",
@@ -71,6 +79,7 @@ services:
       - DB_WAIT=0
     depends_on:
       - redis
+      - couchbase
     command:
       [
         "/opt/app/src/index.js",
@@ -81,6 +90,26 @@ services:
         "couchbase://couchbase/phala@phala:phalaphala",
         "-p",
         "wss://poc4.phala.network/ws",
+      ]
+
+  arena:
+    image: phala/prb:development
+    hostname: arena
+    deploy:
+      replicas: 1 # for dev
+    volumes:
+      - ../../..:/opt/app
+    environment:
+      - NODE_ENV=development
+      - DB_WAIT=0
+    depends_on:
+      - redis
+    ports:
+      - '4567:4567'
+    command:
+      [
+        "node",
+        "/opt/app/arena.js"
       ]
 
   couchbase:

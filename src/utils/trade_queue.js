@@ -16,27 +16,27 @@ const createTradeQueue = (redisUrl) => {
   return ret
 }
 
-const waitForJob = async (job) => {
-  const ret = new Promise((resolve, reject) => {
-    job.on('succeeded', (result) => {
-      resolve(result)
-    })
-    job.on('retrying', (err) => {
-      $logger.warn(
-        err,
-        `Job #${job.id} failed with error ${err.message} but is being retried!`
-      )
-    })
-    job.on('failed', (err) => {
-      $logger.warn(err, `Job #${job.id} failed with error ${err.message}.`)
-      reject(err)
-    })
+const waitForJob = (job) =>
+  new Promise((resolve, reject) => {
+    job
+      .save()
+      .then(() => {
+        job.on('succeeded', (result) => {
+          resolve(result)
+        })
+        job.on('retrying', (err) => {
+          $logger.warn(
+            err,
+            `Job #${job.id} failed with error ${err.message} but is being retried!`
+          )
+        })
+        job.on('failed', (err) => {
+          $logger.warn(err, `Job #${job.id} failed with error ${err.message}.`)
+          reject(err)
+        })
+      })
+      .catch(reject)
   })
-
-  await job.save()
-
-  return ret
-}
 
 export default createTradeQueue
 export { waitForJob }

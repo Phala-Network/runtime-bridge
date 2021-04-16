@@ -42,13 +42,11 @@ const setAccount = async (dispatchTx, machine, state) => {
   }
 }
 
-const wrapEventAction = (fn) => async (fromState, toState, context) => {
-  try {
-    return fn(fromState, toState, context)
-  } catch (error) {
+const wrapEventAction = (fn) => (fromState, toState, context) => {
+  return fn(fromState, toState, context).catch((error) => {
     $logger.error({ fromState, toState }, error)
     context.stateMachine.handle(EVENTS.ERROR, error)
-  }
+  })
 }
 
 const onStarting = async (fromState, toState, context) => {
@@ -76,26 +74,39 @@ const onStarting = async (fromState, toState, context) => {
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PENDING_SYNCHING)
 }
 const onPendingSynching = async (fromState, toState, context) => {
-  // todo: init pruntime
-  await context.stateMachine.rootStateMachine.workerContext.pruntime.initRuntime()
+  const {
+    pruntime,
+    updateState,
+  } = context.stateMachine.rootStateMachine.workerContext
+  await pruntime.initRuntime()
+  await updateState({
+    initialized: true,
+  })
+
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
-const onSynching = () => {
+const onSynching = (romState, toState, context) => {
+  console.log(1)
+  context.stateMachine.rootStateMachine.workerContext.pruntime.startSendBlob()
+  console.log(2)
   // todo: intervally check then set intention
 }
 const onOnline = () => {
   // gracefully do nothing
 }
 const onError = () => {
+  console.log('error!')
   // todo: write last error message to db
 }
 const onKicked = () => {
   // todo: send /kick to pruntime
 }
 
-const onStateTransition = async (fromState, toState, context) => {
-  const { state } = context.stateMachine.rootStateMachine.workerContext
-  state.state = Status.valuesById[toState]
-  await state.save()
+const onStateTransition = (fromState, toState, context) => {
+  const { updateState } = context.stateMachine.rootStateMachine.workerContext
+  return updateState({
+    status: Status.valuesById[toState],
+  }).catch($logger.error)
 }
 
 const stateMachine = Finity.configure()
@@ -185,6 +196,12 @@ const createWorkerState = async (options) => {
     concurrency: 1,
   })
 
+  const stateWriteQueue = new PQueue({
+    concurrency: 1,
+  })
+  const updateState = (opt) =>
+    stateWriteQueue.add(() => WorkerState.updateById(stateId, opt))
+
   const dispatchTx = (...args) =>
     innerTxQueue.add(() => txQueue.dispatch(...args))
 
@@ -193,32 +210,32 @@ const createWorkerState = async (options) => {
     machine: options.machine,
     stateId,
     state,
+    stateWriteQueue,
+    updateState,
+    dispatchTx,
   })
 
   const unsubBalancePromise = phalaApi.query.system.account(
     options.machine.phalaSs58Address,
     ({ data: { free: currentFree } }) =>
-      (async () => {
-        state.balance.value = currentFree.toString()
-        await state.save()
-      })()
+      updateState({
+        balance: { value: currentFree.toString() },
+      }).catch($logger.warn)
   )
   const unsubStashStatePromise = phalaApi.query.phala.stashState(
     options.machine.phalaSs58Address,
     ({ controller, payoutPrefs: { target } }) =>
-      (async () => {
-        state.controller = controller.toString()
-        state.payoutAddress = target.toString()
-        await state.save()
-      })()
+      updateState({
+        controller: controller.toString(),
+        payoutAddress: target.toString(),
+      }).catch($logger.warn)
   )
   const unsubWorkerStatePromise = phalaApi.query.phala.workerState(
     options.machine.phalaSs58Address,
     ({ state: _workerState }) =>
-      (async () => {
-        state.workerState = Object.keys(_workerState.toJSON())[0]
-        await state.save()
-      })()
+      updateState({
+        workerState: Object.keys(_workerState.toJSON())[0],
+      }).catch($logger.warn)
   )
   const unsubs = await Promise.all([
     unsubBalancePromise,
@@ -232,13 +249,17 @@ const createWorkerState = async (options) => {
   }
 
   const sm = stateMachine.start()
-  sm.rootStateMachine.workerContext = options.context
-  sm.rootStateMachine.workerContext.machine = options.machine
-  sm.rootStateMachine.workerContext.pruntime = pruntime
-  sm.rootStateMachine.workerContext.stateId = stateId
-  sm.rootStateMachine.workerContext.state = state
-  sm.rootStateMachine.workerContext.destroy = destroy
-  sm.rootStateMachine.workerContext.dispatchTx = dispatchTx
+  sm.rootStateMachine.workerContext = {
+    ...options.context,
+    machine: options.machine,
+    pruntime,
+    stateId,
+    state,
+    destroy,
+    dispatchTx,
+    stateWriteQueue,
+    updateState,
+  }
 
   sm.handle(EVENTS.SHOULD_START)
   $logger.info(

@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
-import OrganizedBlob from '@/models/organized_blob'
 import wait from '@/utils/wait'
 import createKeyring from '@/utils/keyring'
+import { getModel } from 'ottoman'
 
 const keyring = await createKeyring()
 
@@ -30,10 +30,9 @@ class PRuntime {
     this.#dispatchTx = options.dispatchTx
   }
 
-  async startLifecycle(skipRa = false, debugSetKey = null) {
-    await this.initRuntime(skipRa, debugSetKey)
+  async startSendBlob() {
+    const OrganizedBlob = getModel('OrganizedBlob')
     const { blocknum, headernum } = this.#runtimeInfo
-
     let initBlobId = 1
     const _b = await OrganizedBlob.findOne({
       startBlock: headernum < blocknum ? headernum : blocknum,
@@ -43,7 +42,7 @@ class PRuntime {
     await this.sendBlob(initBlobId)
   }
 
-  async initRuntime(skipRa, debugSetKey) {
+  async initRuntime(skipRa = false, debugSetKey = null) {
     $logger.info(`Trying to initialize pRuntime...`)
     await this.getInfo()
 
@@ -56,6 +55,7 @@ class PRuntime {
       ))
     } else {
       const blob = await this.getBlob()
+
       const payload = Object.assign(JSON.parse(blob.genesisInfoBlob), {
         skip_ra: skipRa,
         debug_set_key: debugSetKey,
@@ -64,14 +64,14 @@ class PRuntime {
         '/init_runtime',
         payload
       ))
+
       $logger.info({ initRuntimeInfo }, `Initialized pRuntime.`)
     }
 
     this.#initInfo = initRuntimeInfo
-
     const machineId = this.#runtimeInfo['machine_id']
     const machineOwner = keyring.encodeAddress(
-      await this.#phalaApi.query.phalaModule.machineOwner(machineId)
+      await this.#phalaApi.query.phala.machineOwner(machineId)
     )
 
     if (machineOwner === this.#phalaSs58Address) {
@@ -88,6 +88,7 @@ class PRuntime {
           machineRecordId: this.#machine.id,
         },
       })
+
       try {
         tx = JSON.parse(tx)
       } catch (e) {
@@ -145,6 +146,7 @@ class PRuntime {
   }
 
   async getBlob(id = 0, shouldWait = true) {
+    const OrganizedBlob = getModel('OrganizedBlob')
     const ret = await OrganizedBlob.findOne({ number: id })
     if (!ret) {
       if (shouldWait) {

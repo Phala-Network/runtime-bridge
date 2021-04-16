@@ -55,16 +55,15 @@ const _setBlock = async ({
     const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
     const blockData = await api.rpc.chain.getBlock(hash)
     let justification = blockData.justifications.toJSON()
+
     if (justification) {
       justification = justification.reduce(
         (acc, current) => (current[0] === FRNK ? current[1] : acc),
-        undefined
+        '0x'
       )
     }
-
-    const events = (
-      await api.rpc.state.getStorage(eventsStorageKey, hash)
-    ).value.toHex()
+    const events = (await api.rpc.state.getStorage(eventsStorageKey, hash))
+      .value
     const eventsStorageProof = (
       await api.rpc.state.getReadProof([eventsStorageKey], hash)
     ).proof.toHex()
@@ -76,12 +75,30 @@ const _setBlock = async ({
     ).proof.toHex()
     const setId = (await api.query.grandpa.currentSetId.at(hash)).toJSON()
 
+    let isNewRound = false
+    let snapshotOnlineWorker
+    if (number > 0) {
+      const records = api.createType('Vec<EventRecord>', events)
+      isNewRound = records.reduce(
+        (acc, current) =>
+          current.event.section === 'phala' &&
+          current.event.method === 'NewMiningRound'
+            ? true
+            : acc,
+        false
+      )
+    }
+
+    if (isNewRound) {
+
+    }
+
     await BlockModel.create({
       number,
       hash,
       header: blockData.block.header.toHex(),
       justification,
-      events,
+      events: events.toHex(),
       eventsStorageProof,
       grandpaAuthorities,
       grandpaAuthoritiesStorageProof,

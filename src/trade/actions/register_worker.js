@@ -7,11 +7,11 @@ const registerWorker = (
   { keyring, api }
 ) => {
   const Machine = getModel('Machine')
-  return new Promise(
-    (() => async (resolve, reject) => {
-      const account = keyring.createFromJson(
-        (await Machine.findOne(machineRecordId))['polkadotJson']
-      )
+  return new Promise((resolve, reject) =>
+    (async () => {
+      const { polkadotJson } = await Machine.findById(machineRecordId)
+      const account = keyring.createFromJson(JSON.parse(polkadotJson).pair)
+
       const encodedRuntimeInfoBytes = api.createType(
         'Bytes',
         encodedRuntimeInfo

@@ -1,13 +1,12 @@
 import { getModel } from 'ottoman'
 import wrapTx from '../wrap_tx'
 
-const registerWorker = ({ target, machineRecordId }, { keyring, api }) => {
+const setPayoutPrefs = ({ target, machineRecordId }, { keyring, api }) => {
   const Machine = getModel('Machine')
-  return new Promise(
-    (() => async (resolve, reject) => {
-      const account = keyring.createFromJson(
-        (await Machine.findOne(machineRecordId))['polkadotJson']
-      )
+  return new Promise((resolve, reject) =>
+    (async () => {
+      const { polkadotJson } = await Machine.findById(machineRecordId)
+      const account = keyring.createFromJson(JSON.parse(polkadotJson).pair)
       account.decodePkcs8()
 
       wrapTx(
@@ -21,4 +20,4 @@ const registerWorker = ({ target, machineRecordId }, { keyring, api }) => {
   )
 }
 
-export default registerWorker
+export default setPayoutPrefs
