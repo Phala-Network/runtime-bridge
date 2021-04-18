@@ -2,8 +2,8 @@ import {
   APP_VERIFIED_WINDOW_ID,
   SYNC_HEADER_REQ_EMPTY,
   DISPATCH_BLOCK_REQ_EMPTY,
-} from '@/utils/constants'
-import wait from '@/utils/wait'
+} from '../utils/constants'
+import wait from '../utils/wait'
 import { bytesToBase64 } from 'byte-base64'
 import { getModel } from 'ottoman'
 

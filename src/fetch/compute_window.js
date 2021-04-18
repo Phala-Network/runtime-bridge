@@ -1,5 +1,5 @@
-import { APP_VERIFIED_WINDOW_ID } from '@/utils/constants'
-import wait from '@/utils/wait'
+import { APP_VERIFIED_WINDOW_ID } from '../utils/constants'
+import wait from '../utils/wait'
 import { getModel } from 'ottoman'
 
 const computeWindow = async ({ chainName, redis, BlockModel }) => {

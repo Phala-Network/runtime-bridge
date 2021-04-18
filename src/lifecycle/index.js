@@ -1,12 +1,12 @@
-import { start as startOttoman } from '@/utils/couchbase'
-import { createMessageTunnel, createDispatcher } from '@/message'
-import { MessageTarget } from '@/message/proto'
+import { start as startOttoman } from '../utils/couchbase'
+import { createMessageTunnel, createDispatcher } from '../message'
+import { MessageTarget } from '../message/proto'
 import { getModel } from 'ottoman'
 import { createWorkerState } from './worker'
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import phalaTypes from '@/utils/typedefs'
+import phalaTypes from '../utils/typedefs'
 import createHandlers from './handlers'
-import createTradeQueue from '@/utils/trade_queue'
+import createTradeQueue from '../utils/trade_queue'
 
 const waitForFetcher = async (query) => {
   // todo: wait for synching

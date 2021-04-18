@@ -1,9 +1,9 @@
-import toEnum from '@/utils/to_enum'
+import toEnum from '../utils/to_enum'
 import Finity from 'finity'
 import pQueue from 'p-queue'
 import cluster from 'cluster'
 
-import wait from '@/utils/wait'
+import wait from '../utils/wait'
 
 import {
   FRNK,
@@ -11,7 +11,7 @@ import {
   APP_RECEIVED_HEIGHT,
   APP_VERIFIED_HEIGHT,
   EVENTS_STORAGE_KEY,
-} from '@/utils/constants'
+} from '../utils/constants'
 
 const { default: Queue } = pQueue
 
@@ -111,6 +111,7 @@ const _setBlock = async ({
     const grandpaAuthoritiesStorageProof = (
       await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)
     ).proof.toHex()
+    console.log((await api.query.grandpa.currentSetId.at(hash)).value)
     const setId = (await api.query.grandpa.currentSetId.at(hash)).toJSON()
 
     let isNewRound = false

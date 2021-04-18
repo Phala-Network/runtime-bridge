@@ -1,9 +1,9 @@
 import Finity from 'finity'
 import { getModel } from 'ottoman'
-import toEnum from '@/utils/to_enum'
-import { protoRoot } from '@/message/proto'
+import toEnum from '../utils/to_enum'
+import { protoRoot } from '../message/proto'
 import PRuntime from './pruntime'
-import { MINIUM_BALANCE } from '@/utils/constants'
+import { MINIUM_BALANCE } from '../utils/constants'
 import BN from 'bn.js'
 import _PQueue from 'p-queue'
 

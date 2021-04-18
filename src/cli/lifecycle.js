@@ -13,7 +13,7 @@ const apply = (program) => {
       'URL of Phala Blockchain WebSocket RPC'
     )
     .action(({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
-      import('@/lifecycle')
+      import('../lifecycle')
         .then(({ default: start }) =>
           start({ phalaRpc, redisEndpoint, couchbaseEndpoint })
         )

@@ -23,7 +23,7 @@ const apply = (program) => {
     )
     .action(
       ({ phalaRpc, couchbaseEndpoint, parallelBlocks, redisEndpoint }) => {
-        import('@/fetch')
+        import('../fetch')
           .then(({ default: start }) =>
             start({
               phalaRpc,

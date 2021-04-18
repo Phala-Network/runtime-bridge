@@ -14,6 +14,7 @@ globalThis.$logger = createLogger({
 
 const cli = new Command()
 
+cli.name('yarn bridge')
 cli.version(packageJson.version)
 
 applyCommon(cli)

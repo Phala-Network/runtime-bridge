@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'
-import wait from '@/utils/wait'
-import createKeyring from '@/utils/keyring'
+import wait from '../utils/wait'
+import createKeyring from '../utils/keyring'
 import { getModel } from 'ottoman'
 
 const keyring = await createKeyring()

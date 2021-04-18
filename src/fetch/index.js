@@ -1,14 +1,14 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import { start as startOttoman } from '@/utils/couchbase'
-import phalaTypes from '@/utils/typedefs'
-import createRedisClient from '@/utils/redis'
+import { start as startOttoman } from '../utils/couchbase'
+import phalaTypes from '../utils/typedefs'
+import createRedisClient from '../utils/redis'
 import syncBlock from './sync_block'
 import computeWindow from './compute_window'
 import organizeBlob from './organize_blob'
-import { PHALA_CHAIN_NAME } from '@/utils/constants'
+import { PHALA_CHAIN_NAME } from '../utils/constants'
 import { isMaster } from 'cluster'
 import { getModel } from 'ottoman'
-import { createMessageTunnel, createDispatcher } from '@/message'
+import { createMessageTunnel, createDispatcher } from '../message'
 import { hostname } from 'os'
 import { MessageTarget } from '../message/proto'
 
@@ -41,6 +41,7 @@ const start = async ({
     provider: phalaProvider,
     types: phalaTypes,
   })
+  console.log(phalaTypes)
   globalThis.$phalaApi = phalaApi
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (

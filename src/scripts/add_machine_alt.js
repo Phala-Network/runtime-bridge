@@ -1,7 +1,6 @@
 #!/usr/bin/env -S node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await
-import pnp from '../../.pnp.cjs'
-pnp.setup()
-import { start as startOttoman } from '@/utils/couchbase'
+
+import { start as startOttoman } from '../utils/couchbase'
 import { getModel } from 'ottoman'
 
 const main = async () => {

@@ -1,5 +1,5 @@
 import BeeQueue from 'bee-queue'
-import { APP_MESSAGE_QUEUE_NAME } from '@/utils/constants'
+import { APP_MESSAGE_QUEUE_NAME } from './constants'
 
 const createTradeQueue = (redisUrl) => {
   const ret = new BeeQueue(APP_MESSAGE_QUEUE_NAME, {

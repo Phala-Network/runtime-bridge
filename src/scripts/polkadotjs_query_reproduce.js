@@ -1,8 +1,5 @@
 #!/usr/bin/env -S node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await
-import pnp from '../../.pnp.cjs'
-pnp.setup()
-
-import phalaTypes from '@/utils/typedefs'
+import phalaTypes from '../utils/typedefs'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 
 const phalaProvider = new WsProvider('wss://poc4.phala.network/ws')

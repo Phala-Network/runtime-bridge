@@ -1,10 +1,10 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import { start as startOttoman } from '@/utils/couchbase'
-import phalaTypes from '@/utils/typedefs'
-import { createMessageTunnel, createDispatcher } from '@/message'
-import { MessageTarget } from '@/message/proto'
-import createTradeQueue from '@/utils/trade_queue'
-import createKeyring from '@/utils/keyring'
+import { start as startOttoman } from '../utils/couchbase'
+import phalaTypes from '../utils/typedefs'
+import { createMessageTunnel, createDispatcher } from '../message'
+import { MessageTarget } from '../message/proto'
+import createTradeQueue from '../utils/trade_queue'
+import createKeyring from '../utils/keyring'
 import * as actions from './actions'
 
 const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {

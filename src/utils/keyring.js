@@ -1,4 +1,4 @@
-import { PHALA_SS58_FORMAT } from '@/utils/constants'
+import { PHALA_SS58_FORMAT } from './constants'
 import { Keyring } from '@polkadot/keyring'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 

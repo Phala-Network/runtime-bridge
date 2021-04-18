@@ -1,8 +1,8 @@
-import createRedisClient from '@/utils/redis'
+import createRedisClient from '../utils/redis'
 import {
   APP_MESSAGE_TUNNEL_CHANNEL,
   APP_MESSAGE_TUNNEL_QUERY_TIMEOUT,
-} from '@/utils/constants'
+} from '../utils/constants'
 import { Message, MessageTarget, MessageType } from './proto'
 
 const defaultEncode = (request) =>
