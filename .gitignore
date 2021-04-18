@@ -118,3 +118,7 @@ dist
 .pnp.*
 *.log
 *.log.1
+
+.pnpm-store/
+.env*
+pnpm-debug.log

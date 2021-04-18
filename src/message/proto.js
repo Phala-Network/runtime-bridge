@@ -1,7 +1,10 @@
 import protobuf from 'protobufjs'
-import protoDef from '../utils/proto.json'
+import path from 'path'
 
-const protoRoot = protobuf.Root.fromJSON(protoDef)
+const __dirname = path.dirname(import.meta.url).replace(/^file:\/\/\//, '/')
+const protoPath = path.join(__dirname, '../vendor/proto/message.proto')
+
+const protoRoot = protobuf.loadSync(protoPath)
 
 if (process.env.NODE_ENV === 'development') {
   globalThis.protoRoot = protoRoot

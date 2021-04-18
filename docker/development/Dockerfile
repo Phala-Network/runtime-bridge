@@ -14,11 +14,6 @@ RUN apt-get install -y \
     python \
     git-core
 
-WORKDIR /opt
-
-COPY package.json .
-COPY yarn.lock .
-
-RUN yarn install
+RUN npm i -g pnpm
 
 WORKDIR /opt/app

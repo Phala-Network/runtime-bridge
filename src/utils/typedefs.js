@@ -1,6 +1,6 @@
-import _phalaTypes from '@phala/typedefs'
+import { typesChain } from '@phala/typedefs'
 
-export const chainTypes = _phalaTypes.typesChain['Phala PoC-4']
+export const chainTypes = typesChain['Phala PoC-4']
 export const bridgeTypes = {
   SetId: 'u64',
   StorageProof: 'Vec<Vec<u8>>',

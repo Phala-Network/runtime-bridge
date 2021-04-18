@@ -19,13 +19,7 @@ services:
       - 9228:9228
     command:
       [
-        "node",
-        # "--inspect=0.0.0.0:9228",
-        "--experimental-json-modules",
-        "--es-module-specifier-resolution=node",
-        "--harmony-top-level-await",
-        "--no-warnings",
-        "/opt/app/src/index.js",
+        "pnpm", "bridge", "--",
         "f",
         "-r",
         "redis://redis:6379",
@@ -52,12 +46,11 @@ services:
       - 9229:9229
     command:
       [
-        "node",
+        "pnpm", "node",
         "--inspect=0.0.0.0:9229",
         "--experimental-json-modules",
-        "--es-module-specifier-resolution=node",
-        "--harmony-top-level-await",
-        "/opt/app/src/index.js",
+        "-r", "esm",
+        "src/index.js",
         "lifecycle",
         "-r",
         "redis://redis:6379",
@@ -82,7 +75,7 @@ services:
       - couchbase
     command:
       [
-        "/opt/app/src/index.js",
+        "pnpm", "bridge",
         "trade",
         "-r",
         "redis://redis:6379",
@@ -108,8 +101,8 @@ services:
       - '4567:4567'
     command:
       [
-        "node",
-        "/opt/app/arena.js"
+        "pnpm", "node",
+        "arena.js"
       ]
 
   couchbase:

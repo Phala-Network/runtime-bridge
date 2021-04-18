@@ -26,7 +26,7 @@ const createClient = (redisEndpoint) =>
             return func.apply(client, args)
           } else {
             return _func(...args).catch((e) => {
-              if (e?.name === 'TimeoutError') {
+              if (e && e.name === 'TimeoutError') {
                 return _func(...args)
               }
               throw e
