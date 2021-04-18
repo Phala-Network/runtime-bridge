@@ -9,9 +9,9 @@ const RuntimeWindowSchema = new Schema({
   finished: { type: Boolean, default: false },
 })
 
-RuntimeWindowSchema.index.findByStartBlock = { by: 'startBlock', type: 'view' }
-RuntimeWindowSchema.index.findByRefBlock = { by: 'stopBlock', type: 'refdoc' }
-RuntimeWindowSchema.index.findRefFinished = { by: 'finished', type: 'refdoc' }
+RuntimeWindowSchema.index.findByStartBlock = { by: 'startBlock', type: 'n1ql' }
+RuntimeWindowSchema.index.findByRefBlock = { by: 'stopBlock', type: 'n1ql' }
+RuntimeWindowSchema.index.findRefFinished = { by: 'finished', type: 'n1ql' }
 RuntimeWindowSchema.index.findN1qlByFinishedAndWindowId = {
   by: ['windowId', 'finished'],
   type: 'n1ql',

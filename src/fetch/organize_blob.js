@@ -27,6 +27,8 @@ const organizeBlob = async ({
   } catch (e) {
     if (e.message === 'path exists') {
       $logger.warn('Index not found, skip removing...')
+      // } else if (e.message === 'document not found') {
+      //   $logger.warn('Blobs not found, skip removing...')
     } else {
       throw e
     }
@@ -37,6 +39,9 @@ const organizeBlob = async ({
       if (e.message === 'path exists') {
         $logger.warn('Index not found, retrying in 10s...')
         return wait(10000).then(() => getWindow(windowId))
+      }
+      if (e.message === 'document not found') {
+        return wait(6000).then(() => getWindow(windowId))
       }
       $logger.error('getWindow', e, { windowId })
       process.exit(-2)
@@ -59,6 +64,15 @@ const organizeBlob = async ({
       if (e.message === 'path exists') {
         $logger.warn('Index not found, retrying in 10s...')
         return wait(10000).then(() => getBlock(number))
+      }
+      if (e.message === 'document not found') {
+        shouldFulfill = false
+        $logger.warn(`Waiting for block #${number}...`)
+        return wait(6000).then(() => getBlock(number))
+      }
+      if (e.code === 1048) {
+        $logger.warn('retrying in 6s...')
+        return wait(6000).then(() => getBlock(number))
       }
       $logger.error('getBlock', e, { number })
       process.exit(-2)
@@ -88,7 +102,16 @@ const organizeBlob = async ({
     let blob
 
     if (shouldFulfill) {
-      blob = await OrganizedBlob.findOne({ startBlock, stopBlock })
+      blob = await OrganizedBlob.findOne({ startBlock, stopBlock }).catch(
+        (e) => {
+          if (e.message === 'document not found') {
+            return null
+          }
+
+          $logger.error({ windowId, startBlock, stopBlock }, 'saveBlob', e)
+          process.exit(-2)
+        }
+      )
 
       if (
         blob &&
@@ -226,8 +249,6 @@ const organizeBlob = async ({
           api.createType('ReqHeaderToSync', {
             header,
             justification,
-            events,
-            eventsStorageProof,
           })
         )
         dispatchBlockData.blocks.push(
@@ -236,6 +257,7 @@ const organizeBlob = async ({
             events,
             proof: eventsStorageProof,
             key: eventsStorageKey,
+            workerSnapshot: null,
           })
         )
 

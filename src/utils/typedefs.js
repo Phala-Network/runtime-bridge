@@ -39,7 +39,7 @@ export const bridgeTypes = {
     computeWorkersKv: '(StorageKey,u32)',
     proof: 'StorageProof',
   },
-  PalletId: 'Raw',
+  // PalletId: 'Raw',
   StashWorkerStats: {
     slash: 'Balance',
     computeReceived: 'Balance',

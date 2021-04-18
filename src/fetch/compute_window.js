@@ -15,7 +15,11 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         $logger.warn('Index not found, retrying in 10s...')
         return wait(10000).then(() => getBlock(number))
       }
-      $logger.error('getBlock', e, { number })
+      if (e.message === 'document not found') {
+        $logger.info(`Waiting for block #${number}...`)
+        return wait(6000).then(() => getBlock(number))
+      }
+      $logger.error({ number }, 'getBlock', e)
       process.exit(-2)
     })
 
@@ -33,7 +37,10 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         $logger.warn('Index not found, retrying in 10s...')
         return wait(10000).then(() => getRuntimeWindow(windowId))
       }
-      $logger.error('getRuntimeWindow', e, { windowId })
+      if (e.message === 'document not found') {
+        return null
+      }
+      $logger.error({ windowId }, 'getRuntimeWindow', e)
       process.exit(-2)
     })
   }

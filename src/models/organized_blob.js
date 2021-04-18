@@ -11,9 +11,9 @@ const OrganizedBlobSchema = new Schema({
   number: Number,
 })
 
-OrganizedBlobSchema.index.findByStartBlock = { by: 'startBlock', type: 'view' }
-OrganizedBlobSchema.index.findByStopBlock = { by: 'stopBlock', type: 'view' }
-OrganizedBlobSchema.index.findByWindowId = { by: 'windowId', type: 'view' }
+OrganizedBlobSchema.index.findByStartBlock = { by: 'startBlock', type: 'n1ql' }
+OrganizedBlobSchema.index.findByStopBlock = { by: 'stopBlock', type: 'n1ql' }
+OrganizedBlobSchema.index.findByWindowId = { by: 'windowId', type: 'n1ql' }
 OrganizedBlobSchema.index.findN1qlByWindowId = { by: 'windowId', type: 'n1ql' }
 OrganizedBlobSchema.index.findN1qlByFullBlob = { by: 'fullBlob', type: 'n1ql' }
 OrganizedBlobSchema.index.findN1qlByBlock = {

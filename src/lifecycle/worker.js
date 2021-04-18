@@ -172,8 +172,18 @@ const createWorkerState = async (options) => {
   const { phalaSs58Address } = options.machine
   const WorkerState = getModel('WorkerState')
 
-  const queryAccount = await phalaApi.query.system.account(phalaSs58Address)
-  const queryStash = await phalaApi.query.phala.stashState(phalaSs58Address)
+  const queryAccount = phalaApi.query.system.account(phalaSs58Address)
+  const queryStash = phalaApi.query.phala.stashState(phalaSs58Address)
+
+  await queryAccount
+  await queryStash
+  console.log({
+    queryAccount,
+    queryStash,
+    queryAccountJSON: (await queryAccount).toJSON(),
+    queryStashJSON: (await queryStash).toJSON(),
+    phalaSs58Address,
+  })
 
   const state = await WorkerState.findOneAndUpdate(
     { workerId: options.machine.id },

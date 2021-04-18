@@ -40,6 +40,44 @@ const tryGetBlockExistence = (BlockModel, number) => {
     })
 }
 
+const trySnapshotOnlineWorker = async ({ api, hash }) => {
+  return '0x'
+
+  const onlineWorkersNum = await api.query.phala.onlineWorkers()
+  if (onlineWorkersNum.isEmpty()) {
+    $logger.warn({ hash }, 'No onlineWorkers available.')
+    return null
+  }
+  const computeWorkersNum = await api.query.phala.computeWorkers()
+  if (computeWorkersNum.isEmpty()) {
+    $logger.warn({ hash }, 'No computeWorkers available.')
+    return null
+  }
+  $logger.info(
+    { hash, onlineWorkersNum, computeWorkersNum },
+    'Starting SnapshotOnlineWorker...'
+  )
+
+  const workerStateKv = null
+  const stakeReceivedKv = null
+  const onlineWorkersKv = null
+  const computeWorkersKv = null
+
+  const proof = (
+    await api.rpc.state.getReadProof(storageKeys, hash)
+  ).proof.toHex()
+
+  return api
+    .createType('OnlineWorkerSnapshot', {
+      workerStateKv,
+      stakeReceivedKv,
+      onlineWorkersKv,
+      computeWorkersKv,
+      proof,
+    })
+    .toHex()
+}
+
 const _setBlock = async ({
   api,
   number,
@@ -90,7 +128,10 @@ const _setBlock = async ({
     }
 
     if (isNewRound) {
-
+      snapshotOnlineWorker = await trySnapshotOnlineWorker({
+        api,
+        hash,
+      })
     }
 
     await BlockModel.create({
@@ -103,6 +144,7 @@ const _setBlock = async ({
       grandpaAuthorities,
       grandpaAuthoritiesStorageProof,
       setId,
+      snapshotOnlineWorker,
     })
     $logger.info({ chain: chainName }, `Fetched block #${number}.`)
   } else {

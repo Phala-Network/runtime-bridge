@@ -17,16 +17,29 @@ const waitForFetcher = async (query) => {
 }
 
 const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
-  let phalaApi, dispatcher
+  let dispatcher
   const workerStates = new Map() // key => Machine.id from couchbase
 
   const ottoman = await startOttoman(couchbaseEndpoint)
 
   const phalaProvider = new WsProvider(phalaRpc)
-  phalaApi = await ApiPromise.create({
+  const phalaApi = await ApiPromise.create({
     provider: phalaProvider,
     types: phalaTypes,
   })
+
+  const [phalaChain, phalaNodeName, phalaNodeVersion] = (
+    await Promise.all([
+      phalaApi.rpc.system.chain(),
+      phalaApi.rpc.system.name(),
+      phalaApi.rpc.system.version(),
+    ])
+  ).map((i) => i.toString())
+
+  $logger.info(
+    { chain: phalaChain },
+    `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`
+  )
 
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,
