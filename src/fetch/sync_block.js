@@ -111,7 +111,6 @@ const _setBlock = async ({
     const grandpaAuthoritiesStorageProof = (
       await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)
     ).proof.toHex()
-    console.log((await api.query.grandpa.currentSetId.at(hash)).value)
     const setId = (await api.query.grandpa.currentSetId.at(hash)).toJSON()
 
     let isNewRound = false

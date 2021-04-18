@@ -41,8 +41,10 @@ const start = async ({
     provider: phalaProvider,
     types: phalaTypes,
   })
-  console.log(phalaTypes)
-  globalThis.$phalaApi = phalaApi
+
+  if (process.env.NODE_ENV === 'development') {
+    globalThis.$phalaApi = phalaApi
+  }
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
     await Promise.all([
