@@ -68,6 +68,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         })
 
         await currentWindow.save()
+        await wait(1)
         return doProcessBlock({ number: number + 1, previousBlock: block })
       }
 
@@ -77,6 +78,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         currentWindow._applyData({ currentBlock: number })
 
         await currentWindow.save()
+        await wait(1)
         return doProcessBlock({ number: number + 1, previousBlock: block })
       }
 
@@ -86,6 +88,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         finished: true,
       })
       await currentWindow.save()
+      await wait(1)
       $logger.info(`Ending window #${id} at block #${number}...`)
     }
 
@@ -112,6 +115,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         setId: -1,
         windowId: id,
       })
+      await wait(1)
 
       await doProcessBlock({ number: startBlockNumber })
     }

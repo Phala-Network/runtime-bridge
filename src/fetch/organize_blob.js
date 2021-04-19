@@ -35,21 +35,25 @@ const organizeBlob = async ({
   }
 
   const getWindow = async (windowId) => {
-    const window = await RuntimeWindow.findOne({ windowId }).catch((e) => {
-      if (e.message === 'path exists') {
-        $logger.warn('Index not found, retrying in 10s...')
-        return wait(10000).then(() => getWindow(windowId))
+    const window = await RuntimeWindow.findOne({ windowId }).catch(
+      async (e) => {
+        if (e.message === 'path exists') {
+          $logger.warn('Index not found, retrying in 10s...')
+          await wait(10000)
+          return getWindow(windowId)
+        }
+        if (e.message === 'document not found') {
+          await wait(6000)
+          return getWindow(windowId)
+        }
+        $logger.error('getWindow', e, { windowId })
+        process.exit(-2)
       }
-      if (e.message === 'document not found') {
-        return wait(6000).then(() => getWindow(windowId))
-      }
-      $logger.error('getWindow', e, { windowId })
-      process.exit(-2)
-    })
+    )
     if (window) {
       return window
     }
-    await wait(6000)
+    await wait(1000)
     return getWindow(windowId)
   }
 
@@ -67,6 +71,7 @@ const organizeBlob = async ({
       }
       if (e.message === 'document not found') {
         shouldFulfill = false
+
         $logger.warn(`Waiting for block #${number}...`)
         return wait(6000).then(() => getBlock(number))
       }
@@ -79,6 +84,7 @@ const organizeBlob = async ({
     })
     if (!block) {
       shouldFulfill = false
+
       $logger.info(`Waiting for block #${number}...`)
       await wait(6000)
       return getBlock(number)
@@ -195,7 +201,7 @@ const organizeBlob = async ({
       }
     }
 
-    let { stopBlock } = windowInfo
+    let { stopBlock, windowId } = windowInfo
     let currentBlock = startBlock
 
     const prepareBlob = async () => {
@@ -216,7 +222,7 @@ const organizeBlob = async ({
         })
 
         await saveBlob({
-          windowId: id,
+          windowId,
           startBlock: blobStartBlock,
           stopBlock: currentBlock,
           genesisInfoData: genesisInfo,
@@ -276,7 +282,7 @@ const organizeBlob = async ({
                 authorityProof: grandpaAuthoritiesStorageProof,
               }
             )
-            ;({ stopBlock } = await getWindow(id))
+
             await saveBlob({
               windowId: id,
               startBlock: blobStartBlock,
@@ -284,6 +290,16 @@ const organizeBlob = async ({
               syncHeaderData,
               dispatchBlockData,
             })
+            ;({ stopBlock } = await getWindow(id))
+            if (currentBlock !== stopBlock) {
+              $logger.warn(
+                { windowId, currentBlock, stopBlock },
+                'The computeWindow process has not reached the stop block yet.'
+              )
+            }
+
+            await setLatestWindowId(id)
+            return processWindow(latestWindowId + 1)
           } else {
             if (
               syncHeaderData.headers.length >= 1000 ||
@@ -304,11 +320,6 @@ const organizeBlob = async ({
                 dispatchBlockData,
               })
             }
-          }
-
-          if (currentBlock === stopBlock) {
-            await setLatestWindowId(id)
-            return processWindow(latestWindowId + 1)
           }
 
           currentBlock += 1

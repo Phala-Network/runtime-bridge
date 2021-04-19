@@ -103,29 +103,31 @@ const start = async ({
       `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`
     )
 
-    await Promise.all([
-      fetchPhala({
-        api: phalaApi,
-        chainName: phalaChain,
-        redis,
-        parallelBlocks,
-        BlockModel: PhalaBlockModel,
-      }),
+    await fetchPhala({
+      api: phalaApi,
+      chainName: phalaChain,
+      redis,
+      parallelBlocks,
+      BlockModel: PhalaBlockModel,
+    })
+  } else {
+    if (process.env.PRB_FETCH_WORKER_TYPE === 'window') {
       computeWindow({
         api: phalaApi,
         chainName: phalaChain,
         redis,
         BlockModel: PhalaBlockModel,
-      }),
-    ])
-  } else {
-    await organizeBlob({
-      api: phalaApi,
-      chainName: phalaChain,
-      redis,
-      BlockModel: PhalaBlockModel,
-      initHeight: process.env.INIT_HEIGHT,
-    })
+      })
+    }
+    if (process.env.PRB_FETCH_WORKER_TYPE === 'blob') {
+      await organizeBlob({
+        api: phalaApi,
+        chainName: phalaChain,
+        redis,
+        BlockModel: PhalaBlockModel,
+        initHeight: process.env.INIT_HEIGHT,
+      })
+    }
   }
 }
 

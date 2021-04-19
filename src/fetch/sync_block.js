@@ -190,11 +190,32 @@ const _syncBlock = async ({
       (parseInt(await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
     $logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 
-    const worker = cluster.fork({ INIT_HEIGHT: oldHighest })
-    worker.on('online', () => {
-      $logger.info('Started worker for organizing blob...')
+    const windowWorker = cluster.fork({
+      PRB_FETCH_WORKER_TYPE: 'window',
+      INIT_HEIGHT: oldHighest,
     })
-    worker.on('exit', (code, signal) => {
+    windowWorker.on('online', () => {
+      $logger.info('Started worker for computing windows...')
+    })
+    windowWorker.on('exit', (code, signal) => {
+      if (signal) {
+        console.log(`worker was killed by signal: ${signal}`)
+      } else if (code !== 0) {
+        console.log(`worker exited with error code: ${code}`)
+      } else {
+        console.log('worker success!')
+      }
+      process.exit(code)
+    })
+
+    const blobWorker = cluster.fork({
+      PRB_FETCH_WORKER_TYPE: 'blob',
+      INIT_HEIGHT: oldHighest,
+    })
+    blobWorker.on('online', () => {
+      $logger.info('Started worker for organizing blobs...')
+    })
+    blobWorker.on('exit', (code, signal) => {
       if (signal) {
         console.log(`worker was killed by signal: ${signal}`)
       } else if (code !== 0) {
