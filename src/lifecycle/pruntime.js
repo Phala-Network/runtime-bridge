@@ -10,6 +10,7 @@ class PRuntime {
   #runtimeInfo
   #redis
   #machine
+  #machineId
   #phalaSs58Address
   #dispatchTx
   #initInfo
@@ -26,6 +27,7 @@ class PRuntime {
     this.#dispatcher = options.dispatcher
     this.#redis = options.redis
     this.#machine = options.machine
+    this.#machineId = options.machine.id
     this.#phalaSs58Address = options.machine.phalaSs58Address
     this.#dispatchTx = options.dispatchTx
   }
@@ -43,13 +45,13 @@ class PRuntime {
   }
 
   async initRuntime(skipRa = false, debugSetKey = null) {
-    $logger.info(`Trying to initialize pRuntime...`)
+    $logger.debug(`Trying to initialize pRuntime...`)
     await this.getInfo()
 
     let initRuntimeInfo
 
     if (this.#runtimeInfo.initialized) {
-      $logger.info({ initRuntimeInfo }, `Already initialized, skipping.`)
+      $logger.debug({ initRuntimeInfo }, `Already initialized, skipping.`)
       ;({ payload: initRuntimeInfo } = await this.doRequest(
         '/get_runtime_info'
       ))
@@ -65,7 +67,7 @@ class PRuntime {
         payload
       ))
 
-      $logger.info({ initRuntimeInfo }, `Initialized pRuntime.`)
+      $logger.debug({ initRuntimeInfo }, `Initialized pRuntime.`)
     }
 
     this.#initInfo = initRuntimeInfo
@@ -75,7 +77,7 @@ class PRuntime {
     )
 
     if (machineOwner === this.#phalaSs58Address) {
-      $logger.info(
+      $logger.debug(
         { machineOwner: machineOwner },
         'Worker already registered, skipping.'
       )
@@ -94,7 +96,7 @@ class PRuntime {
       } catch (e) {
         $logger.warn(e)
       }
-      $logger.info(
+      $logger.debug(
         { beforeMachineOwner: machineOwner.encoded, tx },
         `Worker registered.`
       )
@@ -131,32 +133,44 @@ class PRuntime {
       syncHeaderBlob = {},
       number,
     } = blob
-    $logger.info(
-      { number, windowId },
+    $logger.debug(
+      { number, windowId, machineId: this.#machineId },
       `Sending headers from block #${startBlock} to #${stopBlock}...`
     )
     await this.doRequest('/sync_header', JSON.parse(syncHeaderBlob))
-    $logger.info(
-      { number, windowId },
+    $logger.debug(
+      { number, windowId, machineId: this.#machineId },
       `Sending events from block #${startBlock} to #${stopBlock}...`
     )
     await this.doRequest('/dispatch_block', JSON.parse(dispatchBlockBlob))
-    $logger.info(`Blob #${blob.number} finished.`)
+    $logger.debug(
+      { machineId: this.#machineId },
+      `Blob #${blob.number} finished.`
+    )
     return this.sendBlob(id + 1)
   }
 
   async getBlob(id = 0, shouldWait = true) {
     const OrganizedBlob = getModel('OrganizedBlob')
-    const ret = await OrganizedBlob.findOne({ number: id })
+    let ret = null
+
+    try {
+      ret = await OrganizedBlob.findOne({ number: id })
+    } catch (e) {
+      if (e.message !== 'document not found') {
+        $logger.error({ id }, 'getBlob', e)
+      }
+    }
+
     if (!ret) {
       if (shouldWait) {
-        $logger.info(`Waiting for blob #${id}...`)
+        $logger.debug(`Waiting for blob #${id}...`)
         await wait(6000)
         return this.getBlob(id)
       }
       return null
     } else {
-      $logger.info(`Loaded blob #${id}.`)
+      $logger.debug(`Loaded blob #${id}.`)
     }
     return ret
   }

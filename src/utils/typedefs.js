@@ -33,8 +33,8 @@ export const bridgeTypes = {
   },
   EncodedU8StorageKey: 'Vec<u8>',
   OnlineWorkerSnapshot: {
-    workerStateKv: 'Vec<(EncodedU8StorageKey, WorkerInfo)>',
-    stakeReceivedKv: 'Vec<(EncodedU8StorageKey, Balance)>',
+    workerStateKv: 'Vec<(EncodedU8StorageKey, Vec<u8>)>',
+    stakeReceivedKv: 'Vec<(EncodedU8StorageKey, Vec<u8>)>',
     onlineWorkersKv: '(EncodedU8StorageKey,u32)',
     computeWorkersKv: '(EncodedU8StorageKey,u32)',
     proof: 'StorageProof',

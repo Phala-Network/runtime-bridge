@@ -10,6 +10,7 @@ const PhalaBlockSchema = new Schema({
   grandpaAuthorities: String,
   grandpaAuthoritiesStorageProof: String,
   setId: Number,
+  snapshotOnlineWorker: { type: String, default: '0x' },
 })
 
 PhalaBlockSchema.index.findN1qlByNumber = { by: 'number', type: 'n1ql' }

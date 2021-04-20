@@ -46,10 +46,11 @@ services:
       - 9229:9229
     command:
       [
-        "pnpm", "node",
+        "pnpm", "node", "--",
         "--inspect=0.0.0.0:9229",
         "--experimental-json-modules",
-        "-r", "esm",
+        "--es-module-specifier-resolution=node",
+        "--harmony-top-level-await",
         "src/index.js",
         "lifecycle",
         "-r",
@@ -75,7 +76,7 @@ services:
       - couchbase
     command:
       [
-        "pnpm", "bridge",
+        "pnpm", "bridge", "--",
         "trade",
         "-r",
         "redis://redis:6379",

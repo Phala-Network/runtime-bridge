@@ -4,6 +4,7 @@ import {
   APP_MESSAGE_TUNNEL_QUERY_TIMEOUT,
 } from '../utils/constants'
 import { Message, MessageTarget, MessageType } from './proto'
+import { v4 as uuidv4 } from 'uuid'
 
 const defaultEncode = (request) =>
   Message.encode(Message.create(request)).finish()
@@ -18,11 +19,11 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
   const publish = async (request) => {
     const {
       to = MessageTarget.values.MTG_BROADCAST,
-      nonce = 0,
-      nonceRef = 0,
+      nonce = '',
+      nonceRef = '',
       type = MessageType.values.MTP_BROADCAST,
     } = request
-    const _nonce = nonce || Math.floor(Math.random() * 1000000000)
+    const _nonce = nonce || uuidv4()
     const createdAt = Date.now()
 
     const data = (encode || defaultEncode)({
@@ -49,7 +50,7 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
   const query = (request) => {
     return new Promise((resolve, reject) =>
       (async () => {
-        const nonce = Math.floor(Math.random() * 1000000000)
+        const nonce = uuidv4()
         callbacks.set(nonce, resolve)
         setTimeout(() => {
           callbacks.delete(nonce)

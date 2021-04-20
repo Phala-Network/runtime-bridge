@@ -42,11 +42,13 @@ const setAccount = async (dispatchTx, machine, state) => {
   }
 }
 
-const wrapEventAction = (fn) => (fromState, toState, context) => {
-  return fn(fromState, toState, context).catch((error) => {
+const wrapEventAction = (fn) => async (fromState, toState, context) => {
+  try {
+    return fn(fromState, toState, context)
+  } catch (error) {
     $logger.error({ fromState, toState }, error)
     context.stateMachine.handle(EVENTS.ERROR, error)
-  })
+  }
 }
 
 const onStarting = async (fromState, toState, context) => {
@@ -86,16 +88,20 @@ const onPendingSynching = async (fromState, toState, context) => {
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
 const onSynching = (romState, toState, context) => {
-  console.log(1)
-  context.stateMachine.rootStateMachine.workerContext.pruntime.startSendBlob()
-  console.log(2)
+  context.stateMachine.rootStateMachine.workerContext.pruntime
+    .startSendBlob()
+    .catch((e) => {
+      $logger.error(e)
+      context.stateMachine.handle(EVENTS.ERROR, e)
+    })
   // todo: intervally check then set intention
 }
 const onOnline = () => {
   // gracefully do nothing
 }
-const onError = () => {
-  console.log('error!')
+const onError = (romState, toState, context) => {
+  const { machine } = context.stateMachine.rootStateMachine.workerContext
+  console.log({ machineId: machine.id }, 'Something happened.')
   // todo: write last error message to db
 }
 const onKicked = () => {
@@ -172,18 +178,8 @@ const createWorkerState = async (options) => {
   const { phalaSs58Address } = options.machine
   const WorkerState = getModel('WorkerState')
 
-  const queryAccount = phalaApi.query.system.account(phalaSs58Address)
-  const queryStash = phalaApi.query.phala.stashState(phalaSs58Address)
-
-  await queryAccount
-  await queryStash
-  console.log({
-    queryAccount,
-    queryStash,
-    queryAccountJSON: (await queryAccount).toJSON(),
-    queryStashJSON: (await queryStash).toJSON(),
-    phalaSs58Address,
-  })
+  const queryAccount = await phalaApi.query.system.account(phalaSs58Address)
+  const queryStash = await phalaApi.query.phala.stashState(phalaSs58Address)
 
   const state = await WorkerState.findOneAndUpdate(
     { workerId: options.machine.id },

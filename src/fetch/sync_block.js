@@ -1,8 +1,6 @@
 import toEnum from '../utils/to_enum'
 import Finity from 'finity'
 import pQueue from 'p-queue'
-import cluster from 'cluster'
-
 import wait from '../utils/wait'
 
 import {
@@ -11,6 +9,7 @@ import {
   APP_RECEIVED_HEIGHT,
   APP_VERIFIED_HEIGHT,
   EVENTS_STORAGE_KEY,
+  FETCH_IS_SYNCHED,
 } from '../utils/constants'
 
 const { default: Queue } = pQueue
@@ -41,27 +40,88 @@ const tryGetBlockExistence = (BlockModel, number) => {
 }
 
 const trySnapshotOnlineWorker = async ({ api, hash }) => {
-  return '0x'
-
-  const onlineWorkersNum = await api.query.phala.onlineWorkers()
-  if (onlineWorkersNum.isEmpty()) {
+  let onlineWorkersNum = await api.query.phala.onlineWorkers.at(hash)
+  if (onlineWorkersNum.isEmpty) {
     $logger.warn({ hash }, 'No onlineWorkers available.')
-    return null
+    return '0x'
   }
-  const computeWorkersNum = await api.query.phala.computeWorkers()
-  if (computeWorkersNum.isEmpty()) {
+  let computeWorkersNum = await api.query.phala.computeWorkers.at(hash)
+  if (computeWorkersNum.isEmpty) {
     $logger.warn({ hash }, 'No computeWorkers available.')
-    return null
+    return '0x'
   }
+
+  onlineWorkersNum = onlineWorkersNum.toJSON()
+  computeWorkersNum = computeWorkersNum.toJSON()
   $logger.info(
     { hash, onlineWorkersNum, computeWorkersNum },
     'Starting SnapshotOnlineWorker...'
   )
 
-  const workerStateKv = null
-  const stakeReceivedKv = null
-  const onlineWorkersKv = null
-  const computeWorkersKv = null
+  const onlineWorkersKey = api.query.phala.onlineWorkers.key()
+  const computeWorkersKey = api.query.phala.computeWorkers.key()
+
+  const stashes = []
+  const onlineWorkersData = (
+    await Promise.all(
+      (await api.query.phala.workerState.keysAt(hash)).map(async (key) => {
+        const data = await api.rpc.state.getStorage(key, hash)
+        if (data.state.isMining || data.state.isMiningStopping) {
+          const accountId = key._args[0].toString()
+          stashes.push(accountId)
+          return [key, data]
+        }
+        return undefined
+      })
+    )
+  ).filter((i) => i)
+
+  const stakeReceivedData = (
+    await Promise.all(
+      (await api.query.miningStaking.stakeReceived.keysAt(hash)).map(
+        async (key) => {
+          const data = (
+            await api.rpc.state.getStorage(key, hash)
+          ).unwrapOrDefault()
+          const accountId = key._args[0].toString()
+          if (stashes.indexOf(accountId) > -1) {
+            return [key, data]
+          }
+          return undefined
+        }
+      )
+    )
+  ).filter((i) => i)
+
+  const workerStateKv = api.createType(
+    'Vec<(EncodedU8StorageKey, Vec<u8>)>',
+    onlineWorkersData.map((i) =>
+      api.createtype('EncodedU8StorageKey, Vec<u8>', i[0], i[1])
+    )
+  )
+  const stakeReceivedKv = api.createType(
+    'Vec<(EncodedU8StorageKey, Vec<u8>)>',
+    stakeReceivedData.map((i) =>
+      api.createtype('EncodedU8StorageKey, Vec<u8>', i[0], i[1])
+    )
+  )
+  const onlineWorkersKv = api.createType(
+    '(EncodedU8StorageKey,u32)',
+    onlineWorkersKey,
+    onlineWorkersNum
+  )
+  const computeWorkersKv = api.createType(
+    '(EncodedU8StorageKey,u32)',
+    computeWorkersKey,
+    computeWorkersNum
+  )
+
+  const storageKeys = [
+    ...onlineWorkersData.map((i) => i[0]),
+    ...stakeReceivedData.map((i) => i[0]),
+    onlineWorkersKey,
+    computeWorkersNum,
+  ]
 
   const proof = (
     await api.rpc.state.getReadProof(storageKeys, hash)
@@ -190,41 +250,7 @@ const _syncBlock = async ({
       (parseInt(await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
     $logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
 
-    const windowWorker = cluster.fork({
-      PRB_FETCH_WORKER_TYPE: 'window',
-      INIT_HEIGHT: oldHighest,
-    })
-    windowWorker.on('online', () => {
-      $logger.info('Started worker for computing windows...')
-    })
-    windowWorker.on('exit', (code, signal) => {
-      if (signal) {
-        console.log(`worker was killed by signal: ${signal}`)
-      } else if (code !== 0) {
-        console.log(`worker exited with error code: ${code}`)
-      } else {
-        console.log('worker success!')
-      }
-      process.exit(code)
-    })
-
-    const blobWorker = cluster.fork({
-      PRB_FETCH_WORKER_TYPE: 'blob',
-      INIT_HEIGHT: oldHighest,
-    })
-    blobWorker.on('online', () => {
-      $logger.info('Started worker for organizing blobs...')
-    })
-    blobWorker.on('exit', (code, signal) => {
-      if (signal) {
-        console.log(`worker was killed by signal: ${signal}`)
-      } else if (code !== 0) {
-        console.log(`worker exited with error code: ${code}`)
-      } else {
-        console.log('worker success!')
-      }
-      process.exit(code)
-    })
+    process.send(oldHighest)
 
     for (let number = verifiedHeight; number < oldHighest; number++) {
       queue.add(() =>
@@ -274,7 +300,8 @@ const _syncBlock = async ({
     .do(() => syncOldBlocks())
     .onSuccess()
     .transitionTo(STATES.SYNCHING_FINALIZED)
-    .withAction(() => {
+    .withAction(async () => {
+      await redis.set(FETCH_IS_SYNCHED, true)
       $logger.info({ chain: chainName }, 'Old blocks synched.')
       resolve()
     })

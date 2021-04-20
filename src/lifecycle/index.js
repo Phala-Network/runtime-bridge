@@ -8,17 +8,27 @@ import phalaTypes from '../utils/typedefs'
 import createHandlers from './handlers'
 import createTradeQueue from '../utils/trade_queue'
 
-const waitForFetcher = async (query) => {
-  // todo: wait for synching
-  await query({
+const updateFetcherState = async (query, state) => {
+  const { content: fetcherStateUpdate } = await query({
     to: MessageTarget.values.MTG_FETCHER,
     callOnlineFetcher: {},
   })
+  Object.assign(state, fetcherStateUpdate)
+  return state
+}
+
+const waitForFetcher = async (query, state) => {
+  // todo: wait for synching
+  await updateFetcherState(query, state)
+
+  setInterval(() => updateFetcherState(query, state), 3000)
 }
 
 const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   let dispatcher
   const workerStates = new Map() // key => Machine.id from couchbase
+
+  const fetcherState = {}
 
   const ottoman = await startOttoman(couchbaseEndpoint)
 
@@ -128,7 +138,9 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
     'Now listening to the redis channel, old messages may be ignored.'
   )
 
-  await waitForFetcher(query)
+  await waitForFetcher(query, fetcherState)
+  $logger.info('Found online fetcher.')
+
   await setupWorkerContexts()
 }
 

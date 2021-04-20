@@ -2,6 +2,7 @@ import {
   APP_VERIFIED_WINDOW_ID,
   SYNC_HEADER_REQ_EMPTY,
   DISPATCH_BLOCK_REQ_EMPTY,
+  FETCH_PROCESSED_BLOB,
 } from '../utils/constants'
 import wait from '../utils/wait'
 import { bytesToBase64 } from 'byte-base64'
@@ -27,8 +28,8 @@ const organizeBlob = async ({
   } catch (e) {
     if (e.message === 'path exists') {
       $logger.warn('Index not found, skip removing...')
-      // } else if (e.message === 'document not found') {
-      //   $logger.warn('Blobs not found, skip removing...')
+    } else if (e.message === 'document not found') {
+      $logger.warn('Blobs not found, skip removing...')
     } else {
       throw e
     }
@@ -205,6 +206,8 @@ const organizeBlob = async ({
     let currentBlock = startBlock
 
     const prepareBlob = async () => {
+      await redis.set(FETCH_PROCESSED_BLOB, currentBlock)
+
       const blobStartBlock = currentBlock
 
       const generateGenesisBlob = async () => {
@@ -248,6 +251,7 @@ const organizeBlob = async ({
           eventsStorageProof,
           setId,
           grandpaAuthoritiesStorageProof,
+          snapshotOnlineWorker,
         } = blockData
         const hasJustification = justification && justification.length > 2
 
@@ -263,7 +267,7 @@ const organizeBlob = async ({
             events,
             proof: eventsStorageProof,
             key: eventsStorageKey,
-            workerSnapshot: null,
+            workerSnapshot: snapshotOnlineWorker,
           })
         )
 
