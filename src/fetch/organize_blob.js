@@ -267,7 +267,10 @@ const organizeBlob = async ({
             events,
             proof: eventsStorageProof,
             key: eventsStorageKey,
-            workerSnapshot: snapshotOnlineWorker,
+            workerSnapshot:
+              snapshotOnlineWorker.length > 2
+                ? api.createType('OnlineWorkerSnapshot', snapshotOnlineWorker)
+                : null,
           })
         )
 

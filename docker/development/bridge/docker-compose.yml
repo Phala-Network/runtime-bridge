@@ -19,7 +19,12 @@ services:
       - 9228:9228
     command:
       [
-        "pnpm", "bridge", "--",
+        "pnpm", "node", "--",
+        "--inspect=0.0.0.0:9228",
+        "--experimental-json-modules",
+        "--es-module-specifier-resolution=node",
+        "--harmony-top-level-await",
+        "src/index.js",
         "f",
         "-r",
         "redis://redis:6379",

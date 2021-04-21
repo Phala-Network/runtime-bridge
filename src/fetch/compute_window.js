@@ -102,9 +102,10 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
       })
     } else {
       let startBlockNumber = 0
+      console.log(1111, id)
+      const _previousWindow = previousWindow || (await getRuntimeWindow(id - 1))
       if (id > 0) {
-        startBlockNumber =
-          (previousWindow || (await getRuntimeWindow(id - 1))).stopBlock + 1
+        startBlockNumber = _previousWindow ? _previousWindow.stopBlock + 1 : 0
       }
 
       currentWindow = await RuntimeWindow.create({

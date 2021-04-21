@@ -51,8 +51,6 @@ const trySnapshotOnlineWorker = async ({ api, hash }) => {
     return '0x'
   }
 
-  onlineWorkersNum = onlineWorkersNum.toJSON()
-  computeWorkersNum = computeWorkersNum.toJSON()
   $logger.info(
     { hash, onlineWorkersNum, computeWorkersNum },
     'Starting SnapshotOnlineWorker...'
@@ -93,46 +91,21 @@ const trySnapshotOnlineWorker = async ({ api, hash }) => {
     )
   ).filter((i) => i)
 
-  const workerStateKv = api.createType(
-    'Vec<(EncodedU8StorageKey, Vec<u8>)>',
-    onlineWorkersData.map((i) =>
-      api.createtype('EncodedU8StorageKey, Vec<u8>', i[0], i[1])
-    )
-  )
-  const stakeReceivedKv = api.createType(
-    'Vec<(EncodedU8StorageKey, Vec<u8>)>',
-    stakeReceivedData.map((i) =>
-      api.createtype('EncodedU8StorageKey, Vec<u8>', i[0], i[1])
-    )
-  )
-  const onlineWorkersKv = api.createType(
-    '(EncodedU8StorageKey,u32)',
-    onlineWorkersKey,
-    onlineWorkersNum
-  )
-  const computeWorkersKv = api.createType(
-    '(EncodedU8StorageKey,u32)',
-    computeWorkersKey,
-    computeWorkersNum
-  )
-
   const storageKeys = [
-    ...onlineWorkersData.map((i) => i[0]),
-    ...stakeReceivedData.map((i) => i[0]),
+    ...onlineWorkersData.map((i) => i[0].toHex()),
+    ...stakeReceivedData.map((i) => i[0].toHex()),
     onlineWorkersKey,
-    computeWorkersNum,
+    computeWorkersKey,
   ]
 
-  const proof = (
-    await api.rpc.state.getReadProof(storageKeys, hash)
-  ).proof.toHex()
+  const proof = (await api.rpc.state.getReadProof(storageKeys, hash)).proof
 
   return api
     .createType('OnlineWorkerSnapshot', {
-      workerStateKv,
-      stakeReceivedKv,
-      onlineWorkersKv,
-      computeWorkersKv,
+      workerStateKv: onlineWorkersData,
+      stakeReceivedKv: stakeReceivedData,
+      onlineWorkersKv: [onlineWorkersKey, onlineWorkersNum],
+      computeWorkersKv: [computeWorkersKey, computeWorkersNum],
       proof,
     })
     .toHex()
