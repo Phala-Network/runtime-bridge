@@ -31,7 +31,7 @@ const WorkerStateSchema = new Schema({
     default: -1,
   },
   initialized: {
-    type: String,
+    type: Boolean,
     default: false,
   },
   balance: {
@@ -45,6 +45,7 @@ const WorkerStateSchema = new Schema({
     default: 'unset',
   },
   controller: String,
+  lastErrorMessage: String,
 })
 
 WorkerStateSchema.index.findRefWorkerId = {

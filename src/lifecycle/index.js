@@ -14,6 +14,7 @@ const updateFetcherState = async (query, state) => {
     callOnlineFetcher: {},
   })
   Object.assign(state, fetcherStateUpdate)
+  $logger.debug(state, 'fetcher state updated.')
   return state
 }
 
@@ -74,6 +75,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
             machine: m,
             context: {
               workerStates,
+              fetcherState,
               phalaApi,
               setupWorkerContexts,
               ottoman,
@@ -90,6 +92,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
     Object.assign(message, {
       context: {
         workerStates,
+        fetcherState,
         phalaApi,
         setupWorkerContexts,
         ottoman,
@@ -102,6 +105,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
     tunnelConnection,
     ...createHandlers({
       workerStates,
+      fetcherState,
       phalaApi,
       setupWorkerContexts,
       ottoman,

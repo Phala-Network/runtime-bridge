@@ -8,9 +8,11 @@ import applyTrade from './trade'
 import applyCommon from './common'
 
 globalThis.$logger = createLogger({
-  level: 'info',
+  level: process.env.LOGGER_LEVEL || 'info',
   name: 'prb',
+  src: true,
 })
+$logger.info('Logging Enabled.', { level: $logger.level() })
 
 const cli = new Command()
 

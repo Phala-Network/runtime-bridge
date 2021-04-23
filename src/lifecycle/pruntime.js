@@ -15,6 +15,8 @@ class PRuntime {
   #dispatchTx
   #initInfo
   #workerStates
+  #fetcherState
+  #updateState
   #phalaApi
   #ottoman
   #dispatcher
@@ -30,6 +32,8 @@ class PRuntime {
     this.#machineId = options.machine.id
     this.#phalaSs58Address = options.machine.phalaSs58Address
     this.#dispatchTx = options.dispatchTx
+    this.#fetcherState = options.fetcherState
+    this.#updateState = options.updateState
   }
 
   async startSendBlob() {
@@ -42,6 +46,33 @@ class PRuntime {
     initBlobId = _b ? _b.number : initBlobId
 
     await this.sendBlob(initBlobId)
+  }
+
+  _waitUntilSynched(resolve) {
+    if (this.#runtimeInfo && this.#fetcherState) {
+      const runtimeBlockNum = this.#runtimeInfo.blocknum
+      const {
+        fetcherStateUpdate: {
+          synched: fetcherSynched,
+          latestBlock: fetcherBlockNum,
+        },
+      } = this.#fetcherState
+      if (fetcherSynched && fetcherBlockNum - runtimeBlockNum <= 1) {
+        resolve()
+        return
+      }
+    }
+    setTimeout(() => this._waitUntilSynched(resolve), 3000)
+  }
+
+  waitUntilSynched() {
+    return new Promise((resolve, reject) => {
+      try {
+        this._waitUntilSynched(resolve)
+      } catch (error) {
+        reject(error)
+      }
+    })
   }
 
   async initRuntime(skipRa = false, debugSetKey = null) {
@@ -111,6 +142,11 @@ class PRuntime {
   async getInfo() {
     const info = await this.doRequest('/get_info')
     this.#runtimeInfo = info.payload
+    const { headernum, blocknum } = info.payload
+    await this.#updateState({
+      latestSynchedBlock: blocknum,
+      latestSynchedHeaderPhala: headernum,
+    })
     // todo: broadcast runtime info
     return info.payload
   }

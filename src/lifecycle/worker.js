@@ -52,9 +52,6 @@ const wrapEventAction = (fn) => async (fromState, toState, context) => {
 }
 
 const onStarting = async (fromState, toState, context) => {
-  // todo: check balance and throw error
-  // todo: check payout address
-  // todo: set payout address when not correct
   const {
     dispatchTx,
     state,
@@ -87,21 +84,41 @@ const onPendingSynching = async (fromState, toState, context) => {
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
-const onSynching = (romState, toState, context) => {
-  context.stateMachine.rootStateMachine.workerContext.pruntime
-    .startSendBlob()
-    .catch((e) => {
-      $logger.error(e)
-      context.stateMachine.handle(EVENTS.ERROR, e)
-    })
-  // todo: intervally check then set intention
+const onSynching = async (romState, toState, context) => {
+  const {
+    pruntime,
+    dispatchTx,
+    machine,
+  } = context.stateMachine.rootStateMachine.workerContext
+
+  pruntime.startSendBlob().catch((e) => {
+    $logger.error(e)
+    context.stateMachine.handle(EVENTS.ERROR, e)
+  })
+  await pruntime.waitUntilSynched()
+  await dispatchTx({
+    action: 'START_MINING_INTENTION',
+    payload: {
+      machineRecordId: machine.id,
+    },
+  })
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_ONLINE)
 }
 const onOnline = () => {
   // gracefully do nothing
 }
 const onError = (romState, toState, context) => {
-  const { machine } = context.stateMachine.rootStateMachine.workerContext
-  console.log({ machineId: machine.id }, 'Something happened.')
+  const {
+    machine,
+    dispatchTx,
+  } = context.stateMachine.rootStateMachine.workerContext
+  console.log({ machineId: machine.id, context }, 'Something happened.')
+  dispatchTx({
+    action: 'STOP_MINING_INTENTION',
+    payload: {
+      machineRecordId: machine.id,
+    },
+  })
   // todo: write last error message to db
 }
 const onKicked = () => {
