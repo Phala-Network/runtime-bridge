@@ -2,38 +2,33 @@ import fetch from 'node-fetch'
 import wait from '../utils/wait'
 import createKeyring from '../utils/keyring'
 import { getModel } from 'ottoman'
+import { base64Decode } from '@polkadot/util-crypto'
 
 const keyring = await createKeyring()
 
 class PRuntime {
   #runtimeEndpoint
   #runtimeInfo
-  #redis
   #machine
   #machineId
   #phalaSs58Address
   #dispatchTx
   #initInfo
-  #workerStates
   #fetcherState
   #updateState
   #phalaApi
-  #ottoman
-  #dispatcher
+  #syncWorkerIngressTimeout
 
   constructor(options) {
     this.#runtimeEndpoint = options.machine.runtimeEndpoint
-    this.#workerStates = options.workerStates
     this.#phalaApi = options.phalaApi
-    this.#ottoman = options.ottoman
-    this.#dispatcher = options.dispatcher
-    this.#redis = options.redis
     this.#machine = options.machine
     this.#machineId = options.machine.id
     this.#phalaSs58Address = options.machine.phalaSs58Address
     this.#dispatchTx = options.dispatchTx
     this.#fetcherState = options.fetcherState
     this.#updateState = options.updateState
+    this.#syncWorkerIngressTimeout = 0
   }
 
   async startSendBlob() {
@@ -139,6 +134,82 @@ class PRuntime {
     return this.#runtimeInfo
   }
 
+  startSyncWorkerIngress() {
+    const _sync = async (reject) => {
+      await this.syncWorkerIngress()
+      this.#syncWorkerIngressTimeout = setTimeout(
+        () => _sync(reject).catch(reject),
+        6000
+      )
+    }
+    return new Promise((_, reject) => {
+      _sync(reject).catch(reject)
+    })
+  }
+
+  async syncWorkerIngress() {
+    const onChainSequence = await this.#phalaApi.query.phala.workerIngress(
+      this.#phalaSs58Address
+    )
+
+    const {
+      GetWorkerEgress: { encoded_egress_b64: encodedEgressB64, length },
+    } = await this.query(0, {
+      GetWorkerEgress: {
+        start_sequence: onChainSequence.toNumber(),
+      },
+    })
+
+    if (!length) {
+      $logger.debug(
+        {
+          onChainSequence,
+          machineId: this.#machine.id,
+        },
+        'No worker ingress to sync.'
+      )
+      return
+    }
+
+    $logger.info(
+      {
+        length,
+        onChainSequence,
+        machineId: this.#machine.id,
+      },
+      'Synching worker ingress..'
+    )
+
+    const messageQueue = this.#phalaApi.createType(
+      'Vec<SignedWorkerMessage>',
+      base64Decode(encodedEgressB64)
+    )
+    await Promise.all(
+      messageQueue.map((message) => {
+        if (message.data.sequence < onChainSequence) {
+          return
+        }
+
+        return this.#dispatchTx({
+          action: 'SYNC_WORKER_MESSAGE_CALL',
+          payload: {
+            msg: message.toHex(),
+            machineRecordId: this.#machine.id,
+          },
+        })
+      })
+    )
+    $logger.info(
+      {
+        length,
+        beforeOnChainSequence: onChainSequence,
+        machineId: this.#machine.id,
+      },
+      'Synched worker ingress.'
+    )
+    return messageQueue.length
+  }
+
   async getInfo() {
     const info = await this.doRequest('/get_info')
     this.#runtimeInfo = info.payload
@@ -209,6 +280,21 @@ class PRuntime {
       $logger.debug(`Loaded blob #${id}.`)
     }
     return ret
+  }
+
+  async query(contractId, request) {
+    const query = {
+      contract_id: contractId,
+      nonce: (Math.random() * 1000000) | 0,
+      request,
+    }
+    const res = await this.doRequest('/query', {
+      query_payload: JSON.stringify({
+        Plain: JSON.stringify(query),
+      }),
+    })
+
+    return JSON.parse(res.payload.Plain)
   }
 
   async doRequest(resource, payload = {}) {

@@ -45,6 +45,24 @@ export const bridgeTypes = {
     computeReceived: 'Balance',
     onlineReceived: 'Balance',
   },
+  SignedWorkerMessage: {
+    data: 'WorkerMessage',
+    signature: 'Vec<u8>',
+  },
+  WorkerMessage: {
+    payload: 'WorkerMessagePayload',
+    sequence: 'u64',
+  },
+  WorkerMessagePayload: {
+    _enum: {
+      Heartbeat: 'WorkerMessagePayloadHeartbeat',
+    },
+  },
+  WorkerMessagePayloadHeartbeat: {
+    blockNum: 'u32',
+    claimOnline: 'bool',
+    claimCompute: 'bool',
+  },
 }
 
 export const phalaTypes = {

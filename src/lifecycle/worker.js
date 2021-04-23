@@ -84,7 +84,7 @@ const onPendingSynching = async (fromState, toState, context) => {
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
-const onSynching = async (romState, toState, context) => {
+const onSynching = async (fromState, toState, context) => {
   const {
     pruntime,
     dispatchTx,
@@ -104,10 +104,11 @@ const onSynching = async (romState, toState, context) => {
   })
   context.stateMachine.handle(EVENTS.SHOULD_MARK_ONLINE)
 }
-const onOnline = () => {
-  // gracefully do nothing
+const onOnline = async (fromState, toState, context) => {
+  const { pruntime } = context.stateMachine.rootStateMachine.workerContext
+  await pruntime.startSyncWorkerIngress()
 }
-const onError = (romState, toState, context) => {
+const onError = (fromState, toState, context) => {
   const {
     machine,
     dispatchTx,

@@ -145,6 +145,18 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   await waitForFetcher(query, fetcherState)
   $logger.info('Found online fetcher.')
 
+  if (process.env.NODE_ENV === 'development') {
+    globalThis.$context = {
+      workerStates,
+      fetcherState,
+      phalaApi,
+      setupWorkerContexts,
+      ottoman,
+      dispatcher,
+      txQueue,
+    }
+  }
+
   await setupWorkerContexts()
 }
 

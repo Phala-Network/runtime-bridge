@@ -43,7 +43,7 @@ services:
     environment:
       - NODE_ENV=development
       - DB_WAIT=0
-      - LOGGER_LEVEL=debug
+      # - LOGGER_LEVEL=debug
     depends_on:
       - redis
       - couchbase
