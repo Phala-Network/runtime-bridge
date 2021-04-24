@@ -2,7 +2,7 @@
 
 name: Push to Dockerhub
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   release:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_sw:
+  build:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
@@ -20,7 +20,7 @@ jobs:
       with:
         username: ${{ secrets.PACKAGE_MANAGER_USERNAME }}
         password: ${{ secrets.PACKAGE_MANAGER_TOKEN }}
-        repository: phalanetwork/prb
+        repository: phalanetwork/poc4-prb
         tag_with_ref: true
         tag_with_sha: true
         tags: tesing,latest
