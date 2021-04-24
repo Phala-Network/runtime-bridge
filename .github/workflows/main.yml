@@ -1,0 +1,27 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Push to Dockerhub
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build_sw:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - uses: docker/build-push-action@v1.1.1
+      with:
+        username: ${{ secrets.PACKAGE_MANAGER_USERNAME }}
+        password: ${{ secrets.PACKAGE_MANAGER_TOKEN }}
+        repository: phalanetwork/prb
+        tag_with_ref: true
+        tag_with_sha: true
+        tags: tesing,latest
+        dockerfile: 'docker/testing/Dockerfile'
