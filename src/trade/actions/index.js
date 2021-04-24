@@ -5,4 +5,7 @@ export {
   START_MINING_INTENTION,
   STOP_MINING_INTENTION,
 } from './mining_intention'
-export { default as SYNC_WORKER_MESSAGE_CALL } from './sync_worker_message_call'
+export {
+  SYNC_WORKER_MESSAGE,
+  BATCH_SYNC_WORKER_MESSAGE,
+} from './sync_worker_message'

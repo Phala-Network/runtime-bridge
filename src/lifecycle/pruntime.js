@@ -184,21 +184,23 @@ class PRuntime {
       'Vec<SignedWorkerMessage>',
       base64Decode(encodedEgressB64)
     )
-    await Promise.all(
-      messageQueue.map((message) => {
-        if (message.data.sequence < onChainSequence) {
-          return
-        }
 
-        return this.#dispatchTx({
-          action: 'SYNC_WORKER_MESSAGE_CALL',
-          payload: {
-            msg: message.toHex(),
-            machineRecordId: this.#machine.id,
-          },
-        })
-      })
-    )
+    await this.#dispatchTx({
+      action: 'BATCH_SYNC_WORKER_MESSAGE',
+      payload: {
+        messages: messageQueue
+          .map((message) => {
+            if (message.data.sequence.lte(onChainSequence)) {
+              return undefined
+            }
+
+            return message.toHex()
+          })
+          .filter((i) => i),
+        machineRecordId: this.#machine.id,
+      },
+    })
+
     $logger.info(
       {
         length,
