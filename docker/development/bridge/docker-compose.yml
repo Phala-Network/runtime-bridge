@@ -2,7 +2,7 @@ version: "3"
 
 services:
   fetch:
-    image: phala/prb:development
+    image: phalanetwork/poc4-prb:development
     build:
       context: ../../..
       dockerfile: docker/development/Dockerfile
@@ -36,7 +36,7 @@ services:
       ]
 
   lifecycle:
-    image: phala/prb:development
+    image: phalanetwork/poc4-prb:development
     hostname: lifecycle
     volumes:
       - ../../..:/opt/app
@@ -69,7 +69,7 @@ services:
       ]
 
   trade:
-    image: phala/prb:development
+    image: phalanetwork/poc4-prb:development
     hostname: trade
     deploy:
       replicas: 1 # for dev
@@ -95,7 +95,7 @@ services:
       ]
 
   arena:
-    image: phala/prb:development
+    image: phalanetwork/poc4-prb:development
     hostname: arena
     deploy:
       replicas: 1 # for dev
@@ -124,17 +124,6 @@ services:
       - "18091:8091"
     sysctls:
       net.core.somaxconn: 65535
-    environment:
-      - USER=phala
-      - PASSWORD=phalaphala
-      - AUTOFAILOVER_TIMEOUT=60
-      - DISCOVERY_SERVICE=couchbase-0.local
-      - FTS_RAM_SIZE_MB=1024
-      - INDEX_RAM_SIZE_MB=1024
-      - APP_NAME=phala
-      - RAM_SIZE_MB=2048
-      - REBALANCE_ON_NODE_ADDITION=1
-      - SERVICES=data,index,query,fts
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091"]
       interval: 1m30s
