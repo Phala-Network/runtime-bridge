@@ -15,7 +15,7 @@ services:
       - couchbase
     command:
       [
-        "/opt/app/src/index.js",
+        "pnpm", "bridge", "--",
         "f",
         "-r",
         "redis://redis:6379",
@@ -39,7 +39,7 @@ services:
       - 9229:9229
     command:
       [
-        "/opt/app/src/index.js",
+        "pnpm", "bridge", "--",
         "lifecycle",
         "-r",
         "redis://redis:6379",
@@ -61,7 +61,7 @@ services:
       - redis
     command:
       [
-        "/opt/app/src/index.js",
+        "pnpm", "bridge", "--",
         "trade",
         "-r",
         "redis://redis:6379",
@@ -69,6 +69,25 @@ services:
         "couchbase://couchbase/phala@phala:phalaphala",
         "-p",
         "wss://poc4.phala.network/ws",
+      ]
+
+  arena:
+    image: phala/prb:tesing
+    hostname: arena
+    deploy:
+      replicas: 1 # for dev
+    environment:
+      - NODE_ENV=testing
+      - DB_WAIT=0
+      - LOGGER_LEVEL=debug
+    depends_on:
+      - redis
+    ports:
+      - '4567:4567'
+    command:
+      [
+        "pnpm", "node",
+        "arena.js"
       ]
 
   couchbase:
@@ -80,17 +99,6 @@ services:
       - "18091:8091"
     sysctls:
       net.core.somaxconn: 65535
-    environment:
-      - USER=phala
-      - PASSWORD=phalaphala
-      - AUTOFAILOVER_TIMEOUT=60
-      - DISCOVERY_SERVICE=couchbase-0.local
-      - FTS_RAM_SIZE_MB=1024
-      - INDEX_RAM_SIZE_MB=1024
-      - APP_NAME=phala
-      - RAM_SIZE_MB=2048
-      - REBALANCE_ON_NODE_ADDITION=1
-      - SERVICES=data,index,query,fts
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091"]
       interval: 1m30s
@@ -103,8 +111,6 @@ services:
     command: ["redis-server", "--appendonly", "no"]
     restart: always
     hostname: redis
-    ports:
-      - "63791:6379" # debug
 
 volumes:
   couchbase-data:

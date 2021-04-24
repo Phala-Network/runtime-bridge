@@ -2,7 +2,7 @@ version: "3"
 
 services:
   pruntime:
-    image: jasl123/phala-dev-pruntime:latest
+    image: phalanetwork/phala-poc4-pruntime:latest
     restart: always
     hostname: pruntime
     environment:

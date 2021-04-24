@@ -14,12 +14,13 @@ RUN apt-get install -y \
     python \
     git-core
 
-RUN yarn install
+RUN npm i -g pnpm
 
 WORKDIR /opt/app
 
 COPY package.json .
-COPY yarn.lock .
-COPY . .
+COPY pnpm-lock.yaml .
 
-RUN yarn install
+RUN pnpm install
+
+COPY . .
