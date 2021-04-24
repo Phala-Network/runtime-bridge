@@ -23,5 +23,5 @@ jobs:
         repository: phalanetwork/poc4-prb
         tag_with_ref: true
         tag_with_sha: true
-        tags: tesing,latest
+        tags: testing,latest
         dockerfile: 'docker/testing/Dockerfile'
