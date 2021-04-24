@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  push_dockerhub:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
@@ -21,6 +21,22 @@ jobs:
         username: ${{ secrets.PACKAGE_MANAGER_USERNAME }}
         password: ${{ secrets.PACKAGE_MANAGER_TOKEN }}
         repository: phalanetwork/poc4-prb
+        tag_with_ref: true
+        tag_with_sha: true
+        tags: testing,latest
+        dockerfile: 'docker/testing/Dockerfile'
+  push_cn:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - uses: docker/build-push-action@v1.1.1
+      with:
+        registry: swr.cn-east-3.myhuaweicloud.com
+        username: ${{ secrets.HW_USERNAME }}
+        password: ${{ secrets.HW_TOKEN }}
+        repository: phala/poc4-prb
         tag_with_ref: true
         tag_with_sha: true
         tags: testing,latest
