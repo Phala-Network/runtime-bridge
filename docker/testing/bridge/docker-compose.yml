@@ -2,7 +2,7 @@ version: "3"
 
 services:
   fetch:
-    image: phalanetwork/poc4-prb:tesing
+    image: phalanetwork/poc4-prb:testing
     build:
       context: ../../..
       dockerfile: docker/testing/Dockerfile
@@ -26,7 +26,7 @@ services:
       ]
 
   lifecycle:
-    image: phalanetwork/poc4-prb:tesing
+    image: phalanetwork/poc4-prb:testing
     hostname: lifecycle
     environment:
       - NODE_ENV=tesing
@@ -50,7 +50,7 @@ services:
       ]
 
   trade:
-    image: phalanetwork/poc4-prb:tesing
+    image: phalanetwork/poc4-prb:testing
     hostname: trade
     deploy:
       replicas: 1 # for dev
@@ -72,7 +72,7 @@ services:
       ]
 
   arena:
-    image: phalanetwork/poc4-prb:tesing
+    image: phalanetwork/poc4-prb:testing
     hostname: arena
     deploy:
       replicas: 1 # for dev
