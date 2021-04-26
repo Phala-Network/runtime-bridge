@@ -108,9 +108,7 @@ const start = async ({
     })
   } else {
     const redis = await createRedisClient(redisEndpoint, true)
-    if (process.env.NODE_ENV === 'development') {
-      globalThis.$redis = redis
-    }
+    globalThis.$redis = redis
 
     if (process.env.PRB_FETCH_WORKER_TYPE === 'rpc') {
       await redis.set(FETCH_IS_SYNCHED, false)
