@@ -1,5 +1,3 @@
-#!/usr/bin/env -S node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await
-
 import { start as startOttoman } from '../utils/couchbase'
 import { getModel } from 'ottoman'
 

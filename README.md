@@ -45,6 +45,18 @@ There is only `pRuntime` to run on the worker machine. Following Docker Compose 
 Once workers are prepared, add the worker to the DB(e.g .<https://github.com/Phala-Network/runtime-bridge/blob/master/src/scripts/add_machine.js>).
 
 
+An temporary way to add workers on CLI:
+```
+COUCHBASE_ENDPOINT=couchbase://couchbase/phala@phala:phalaphala M_NICKNAME=node_1 M_PAYOUT_ADDRESS=somess58address M_RUNTIME_ENDPOINT=http://pruntime.address.without.ending.slash pnpm add_machine
+```
+
+In a docker-compose setup:
+```
+docker-compose run --no-deps --use-aliases -e COUCHBASE_ENDPOINT=couchbase://couchbase/phala@phala:phalaphala -e M_NICKNAME=node_1 -e M_PAYOUT_ADDRESS=somess58address -e M_RUNTIME_ENDPOINT=http://pruntime.address.without.ending.slash pnpm add_machine
+```
+
+A JSON formatted message will be printed to STDOUT which contains generated account information.
+
 Once the worker is added, an account is created automatically and can be accessed from the DB(as
 
 `phalaSs58Address` in the sample script above). You might need to transfer enough PHA to them referring <https://polkadot.js.org/docs/api/examples/promise/transfer-events>.
@@ -57,7 +69,7 @@ Use the sample `docker-compose.yml `from <https://github.com/Phala-Network/runti
 
 A Phala full node is not included in the setup, you need to deploy it in another place.
 
-
+0. Apply sysctl configuration as in `system` folder on the machine running `liftcycle` and `fetch`.
 1. Run `docker-compose up -d couchbase` to start the DB, open `http://controller-ip:18091` in browser to setup initial credentials, then create a bucket named `phala`.
 2. Edit the YAML file to fit the credentials and Phala node endpoint.
    * search `-c` for Couchbase credentials like `couchbase://couchbase/phala:user@password;`
