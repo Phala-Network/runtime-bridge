@@ -27,6 +27,7 @@ const main = async () => {
     phalaSs58Address,
     polkadotJson,
   })
+  await m.save()
   console.log(JSON.stringify(m))
 }
 

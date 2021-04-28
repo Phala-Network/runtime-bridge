@@ -52,7 +52,7 @@ COUCHBASE_ENDPOINT=couchbase://couchbase/phala@phala:phalaphala M_NICKNAME=node_
 
 In a docker-compose setup:
 ```
-docker-compose run --no-deps --use-aliases -e COUCHBASE_ENDPOINT=couchbase://couchbase/phala@phala:phalaphala -e M_NICKNAME=node_1 -e M_PAYOUT_ADDRESS=somess58address -e M_RUNTIME_ENDPOINT=http://pruntime.address.without.ending.slash pnpm add_machine
+docker-compose run --no-deps --use-aliases -e COUCHBASE_ENDPOINT=couchbase://couchbase/phala@phala:phalaphala -e M_NICKNAME=node_1 -e M_PAYOUT_ADDRESS=somess58address -e M_RUNTIME_ENDPOINT=http://pruntime.address.without.ending.slash lifecycle pnpm add_machine
 ```
 
 A JSON formatted message will be printed to STDOUT which contains generated account information.
