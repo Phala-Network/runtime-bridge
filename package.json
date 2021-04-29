@@ -62,6 +62,8 @@
     "node": "node",
     "bridge": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
     "add_machine": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/add_machine",
+    "dump_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_machines",
+
     "proto:build": "pbjs -t json --no-beautify -p ./src/vendor/proto -o ./src/utils/proto.json ./src/vendor/proto/message.proto"
   }
 }
