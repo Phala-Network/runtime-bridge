@@ -32,7 +32,7 @@ services:
         "-c",
         "couchbase://couchbase/phala@phala:phalaphala",
         "-p",
-        "wss://poc4.phala.network/ws",
+        "wss://poc4-dev.phala.network/ws",
       ]
 
   lifecycle:
@@ -65,7 +65,7 @@ services:
         "-c",
         "couchbase://couchbase/phala@phala:phalaphala",
         "-p",
-        "wss://poc4.phala.network/ws",
+        "wss://poc4-dev.phala.network/ws",
       ]
 
   trade:
@@ -91,7 +91,7 @@ services:
         "-c",
         "couchbase://couchbase/phala@phala:phalaphala",
         "-p",
-        "wss://poc4.phala.network/ws",
+        "wss://poc4-dev.phala.network/ws",
       ]
 
   arena:
