@@ -62,10 +62,8 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         $logger.info(`Starting new window #${id} at block #${number}...`)
         console.log(`Starting new window #${id} at block #${number}...`)
 
-        currentWindow._applyData({
-          currentBlock: number,
-          setId,
-        })
+        currentWindow.currentBlock = number
+        currentWindow.setId = setId
 
         await currentWindow.save()
         await wait(1)
@@ -75,18 +73,17 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
       const prevSetId = previousBlock.setId
 
       if (setId === prevSetId) {
-        currentWindow._applyData({ currentBlock: number })
+        currentWindow.currentBlock = number
 
         await currentWindow.save()
         await wait(1)
         return doProcessBlock({ number: number + 1, previousBlock: block })
       }
 
-      currentWindow._applyData({
-        currentBlock: number,
-        stopBlock: number,
-        finished: true,
-      })
+      currentWindow.currentBlock = number
+      currentWindow.stopBlock = number
+      currentWindow.finished = true
+
       await currentWindow.save()
       await wait(1)
       $logger.info(`Ending window #${id} at block #${number}...`)
@@ -102,7 +99,6 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
       })
     } else {
       let startBlockNumber = 0
-      console.log(1111, id)
       const _previousWindow = previousWindow || (await getRuntimeWindow(id - 1))
       if (id > 0) {
         startBlockNumber = _previousWindow ? _previousWindow.stopBlock + 1 : 0

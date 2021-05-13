@@ -122,3 +122,5 @@ dist
 .pnpm-store/
 .env*
 pnpm-debug.log
+
+docker/development/bridge/docker-compose.yml
