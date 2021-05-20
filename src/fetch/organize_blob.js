@@ -185,7 +185,7 @@ const organizeBlob = async ({
       })
     }
 
-    await wrapIo(blob.save())
+    await wrapIo(() => blob.save())
     $logger.info(
       { blobNumber, windowId, startBlock, stopBlock, shouldFulfill },
       'Blob saved'

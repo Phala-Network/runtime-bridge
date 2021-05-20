@@ -32,11 +32,11 @@ export const wrapIo = (fn) => {
   return fn().catch((e) => {
     if (e.message === 'path exists') {
       $logger.warn('Index not found, retrying in 10s...')
-      return wait(10000).then(() => fn())
+      return wait(10000).then(() => wrapIo(() => fn()))
     }
     if (e.message === 'timeout') {
       $logger.warn('tryGetBlockExistence timed out, retrying in 1.5s...')
-      return wait(1500).then(() => fn())
+      return wait(1500).then(() => wrapIo(() => fn()))
     }
     throw e
   })
