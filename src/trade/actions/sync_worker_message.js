@@ -28,7 +28,9 @@ const batchSyncWorkerMessage = (
       wrapTx(
         api,
         api.tx.utility.batch(
-          messages.map((msg) => api.tx.phala.syncWorkerMessage(msg))
+          messages.map((msg) =>
+            api.tx.phala.syncWorkerMessage(api.createType('Vec<u8>', msg))
+          )
         ),
         account,
         resolve,

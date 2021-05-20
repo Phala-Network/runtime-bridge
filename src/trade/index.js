@@ -60,7 +60,6 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
 
   txQueue.process(TX_QUEUE_SIZE, async (job) => {
     $logger.info(job.data, `Processing job #${job.id}...`)
-    const actionFn = actions[job.data.action]
 
     const { machineRecordId } = job.data.payload
 
@@ -69,18 +68,16 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
       subQueue = createSubQueue({
         redisUrl: redisEndpoint,
         machineRecordId,
+        actions,
+        txQueue,
+        keyring,
+        api: phalaApi,
       })
       subQueues.set(machineRecordId, subQueue)
     }
 
     try {
-      const ret = await subQueue.dispatch(() =>
-        actionFn(job.data.payload, {
-          txQueue,
-          keyring,
-          api: phalaApi,
-        })
-      )
+      const ret = await subQueue.dispatch(job.data)
       $logger.info(`Job #${job.id} finished.`)
       return ret
     } catch (e) {

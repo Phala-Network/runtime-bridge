@@ -124,3 +124,5 @@ dist
 pnpm-debug.log
 
 docker/development/bridge/docker-compose.yml
+*.dump
+test_data_alt.json

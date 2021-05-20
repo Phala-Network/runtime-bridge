@@ -190,7 +190,7 @@ class PRuntime {
       payload: {
         messages: messageQueue
           .map((message) => {
-            if (message.data.sequence.lte(onChainSequence)) {
+            if (message.data.sequence.lt(onChainSequence)) {
               return undefined
             }
 

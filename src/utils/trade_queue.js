@@ -1,7 +1,14 @@
 import BeeQueue from 'bee-queue'
 import { APP_MESSAGE_QUEUE_NAME } from './constants'
 
-const createSubQueue = ({ redisUrl, machineRecordId }) => {
+const createSubQueue = ({
+  redisUrl,
+  machineRecordId,
+  actions,
+  txQueue,
+  keyring,
+  api,
+}) => {
   const queueName = `${APP_MESSAGE_QUEUE_NAME}__${machineRecordId}`
   const ret = new BeeQueue(queueName, {
     redis: {
@@ -15,12 +22,15 @@ const createSubQueue = ({ redisUrl, machineRecordId }) => {
   }
 
   ret.process(1, async (job) => {
-    $logger.info(
-      job.data,
-      `Processing job #${job.id} for ${machineRecordId}...`
-    )
+    $logger.info(job.data, `${machineRecordId}: Processing job #${job.id}...`)
 
-    return job.data()
+    const actionFn = actions[job.data.action]
+
+    return actionFn(job.data.payload, {
+      txQueue,
+      keyring,
+      api,
+    })
   })
 
   return ret

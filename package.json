@@ -59,10 +59,11 @@
     "uglify-js": "^3.13.6"
   },
   "scripts": {
-    "node": "node",
+    "node": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await",
     "bridge": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
     "add_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/add_machines",
     "dump_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_machines",
+    "import_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_machines",
     "proto:build": "pbjs -t json --no-beautify -p ./src/vendor/proto -o ./src/utils/proto.json ./src/vendor/proto/message.proto"
   }
 }
