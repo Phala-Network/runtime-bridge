@@ -31,8 +31,12 @@ const tryGetBlockExistence = (BlockModel, number) => {
     .then((i) => !!i)
     .catch((e) => {
       if (e.message === 'path exists') {
-        $logger.warn('Index not found, retrying in 10s...')
+        $logger.warn('Index not found, retrying in 10s...', { number })
         return wait(10000).then(() => tryGetBlockExistence(BlockModel, number))
+      }
+      if (e.message === 'timeout') {
+        $logger.warn('tryGetBlockExistence timed out, retrying in 1.5s...', { number })
+        return wait(1500).then(() => tryGetBlockExistence(BlockModel, number))
       }
       $logger.error('tryGetBlockExistence', e, { number })
       process.exit(-2)

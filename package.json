@@ -23,7 +23,7 @@
     "finity": "^0.5.4",
     "ioredis": "^4.27.2",
     "node-fetch": "^2.6.1",
-    "ottoman": "^2.0.0-alpha.28",
+    "ottoman": "^2.0.0-alpha.29",
     "p-queue": "^6.6.2",
     "protobufjs": "^6.11.2",
     "redis-commands": "^1.7.0",

@@ -41,7 +41,7 @@ specifiers:
   jsdoc: ^3.6.6
   minimist: ^1.2.5
   node-fetch: ^2.6.1
-  ottoman: ^2.0.0-alpha.28
+  ottoman: ^2.0.0-alpha.29
   p-queue: ^6.6.2
   prettier: 2.2.1
   protobufjs: ^6.11.2
@@ -71,7 +71,7 @@ dependencies:
   finity: 0.5.4
   ioredis: 4.27.2
   node-fetch: 2.6.1
-  ottoman: 2.0.0-alpha.28
+  ottoman: 2.0.0-alpha.29
   p-queue: 6.6.2
   protobufjs: 6.11.2
   redis-commands: 1.7.0
@@ -2600,13 +2600,12 @@ packages:
       minimist: 1.2.5
     dev: true
 
-  /jsonpath/1.0.2:
-    resolution: {integrity: sha512-rmzlgFZiQPc6q4HDyK8s9Qb4oxBnI5sF61y/Co5PV0lc3q2bIuRsNdueVbhoSHdKM4fxeimphOAtfz47yjCfeA==}
-    requiresBuild: true
+  /jsonpath/1.1.1:
+    resolution: {integrity: sha512-l6Cg7jRpixfbgoWgkrl77dgEj8RPvND0wMH6TwQmi9Qs4TFfS9u5cUFnbeKTwj5ga5Y3BTGGNI28k117LJ009w==}
     dependencies:
       esprima: 1.2.2
       static-eval: 2.0.2
-      underscore: 1.7.0
+      underscore: 1.12.1
     dev: false
 
   /keyv/4.0.3:
@@ -3032,12 +3031,12 @@ packages:
       word-wrap: 1.2.3
     dev: true
 
-  /ottoman/2.0.0-alpha.28:
-    resolution: {integrity: sha512-nDVMJT2NLyFryqelftn5d4VjQr3/Ab/k/YzenKmkxOIgKk860yVnG4kRyZj/hE54bEmsP/f3oPfbGsAmHH18Xg==}
+  /ottoman/2.0.0-alpha.29:
+    resolution: {integrity: sha512-wns57PlmGEvG8DEvRZnDRe9/35Q3SL4Abqq6IGa9l4XxJfDGGNaCVSbYMHYCC17sw4OvLg4lImbJfViWCVj5rw==}
     engines: {node: '>=8.0.0'}
     dependencies:
       couchbase: 3.1.2
-      jsonpath: 1.0.2
+      jsonpath: 1.1.1
       uuid: 8.3.2
     transitivePeerDependencies:
       - supports-color
@@ -3989,8 +3988,8 @@ packages:
     resolution: {integrity: sha512-N4P+Q/BuyuEKFJ43B9gYuOj4TQUHXX+j2FqguVOpjkssLUUrnJofCcBccJSCoeturDoZU6GorDTHSvUDlSQbTg==}
     dev: true
 
-  /underscore/1.7.0:
-    resolution: {integrity: sha1-a7rwh3UA02vjTsqlhODbn+8DUgk=}
+  /underscore/1.12.1:
+    resolution: {integrity: sha512-hEQt0+ZLDVUMhebKxL4x1BTtDY7bavVofhZ9KZ4aI26X9SRaE+Y3m83XUL1UP2jn8ynjndwCCpEHdUG+9pP1Tw==}
     dev: false
 
   /unpipe/1.0.0:
