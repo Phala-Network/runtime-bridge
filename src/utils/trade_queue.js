@@ -1,8 +1,9 @@
 import BeeQueue from 'bee-queue'
 import { APP_MESSAGE_QUEUE_NAME } from './constants'
 
-const createTradeQueue = (redisUrl) => {
-  const ret = new BeeQueue(APP_MESSAGE_QUEUE_NAME, {
+const createSubQueue = ({ redisUrl, machineRecordId }) => {
+  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${machineRecordId}`
+  const ret = new BeeQueue(queueName, {
     redis: {
       url: redisUrl,
     },
@@ -10,13 +11,38 @@ const createTradeQueue = (redisUrl) => {
 
   ret.dispatch = (...args) => {
     const job = ret.createJob(...args)
-    return waitForJob(job)
+    return waitForJob(queueName, job)
+  }
+
+  ret.process(1, async (job) => {
+    $logger.info(
+      job.data,
+      `Processing job #${job.id} for ${machineRecordId}...`
+    )
+
+    return job.data()
+  })
+
+  return ret
+}
+
+const createTradeQueue = (redisUrl) => {
+  const queueName = `${APP_MESSAGE_QUEUE_NAME}__main`
+  const ret = new BeeQueue(queueName, {
+    redis: {
+      url: redisUrl,
+    },
+  })
+
+  ret.dispatch = (...args) => {
+    const job = ret.createJob(...args)
+    return waitForJob(queueName, job)
   }
 
   return ret
 }
 
-const waitForJob = (job) =>
+const waitForJob = (queueName, job) =>
   new Promise((resolve, reject) => {
     job
       .save()
@@ -26,12 +52,17 @@ const waitForJob = (job) =>
         })
         job.on('retrying', (err) => {
           $logger.warn(
+            { queueName },
             err,
             `Job #${job.id} failed with error ${err.message} but is being retried!`
           )
         })
         job.on('failed', (err) => {
-          $logger.warn(err, `Job #${job.id} failed with error ${err.message}.`)
+          $logger.warn(
+            { queueName },
+            err,
+            `Job #${job.id} failed with error ${err.message}.`
+          )
           reject(err)
         })
       })
@@ -39,4 +70,4 @@ const waitForJob = (job) =>
   })
 
 export default createTradeQueue
-export { waitForJob }
+export { waitForJob, createSubQueue, createTradeQueue }

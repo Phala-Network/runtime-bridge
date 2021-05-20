@@ -3,9 +3,10 @@ import { start as startOttoman } from '../utils/couchbase'
 import phalaTypes from '../utils/typedefs'
 import { createMessageTunnel, createDispatcher } from '../message'
 import { MessageTarget } from '../message/proto'
-import createTradeQueue from '../utils/trade_queue'
+import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
 import createKeyring from '../utils/keyring'
 import * as actions from './actions'
+import { TX_QUEUE_SIZE } from '../utils/constants'
 
 const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
   await startOttoman(couchbaseEndpoint)
@@ -28,6 +29,8 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
   const { subscribe } = tunnelConnection
 
   const txQueue = createTradeQueue(redisEndpoint)
+  const subQueues = new Map()
+
   await txQueue.ready()
 
   const dispatcher = createDispatcher({
@@ -55,16 +58,29 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
     'Now listening to the redis channel, old messages may be ignored.'
   )
 
-  txQueue.process(async (job) => {
+  txQueue.process(TX_QUEUE_SIZE, async (job) => {
     $logger.info(job.data, `Processing job #${job.id}...`)
     const actionFn = actions[job.data.action]
 
-    try {
-      const ret = await actionFn(job.data.payload, {
-        txQueue,
-        keyring,
-        api: phalaApi,
+    const { machineRecordId } = job.data.payload
+
+    let subQueue = subQueues.get(machineRecordId)
+    if (!subQueue) {
+      subQueue = createSubQueue({
+        redisUrl: redisEndpoint,
+        machineRecordId,
       })
+      subQueues.set(machineRecordId, subQueue)
+    }
+
+    try {
+      const ret = await subQueue.dispatch(() =>
+        actionFn(job.data.payload, {
+          txQueue,
+          keyring,
+          api: phalaApi,
+        })
+      )
       $logger.info(`Job #${job.id} finished.`)
       return ret
     } catch (e) {

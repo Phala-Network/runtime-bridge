@@ -193,9 +193,7 @@ const organizeBlob = async ({
   }
 
   const processWindow = async (id) => {
-    console.log('qwerty window 1', { id })
     const windowInfo = await getWindow(id)
-    console.log('qwerty window 2', { id })
     const { startBlock } = windowInfo
 
     if (!windowInfo.finished) {
@@ -208,13 +206,11 @@ const organizeBlob = async ({
     let currentBlock = startBlock
 
     const prepareBlob = async () => {
-      console.log('qwerty window 3', { id, currentBlock })
       await redis.set(FETCH_PROCESSED_BLOB, currentBlock)
 
       const blobStartBlock = currentBlock
 
       const generateGenesisBlob = async () => {
-        console.log('qwerty window 4', { id })
         const blockData = await getBlock(currentBlock)
         const {
           header,
@@ -345,12 +341,9 @@ const organizeBlob = async ({
         })
       }
 
-      console.log('qwerty window 5', { id })
       if (id === 0 && currentBlock === 0) {
         return generateGenesisBlob()
       }
-
-      console.log('qwerty window 6', { id, currentBlock })
 
       return generateBlob({
         syncHeaderData: {
