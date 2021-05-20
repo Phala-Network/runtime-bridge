@@ -1,6 +1,7 @@
 import { APP_VERIFIED_WINDOW_ID } from '../utils/constants'
 import wait from '../utils/wait'
 import { getModel } from 'ottoman'
+import { wrapIo } from '../utils/couchbase'
 
 const computeWindow = async ({ chainName, redis, BlockModel }) => {
   const CHAIN_APP_VERIFIED_WINDOW_ID = `${chainName}:${APP_VERIFIED_WINDOW_ID}`
@@ -10,18 +11,20 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
     parseInt((await redis.get(CHAIN_APP_VERIFIED_WINDOW_ID)) || 0) - 1
 
   const getBlock = async (number) => {
-    const block = await BlockModel.findOne({ number }).catch((e) => {
-      if (e.message === 'path exists') {
-        $logger.warn('Index not found, retrying in 10s...')
-        return wait(10000).then(() => getBlock(number))
+    const block = await wrapIo(() => BlockModel.findOne({ number })).catch(
+      (e) => {
+        if (e.message === 'path exists') {
+          $logger.warn('Index not found, retrying in 10s...')
+          return wait(10000).then(() => getBlock(number))
+        }
+        if (e.message === 'document not found') {
+          $logger.info(`Waiting for block #${number}...`)
+          return wait(6000).then(() => getBlock(number))
+        }
+        $logger.error({ number }, 'getBlock', e)
+        process.exit(-2)
       }
-      if (e.message === 'document not found') {
-        $logger.info(`Waiting for block #${number}...`)
-        return wait(6000).then(() => getBlock(number))
-      }
-      $logger.error({ number }, 'getBlock', e)
-      process.exit(-2)
-    })
+    )
 
     if (block) {
       return block
@@ -32,7 +35,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
   }
 
   const getRuntimeWindow = (windowId) => {
-    return RuntimeWindow.findOne({ windowId }).catch((e) => {
+    return wrapIo(() => RuntimeWindow.findOne({ windowId })).catch((e) => {
       if (e.message === 'path exists') {
         $logger.warn('Index not found, retrying in 10s...')
         return wait(10000).then(() => getRuntimeWindow(windowId))
@@ -65,7 +68,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         currentWindow.currentBlock = number
         currentWindow.setId = setId
 
-        await currentWindow.save()
+        await wrapIo(() => currentWindow.save())
         await wait(1)
         return doProcessBlock({ number: number + 1, previousBlock: block })
       }
@@ -75,7 +78,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
       if (setId === prevSetId) {
         currentWindow.currentBlock = number
 
-        await currentWindow.save()
+        await wrapIo(() => currentWindow.save())
         await wait(1)
         return doProcessBlock({ number: number + 1, previousBlock: block })
       }
@@ -84,7 +87,7 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
       currentWindow.stopBlock = number
       currentWindow.finished = true
 
-      await currentWindow.save()
+      await wrapIo(() => currentWindow.save())
       await wait(1)
       $logger.info(`Ending window #${id} at block #${number}...`)
     }
@@ -104,14 +107,16 @@ const computeWindow = async ({ chainName, redis, BlockModel }) => {
         startBlockNumber = _previousWindow ? _previousWindow.stopBlock + 1 : 0
       }
 
-      currentWindow = await RuntimeWindow.create({
-        startBlock: startBlockNumber,
-        stopBlock: -1,
-        finished: false,
-        currentBlock: -1,
-        setId: -1,
-        windowId: id,
-      })
+      currentWindow = await wrapIo(() =>
+        RuntimeWindow.create({
+          startBlock: startBlockNumber,
+          stopBlock: -1,
+          finished: false,
+          currentBlock: -1,
+          setId: -1,
+          windowId: id,
+        })
+      )
       await wait(1)
 
       await doProcessBlock({ number: startBlockNumber })

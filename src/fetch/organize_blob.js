@@ -7,6 +7,7 @@ import {
 import wait from '../utils/wait'
 import { bytesToBase64 } from 'byte-base64'
 import { getModel } from 'ottoman'
+import { wrapIo } from '../utils/couchbase'
 
 const organizeBlob = async ({
   api,
@@ -36,21 +37,21 @@ const organizeBlob = async ({
   }
 
   const getWindow = async (windowId) => {
-    const window = await RuntimeWindow.findOne({ windowId }).catch(
-      async (e) => {
-        if (e.message === 'path exists') {
-          $logger.warn('Index not found, retrying in 10s...')
-          await wait(10000)
-          return getWindow(windowId)
-        }
-        if (e.message === 'document not found') {
-          await wait(6000)
-          return getWindow(windowId)
-        }
-        $logger.error('getWindow', e, { windowId })
-        process.exit(-2)
+    const window = await wrapIo(() =>
+      RuntimeWindow.findOne({ windowId })
+    ).catch(async (e) => {
+      if (e.message === 'path exists') {
+        $logger.warn('Index not found, retrying in 10s...')
+        await wait(10000)
+        return getWindow(windowId)
       }
-    )
+      if (e.message === 'document not found') {
+        await wait(6000)
+        return getWindow(windowId)
+      }
+      $logger.error('getWindow', e, { windowId })
+      process.exit(-2)
+    })
     if (window) {
       return window
     }
@@ -65,24 +66,26 @@ const organizeBlob = async ({
   let latestWindowId = -1
 
   const getBlock = async (number) => {
-    const block = await BlockModel.findOne({ number }).catch((e) => {
-      if (e.message === 'path exists') {
-        $logger.warn('Index not found, retrying in 10s...')
-        return wait(10000).then(() => getBlock(number))
-      }
-      if (e.message === 'document not found') {
-        shouldFulfill = false
+    const block = await wrapIo(() => BlockModel.findOne({ number })).catch(
+      (e) => {
+        if (e.message === 'path exists') {
+          $logger.warn('Index not found, retrying in 10s...')
+          return wait(10000).then(() => getBlock(number))
+        }
+        if (e.message === 'document not found') {
+          shouldFulfill = false
 
-        $logger.warn(`Waiting for block #${number}...`)
-        return wait(6000).then(() => getBlock(number))
+          $logger.warn(`Waiting for block #${number}...`)
+          return wait(6000).then(() => getBlock(number))
+        }
+        if (e.code === 1048) {
+          $logger.warn('retrying in 6s...')
+          return wait(6000).then(() => getBlock(number))
+        }
+        $logger.error('getBlock', e, { number })
+        process.exit(-2)
       }
-      if (e.code === 1048) {
-        $logger.warn('retrying in 6s...')
-        return wait(6000).then(() => getBlock(number))
-      }
-      $logger.error('getBlock', e, { number })
-      process.exit(-2)
-    })
+    )
     if (!block) {
       shouldFulfill = false
 
@@ -109,16 +112,16 @@ const organizeBlob = async ({
     let blob
 
     if (shouldFulfill) {
-      blob = await OrganizedBlob.findOne({ startBlock, stopBlock }).catch(
-        (e) => {
-          if (e.message === 'document not found') {
-            return null
-          }
-
-          $logger.error({ windowId, startBlock, stopBlock }, 'saveBlob', e)
-          process.exit(-2)
+      blob = await wrapIo(() =>
+        OrganizedBlob.findOne({ startBlock, stopBlock })
+      ).catch((e) => {
+        if (e.message === 'document not found') {
+          return null
         }
-      )
+
+        $logger.error({ windowId, startBlock, stopBlock }, 'saveBlob', e)
+        process.exit(-2)
+      })
 
       if (
         blob &&
@@ -182,7 +185,7 @@ const organizeBlob = async ({
       })
     }
 
-    await blob.save()
+    await wrapIo(blob.save())
     $logger.info(
       { blobNumber, windowId, startBlock, stopBlock, shouldFulfill },
       'Blob saved'
@@ -363,9 +366,8 @@ const organizeBlob = async ({
   }
 
   try {
-    const lastBlob = await OrganizedBlob.findOne(
-      {},
-      { sort: { number: 'DESC', windowId: 'DESC' } }
+    const lastBlob = await wrapIo(() =>
+      OrganizedBlob.findOne({}, { sort: { number: 'DESC', windowId: 'DESC' } })
     )
     const lastWindow = lastBlob.windowId
     const lastNumber = (

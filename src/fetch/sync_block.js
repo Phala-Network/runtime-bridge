@@ -11,6 +11,7 @@ import {
   EVENTS_STORAGE_KEY,
   FETCH_IS_SYNCHED,
 } from '../utils/constants'
+import { wrapIo } from '../utils/couchbase'
 
 const { default: Queue } = pQueue
 
@@ -27,17 +28,9 @@ const EVENTS = toEnum([
 ])
 
 const tryGetBlockExistence = (BlockModel, number) => {
-  return BlockModel.count({ number })
+  return wrapIo(() => BlockModel.count({ number }))
     .then((i) => !!i)
     .catch((e) => {
-      if (e.message === 'path exists') {
-        $logger.warn('Index not found, retrying in 10s...', { number })
-        return wait(10000).then(() => tryGetBlockExistence(BlockModel, number))
-      }
-      if (e.message === 'timeout') {
-        $logger.warn('tryGetBlockExistence timed out, retrying in 1.5s...', { number })
-        return wait(1500).then(() => tryGetBlockExistence(BlockModel, number))
-      }
       $logger.error('tryGetBlockExistence', e, { number })
       process.exit(-2)
     })
@@ -171,25 +164,27 @@ const _setBlock = async ({
       })
     }
 
-    await BlockModel.create({
-      number,
-      hash,
-      header: blockData.block.header.toHex(),
-      justification,
-      events: events.toHex(),
-      eventsStorageProof,
-      grandpaAuthorities,
-      grandpaAuthoritiesStorageProof,
-      setId,
-      snapshotOnlineWorker,
-    })
+    await wrapIo(() =>
+      BlockModel.create({
+        number,
+        hash,
+        header: blockData.block.header.toHex(),
+        justification,
+        events: events.toHex(),
+        eventsStorageProof,
+        grandpaAuthorities,
+        grandpaAuthoritiesStorageProof,
+        setId,
+        snapshotOnlineWorker,
+      })
+    )
     $logger.info({ chain: chainName }, `Fetched block #${number}.`)
   } else {
     $logger.info({ chain: chainName }, `Block #${number} found in cache.`)
   }
 }
 const setBlock = (...args) => {
-  return _setBlock(...args).catch((e) => {
+  return wrapIo(() => _setBlock(...args)).catch((e) => {
     $logger.error(e)
     process.exit(-2)
   })

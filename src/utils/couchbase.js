@@ -27,3 +27,17 @@ export const start = async (uri) => {
   await ottoman.start()
   return ottoman
 }
+
+export const wrapIo = (fn) => {
+  return fn().catch((e) => {
+    if (e.message === 'path exists') {
+      $logger.warn('Index not found, retrying in 10s...')
+      return wait(10000).then(() => fn())
+    }
+    if (e.message === 'timeout') {
+      $logger.warn('tryGetBlockExistence timed out, retrying in 1.5s...')
+      return wait(1500).then(() => fn())
+    }
+    throw e
+  })
+}
