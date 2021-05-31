@@ -16,6 +16,7 @@ import { createMessageTunnel, createDispatcher } from '../message'
 import { hostname } from 'os'
 import { MessageTarget } from '../message/proto'
 import { typesBundle, typesChain } from '@polkadot/apps-config'
+import { typesChain as phalaTypesChain } from '@phala/typedefs'
 
 const _hostname = hostname()
 
@@ -171,7 +172,10 @@ const start = async ({
     const phalaApi = await ApiPromise.create({
       provider: phalaProvider,
       types: phalaTypes,
-      typesChain,
+      typesChain: {
+        ...typesChain,
+        ...phalaTypesChain,
+      },
       typesBundle,
     })
 

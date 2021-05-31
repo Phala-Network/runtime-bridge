@@ -8,6 +8,7 @@ import phalaTypes from '../utils/typedefs'
 import createHandlers from './handlers'
 import createTradeQueue from '../utils/trade_queue'
 import { typesBundle, typesChain } from '@polkadot/apps-config'
+import { typesChain as phalaTypesChain } from '@phala/typedefs'
 
 const updateFetcherState = async (query, state) => {
   const { content: fetcherStateUpdate } = await query({
@@ -39,7 +40,10 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
     provider: phalaProvider,
     types: phalaTypes,
     typesBundle,
-    typesChain,
+    typesChain: {
+      ...typesChain,
+      ...phalaTypesChain,
+    },
   })
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
