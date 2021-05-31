@@ -51,7 +51,10 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
     return new Promise((resolve, reject) =>
       (async () => {
         const nonce = uuidv4()
-        callbacks.set(nonce, resolve)
+        callbacks.set(nonce, (...args) => {
+          resolve(...args)
+          callbacks.delete(nonce)
+        })
         setTimeout(() => {
           callbacks.delete(nonce)
           reject(new Error('Timeout!'))
@@ -160,7 +163,7 @@ const createDispatcher = ({
     try {
       const cb = callbacks.get(message.nonceRef)
       if (!cb) {
-        $logger.warn('Received invalid reply message.', { message })
+        $logger.debug('Received invalid reply message.', { message })
         return
       }
       cb(message, tunnelConnection)

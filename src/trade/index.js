@@ -7,6 +7,7 @@ import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
 import createKeyring from '../utils/keyring'
 import * as actions from './actions'
 import { TX_QUEUE_SIZE } from '../utils/constants'
+import { typesBundle, typesChain } from '@polkadot/apps-config'
 
 const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
   await startOttoman(couchbaseEndpoint)
@@ -15,6 +16,8 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
   const phalaApi = await ApiPromise.create({
     provider: phalaProvider,
     types: phalaTypes,
+    typesBundle,
+    typesChain,
   })
   if (process.env.NODE_ENV === 'development') {
     globalThis.$phalaApi = phalaApi

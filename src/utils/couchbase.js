@@ -35,7 +35,7 @@ export const wrapIo = (fn) => {
       return wait(10000).then(() => wrapIo(() => fn()))
     }
     if (e.message === 'timeout') {
-      $logger.warn('tryGetBlockExistence timed out, retrying in 1.5s...')
+      $logger.warn('IO timed out, retrying in 1.5s...')
       return wait(1500).then(() => wrapIo(() => fn()))
     }
     throw e

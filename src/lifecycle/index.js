@@ -7,6 +7,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 import phalaTypes from '../utils/typedefs'
 import createHandlers from './handlers'
 import createTradeQueue from '../utils/trade_queue'
+import { typesBundle, typesChain } from '@polkadot/apps-config'
 
 const updateFetcherState = async (query, state) => {
   const { content: fetcherStateUpdate } = await query({
@@ -37,6 +38,8 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
   const phalaApi = await ApiPromise.create({
     provider: phalaProvider,
     types: phalaTypes,
+    typesBundle,
+    typesChain,
   })
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
