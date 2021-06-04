@@ -1,5 +1,11 @@
-export const queryWorkerState = (message, context) => {}
-export const queryAccountState = (message, context) => {}
+export const queryWorkerState = (message, context) => {
+  // todo: return only requested entries
+  return {
+    workerStateUpdate: {
+      values: [],
+    },
+  }
+}
 export const requestKickWorker = (message, context) => {}
 export const requestCreateWorker = (message, context) => {}
 export const requestUpdateWorker = (message, context) => {}

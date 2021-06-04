@@ -1,6 +1,4 @@
-import { ApiPromise, WsProvider } from '@polkadot/api'
 import { start as startOttoman } from '../utils/couchbase'
-import phalaTypes from '../utils/typedefs'
 import createRedisClient from '../utils/redis'
 import syncBlock from './sync_block'
 import computeWindow from './compute_window'
@@ -15,8 +13,7 @@ import { getModel } from 'ottoman'
 import { createMessageTunnel, createDispatcher } from '../message'
 import { hostname } from 'os'
 import { MessageTarget } from '../message/proto'
-import { typesBundle, typesChain } from '@polkadot/apps-config'
-import { typesChain as phalaTypesChain } from '@phala/typedefs'
+import { createPhalaApi } from '../utils/api'
 
 const _hostname = hostname()
 
@@ -168,41 +165,17 @@ const start = async ({
       return
     }
 
-    const phalaProvider = new WsProvider(phalaRpc)
-    const phalaApi = await ApiPromise.create({
-      provider: phalaProvider,
-      types: phalaTypes,
-      typesChain: {
-        ...typesChain,
-        ...phalaTypesChain,
-      },
-      typesBundle,
-    })
+    const phalaApi = await createPhalaApi(phalaRpc)
 
-    if (process.env.NODE_ENV === 'development') {
-      globalThis.$phalaApi = phalaApi
-    }
-
-    const [phalaChain, phalaNodeName, phalaNodeVersion] = (
-      await Promise.all([
-        phalaApi.rpc.system.chain(),
-        phalaApi.rpc.system.name(),
-        phalaApi.rpc.system.version(),
-      ])
-    ).map((i) => i.toString())
+    const { phalaChain } = phalaApi
 
     const PhalaBlockModel = getModel('PhalaBlock')
 
     if (process.env.PRB_FETCH_WORKER_TYPE === 'block') {
       await redis.set(PHALA_CHAIN_NAME, phalaChain)
-      $logger.info(
-        { chain: phalaChain },
-        `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`
-      )
-
       await fetchPhala({
         api: phalaApi,
-        chainName: phalaChain,
+        chainName: phalaApi.phalaChain,
         redis,
         parallelBlocks,
         BlockModel: PhalaBlockModel,

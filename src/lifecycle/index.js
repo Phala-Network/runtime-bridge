@@ -3,12 +3,9 @@ import { createMessageTunnel, createDispatcher } from '../message'
 import { MessageTarget } from '../message/proto'
 import { getModel } from 'ottoman'
 import { createWorkerState } from './worker'
-import { ApiPromise, WsProvider } from '@polkadot/api'
-import phalaTypes from '../utils/typedefs'
 import createHandlers from './handlers'
 import createTradeQueue from '../utils/trade_queue'
-import { typesBundle, typesChain } from '@polkadot/apps-config'
-import { typesChain as phalaTypesChain } from '@phala/typedefs'
+import { createPhalaApi } from '../utils/api'
 
 const updateFetcherState = async (query, state) => {
   const { content: fetcherStateUpdate } = await query({
@@ -35,29 +32,7 @@ const start = async ({ phalaRpc, redisEndpoint, couchbaseEndpoint }) => {
 
   const ottoman = await startOttoman(couchbaseEndpoint)
 
-  const phalaProvider = new WsProvider(phalaRpc)
-  const phalaApi = await ApiPromise.create({
-    provider: phalaProvider,
-    types: phalaTypes,
-    typesBundle,
-    typesChain: {
-      ...typesChain,
-      ...phalaTypesChain,
-    },
-  })
-
-  const [phalaChain, phalaNodeName, phalaNodeVersion] = (
-    await Promise.all([
-      phalaApi.rpc.system.chain(),
-      phalaApi.rpc.system.name(),
-      phalaApi.rpc.system.version(),
-    ])
-  ).map((i) => i.toString())
-
-  $logger.info(
-    { chain: phalaChain },
-    `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`
-  )
+  const phalaApi = await createPhalaApi(phalaRpc)
 
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint,

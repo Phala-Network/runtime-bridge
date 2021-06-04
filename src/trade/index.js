@@ -1,31 +1,16 @@
-import { ApiPromise, WsProvider } from '@polkadot/api'
 import { start as startOttoman } from '../utils/couchbase'
-import phalaTypes from '../utils/typedefs'
 import { createMessageTunnel, createDispatcher } from '../message'
 import { MessageTarget } from '../message/proto'
 import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
 import createKeyring from '../utils/keyring'
 import * as actions from './actions'
 import { TX_QUEUE_SIZE } from '../utils/constants'
-import { typesBundle, typesChain } from '@polkadot/apps-config'
-import { typesChain as phalaTypesChain } from '@phala/typedefs'
+import { createPhalaApi } from '../utils/api'
 
 const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
   await startOttoman(couchbaseEndpoint)
 
-  const phalaProvider = new WsProvider(phalaRpc)
-  const phalaApi = await ApiPromise.create({
-    provider: phalaProvider,
-    types: phalaTypes,
-    typesBundle,
-    typesChain: {
-      ...typesChain,
-      ...phalaTypesChain,
-    },
-  })
-  if (process.env.NODE_ENV === 'development') {
-    globalThis.$phalaApi = phalaApi
-  }
+  const phalaApi = await createPhalaApi(phalaRpc)
 
   const keyring = await createKeyring()
 

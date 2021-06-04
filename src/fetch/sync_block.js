@@ -121,7 +121,10 @@ const _setBlock = async ({
 
   if (!block) {
     const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
-    const blockData = await api.rpc.chain.getBlock(hash)
+    const blockData = await api.rpc.chain.getBlock(hash).catch((e) => {
+      $logger.error({ hash, number }, e)
+      throw e
+    })
     let justification = blockData.justifications.toJSON()
 
     if (justification) {
