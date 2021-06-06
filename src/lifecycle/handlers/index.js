@@ -1,6 +1,5 @@
 import { callOnlineLifecycleManager, fetcherStateUpdate } from './infra'
 import {
-  queryAccountState,
   queryWorkerState,
   requestCreateWorker,
   requestKickWorker,
@@ -24,7 +23,6 @@ export default (context) => {
     queryHandlers: {
       callOnlineLifecycleManager: wrapHandler(callOnlineLifecycleManager),
       queryWorkerState: wrapHandler(queryWorkerState),
-      queryAccountState: wrapHandler(queryAccountState),
       requestKickWorker: wrapHandler(requestKickWorker),
       requestCreateWorker: wrapHandler(requestCreateWorker),
       requestUpdateWorker: wrapHandler(requestUpdateWorker),
