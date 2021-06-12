@@ -4,6 +4,9 @@ import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import typesChain from '@polkadot/apps-config/api/chain'
 import spec from '@polkadot/apps-config/api/spec/phala'
 
+let _phalaApi
+export const getPhalaApi = () => _phalaApi
+
 const typesBundle = {
   spec: {
     'phala-node': spec,
@@ -11,7 +14,30 @@ const typesBundle = {
   },
 }
 
-const createPhalaApi = async (endpoint) => {
+const rpc = {
+  pha: {
+    getStorageChanges: {
+      description: 'Return the storage changes made by each block one by one',
+      params: [
+        {
+          name: 'from',
+          type: 'Hash',
+        },
+        {
+          name: 'to',
+          type: 'Hash',
+        },
+      ],
+      type: 'Vec<StorageChanges>',
+    },
+  },
+}
+
+const setupPhalaApi = async (endpoint, forceRecreate = false) => {
+  if (!forceRecreate && !!_phalaApi) {
+    throw new Error('Phala API already created!')
+  }
+
   const phalaProvider = new WsProvider(endpoint)
   const phalaApi = await ApiPromise.create({
     provider: phalaProvider,
@@ -21,6 +47,7 @@ const createPhalaApi = async (endpoint) => {
       ...phalaTypesChain,
     },
     typesBundle: { spec },
+    rpc,
   })
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
@@ -40,7 +67,10 @@ const createPhalaApi = async (endpoint) => {
     phalaChain,
     phalaNodeName,
     phalaNodeVersion,
+    eventsStorageKey: phalaApi.query.system.events.key(),
   })
+
+  _phalaApi = phalaApi
 
   if (process.env.NODE_ENV === 'development') {
     globalThis.$phalaApi = phalaApi
@@ -48,4 +78,4 @@ const createPhalaApi = async (endpoint) => {
   return phalaApi
 }
 
-export { typesBundle, typesChain, createPhalaApi }
+export { typesBundle, typesChain, setupPhalaApi, _phalaApi as phalaApi }

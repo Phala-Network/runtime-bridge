@@ -9,10 +9,13 @@ services:
     hostname: fetch
     volumes:
       - ../../..:/opt/app
+      - bridge-data: /var/data
     environment:
       - NODE_ENV=development
-      - DB_WAIT=0
-      - LOGGER_LEVEL=debug
+      - PHALA_LOGGER_LEVEL=debug
+      - PHALA_DB_PREFIX=/var/data
+      - PHALA_MAIN_CHAIN_ENDPOINT=0
+      - PHALA_CHAIN_ENDPOINT=wss://poc4-dev.phala.network/ws
     depends_on:
       - redis
       - couchbase
@@ -26,13 +29,6 @@ services:
         "--es-module-specifier-resolution=node",
         "--harmony-top-level-await",
         "src/index.js",
-        "f",
-        "-r",
-        "redis://redis:6379",
-        "-c",
-        "couchbase://couchbase/phala@phala:phalaphala",
-        "-p",
-        "wss://poc4-dev.phala.network/ws",
       ]
 
   lifecycle:
@@ -115,22 +111,6 @@ services:
         "arena.js"
       ]
 
-  couchbase:
-    image: couchbase:community-7.0.0-beta
-    hostname: couchbase
-    volumes:
-      - couchbase-data:/opt/couchbase/var
-    ports:
-      - "18091:8091"
-    sysctls:
-      net.core.somaxconn: 65535
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8091"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
   redis:
     image: redis:alpine
     command: ["redis-server", "--appendonly", "no"]
@@ -140,4 +120,4 @@ services:
       - "63791:6379" # debug
 
 volumes:
-  couchbase-data:
+  bridge-data:

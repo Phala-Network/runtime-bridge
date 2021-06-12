@@ -2,7 +2,6 @@ import { typesChain } from '@phala/typedefs'
 
 export const chainTypes = typesChain['Phala Development']
 export const bridgeTypes = {
-  SetId: 'u64',
   StorageProof: 'Vec<Vec<u8>>',
   VersionedAuthorityList: {
     version: 'u8',
@@ -16,20 +15,19 @@ export const bridgeTypes = {
     authoritySet: 'AuthoritySet',
     authorityProof: 'StorageProof',
   },
-  ReqHeaderToSync: {
+  JustificationToSync: 'Option<EncodedJustification>',
+  HeaderToSync: {
     header: 'Header',
-    justification: 'Option<EncodedJustification>',
+    justification: 'JustificationToSync',
   },
-  ReqGenesisInfo: {
+  GenesisInfo: {
     header: 'Header',
     validators: 'AuthorityList',
     proof: 'StorageProof',
   },
-  ReqBlockHeaderWithEvents: {
+  BlockHeaderWithEvents: {
     blockHeader: 'Header',
-    events: 'Option<Vec<u8>>',
-    proof: 'Option<StorageProof>',
-    workerSnapshot: 'Option<OnlineWorkerSnapshot>',
+    storageChanges: 'StorageChanges',
   },
   EncodedU8StorageKey: 'Vec<u8>',
   OnlineWorkerSnapshot: {
@@ -40,28 +38,34 @@ export const bridgeTypes = {
     proof: 'StorageProof',
   },
   // PalletId: 'Raw',
-  StashWorkerStats: {
-    slash: 'Balance',
-    computeReceived: 'Balance',
-    onlineReceived: 'Balance',
-  },
-  SignedWorkerMessage: {
-    data: 'WorkerMessage',
-    signature: 'Vec<u8>',
-  },
-  WorkerMessage: {
-    payload: 'WorkerMessagePayload',
-    sequence: 'u64',
-  },
-  WorkerMessagePayload: {
-    _enum: {
-      Heartbeat: 'WorkerMessagePayloadHeartbeat',
-    },
-  },
-  WorkerMessagePayloadHeartbeat: {
-    blockNum: 'u32',
-    claimOnline: 'bool',
-    claimCompute: 'bool',
+  // StashWorkerStats: {
+  //   slash: 'Balance',
+  //   computeReceived: 'Balance',
+  //   onlineReceived: 'Balance',
+  // },
+  // SignedWorkerMessage: {
+  //   data: 'WorkerMessage',
+  //   signature: 'Vec<u8>',
+  // },
+  // WorkerMessage: {
+  //   payload: 'WorkerMessagePayload',
+  //   sequence: 'u64',
+  // },
+  // WorkerMessagePayload: {
+  //   _enum: {
+  //     Heartbeat: 'WorkerMessagePayloadHeartbeat',
+  //   },
+  // },
+  // WorkerMessagePayloadHeartbeat: {
+  //   blockNum: 'u32',
+  //   claimOnline: 'bool',
+  //   claimCompute: 'bool',
+  // },
+  StorageCollection: 'Vec<(Vec<u8>, Option<Vec<u8>>)>',
+  ChildStorageCollection: 'Vec<(Vec<u8>, StorageCollection)>',
+  StorageChanges: {
+    mainStorageChanges: 'StorageCollection',
+    childStorageChanges: 'ChildStorageCollection',
   },
 }
 
