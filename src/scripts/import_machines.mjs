@@ -1,5 +1,5 @@
-import { start as startOttoman } from '../utils/couchbase'
 import { getModel } from 'ottoman'
+import { start as startOttoman } from '../utils/couchbase'
 
 const main = async (rows) => {
   await startOttoman(process.env.COUCHBASE_ENDPOINT)

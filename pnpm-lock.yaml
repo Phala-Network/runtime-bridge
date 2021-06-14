@@ -31,6 +31,7 @@ specifiers:
   eslint-plugin-node: ^11.1.0
   eslint-plugin-prettier: ^3.4.0
   eslint-plugin-promise: ^4.3.1
+  eslint-plugin-sort-imports-es6-autofix: ^0.6.0
   esm: ^3.2.25
   espree: ^7.3.1
   estraverse: ^5.2.0
@@ -105,6 +106,7 @@ devDependencies:
   eslint-plugin-node: 11.1.0_eslint@7.28.0
   eslint-plugin-prettier: 3.4.0_dbc325ace34b1fb9ceb90cf28d3816b8
   eslint-plugin-promise: 4.3.1
+  eslint-plugin-sort-imports-es6-autofix: 0.6.0_eslint@7.28.0
   espree: 7.3.1
   estraverse: 5.2.0
   express: 4.17.1
@@ -1958,6 +1960,14 @@ packages:
   /eslint-plugin-promise/4.3.1:
     resolution: {integrity: sha512-bY2sGqyptzFBDLh/GMbAxfdJC+b0f23ME63FOE4+Jao0oZ3E1LEwFtWJX/1pGMJLiTtrSSern2CRM/g+dfc0eQ==}
     engines: {node: '>=6'}
+    dev: true
+
+  /eslint-plugin-sort-imports-es6-autofix/0.6.0_eslint@7.28.0:
+    resolution: {integrity: sha512-2NVaBGF9NN+727Fyq+jJYihdIeegjXeUUrZED9Q8FVB8MsV3YQEyXG96GVnXqWt0pmn7xfCZOZf3uKnIhBrfeQ==}
+    peerDependencies:
+      eslint: '>=7.7.0'
+    dependencies:
+      eslint: 7.28.0
     dev: true
 
   /eslint-scope/5.1.1:

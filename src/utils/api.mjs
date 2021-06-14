@@ -1,8 +1,8 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import phalaTypes from './typedefs'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
-import typesChain from '@polkadot/apps-config/api/chain'
+import phalaTypes from './typedefs'
 import spec from '@polkadot/apps-config/api/spec/phala'
+import typesChain from '@polkadot/apps-config/api/chain'
 
 let _phalaApi
 export const getPhalaApi = () => _phalaApi

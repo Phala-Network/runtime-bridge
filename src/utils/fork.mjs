@@ -1,5 +1,5 @@
-import logger from '../utils/logger'
 import cluster, { isMaster } from 'cluster'
+import logger from '../utils/logger'
 
 export const fork = (name, moduleName) => {
   if (!isMaster) {

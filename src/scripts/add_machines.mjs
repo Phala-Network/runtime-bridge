@@ -1,8 +1,8 @@
-import { start as startOttoman } from '../utils/couchbase'
-import { getModel } from 'ottoman'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from '../utils/constants'
+import { getModel } from 'ottoman'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
+import { start as startOttoman } from '../utils/couchbase'
 
 const keyring = new Keyring({ type: 'sr25519', ss58Format: PHALA_SS58_FORMAT })
 

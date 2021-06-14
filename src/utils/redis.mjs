@@ -1,6 +1,6 @@
-import pQueue from 'p-queue'
-import Redis from 'ioredis'
 import { list as redisCommands } from 'redis-commands'
+import Redis from 'ioredis'
+import pQueue from 'p-queue'
 
 const { default: Queue } = pQueue
 

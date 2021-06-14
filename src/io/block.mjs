@@ -1,6 +1,6 @@
-import { phalaApi } from '../utils/api'
 import { DB_BLOCK, getDb } from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
+import { phalaApi } from '../utils/api'
 import levelErrors from 'level-errors'
 
 export const DB_BLOCK_BLOCK = Object.freeze({

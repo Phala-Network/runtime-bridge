@@ -1,5 +1,5 @@
-import BeeQueue from 'bee-queue'
 import { APP_MESSAGE_QUEUE_NAME } from './constants'
+import BeeQueue from 'bee-queue'
 
 const createSubQueue = ({
   redisUrl,

@@ -1,5 +1,5 @@
-import { PHALA_SS58_FORMAT } from './constants'
 import { Keyring } from '@polkadot/keyring'
+import { PHALA_SS58_FORMAT } from './constants'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 
 const createKeyring = async () => {

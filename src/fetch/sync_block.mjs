@@ -1,8 +1,5 @@
-import Queue from 'promise-queue'
-import promiseRetry from 'promise-retry'
 import { DB_BLOCK, setupDb } from '../io/db'
-import { setupPhalaApi, phalaApi } from '../utils/api'
-import env from '../utils/env'
+import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from '.'
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import {
   encodeBlock,
@@ -11,8 +8,11 @@ import {
   setBlock,
   setGenesisBlock,
 } from '../io/block'
+import { phalaApi, setupPhalaApi } from '../utils/api'
+import Queue from 'promise-queue'
+import env from '../utils/env'
 import logger from '../utils/logger'
-import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from '.'
+import promiseRetry from 'promise-retry'
 
 const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
 

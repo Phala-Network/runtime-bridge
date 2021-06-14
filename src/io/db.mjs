@@ -1,10 +1,10 @@
-import levelup from 'levelup'
-import rocksdb from 'rocksdb'
-import encode from 'encoding-down'
-import path from 'path'
-import env from '../utils/env'
-import logger from '../utils/logger'
 import { DB_ENCODING_DEFAULT } from './db_encoding'
+import encode from 'encoding-down'
+import env from '../utils/env'
+import levelup from 'levelup'
+import logger from '../utils/logger'
+import path from 'path'
+import rocksdb from 'rocksdb'
 
 const dbMap = new Map()
 

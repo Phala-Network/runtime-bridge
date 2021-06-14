@@ -9,7 +9,19 @@
     "ecmaVersion": 12,
     "sourceType": "module"
   },
-  "rules": {},
+  "plugins": [
+    "sort-imports-es6-autofix"
+  ],
+  "rules": {
+    "sort-imports-es6-autofix/sort-imports-es6": [
+      "error",
+      {
+        "ignoreCase": false,
+        "ignoreMemberSort": false,
+        "memberSyntaxSortOrder": ["none", "multiple", "single", "all"]
+      }
+    ]
+  },
   "globals": {
     "$logger": "writable",
     "$redis": "writable"
