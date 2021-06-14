@@ -67,6 +67,8 @@ export const bridgeTypes = {
     mainStorageChanges: 'StorageCollection',
     childStorageChanges: 'ChildStorageCollection',
   },
+
+  RawSolution: 'RawSolutionWith16', // TODO: remove when substrate updated
 }
 
 export const phalaTypes = {
