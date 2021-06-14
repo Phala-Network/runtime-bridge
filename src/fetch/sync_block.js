@@ -1,38 +1,23 @@
-import Finity from 'finity'
-import pQueue from 'p-queue'
-import { DB_BLOB, DB_BLOCK, setupDb } from '../io/db'
+import Queue from 'promise-queue'
+import promiseRetry from 'promise-retry'
+import { DB_BLOCK, setupDb } from '../io/db'
 import { setupPhalaApi, phalaApi } from '../utils/api'
 import env from '../utils/env'
-import toEnum from '../utils/to_enum'
+import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import {
-  FRNK,
-  GRANDPA_AUTHORITIES_KEY,
-  APP_RECEIVED_HEIGHT,
-  APP_VERIFIED_HEIGHT,
-  EVENTS_STORAGE_KEY,
-  FETCH_IS_SYNCHED,
-} from '../utils/constants'
-import {
-  decodeBlock,
   encodeBlock,
+  getBlock,
   getGenesisBlock,
+  setBlock,
   setGenesisBlock,
 } from '../io/block'
 import logger from '../utils/logger'
+import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from '.'
 
-const { default: Queue } = pQueue
+const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
 
-const STATES = toEnum([
-  'IDLE',
-  'SYNCHING_OLD_BLOCKS',
-  'SYNCHING_FINALIZED',
-  'ERROR',
-])
-
-const EVENTS = toEnum([
-  'RECEIVING_BLOCK_HEADER',
-  'FINISHING_SYNCHING_OLD_BLOCKS',
-])
+let startLock = false
+const fetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
 
 const processBlock = (blockNumber) =>
   (async () => {
@@ -123,21 +108,70 @@ const processGenesisBlock = async () => {
   return block
 }
 
-const fetchQueue = new Queue({
-  concurrency: parseInt(env.parallelBlocks) || 50,
-  interval: 1,
-  timeout: 60 * 1000,
-  throwOnTimeout: true,
-})
+const _doSetBlock = async (blockNumber) => {
+  logger.debug({ blockNumber }, 'Starting fetching block...')
+  if (await getBlock(blockNumber)) {
+    logger.info({ blockNumber }, 'Block found in cache.')
+  } else {
+    await setBlock(blockNumber, encodeBlock(await processBlock(blockNumber)))
+    logger.info({ blockNumber }, 'Fetched block.')
+  }
+}
+
+const doSetBlock = (blockNumber) =>
+  fetchQueue
+    .add(() =>
+      promiseRetry(
+        (retry, number) => {
+          return _doSetBlock(blockNumber).catch((...args) => {
+            logger.warn(
+              { blockNumber, retryTimes: number },
+              'Failed setting block, retrying...'
+            )
+            return retry(...args)
+          })
+        },
+        {
+          retries: 3,
+          minTimeout: 1000,
+          maxTimeout: 30000,
+        }
+      )
+    )
+    .catch((e) => {
+      logger.error({ blockNumber }, e)
+      process.exit(-1)
+    })
+
+const startSync = (target) => {
+  const bufferQueue = new Queue(
+    parseInt(FETCH_QUEUE_CONCURRENT * 1.618),
+    Infinity,
+    {
+      onEmpty: () => {
+        if (!bufferQueue.getPendingLength() && !bufferQueue.getQueueLength()) {
+          logger.info({ target }, 'Synched to init target height...')
+          process.send({ [FETCH_REACHED_TARGET]: target })
+        }
+      },
+    }
+  )
+
+  logger.info({ target }, 'Starting synching...')
+
+  for (let number = 1; number < target; number++) {
+    bufferQueue.add(() => doSetBlock(number))
+  }
+}
 
 export default async () => {
+  if (startLock) {
+    throw new Error('Unexpected re-initialization.')
+  }
   await setupDb([DB_BLOCK])
   await setupPhalaApi(env.chainEndpoint)
 
-  // const CHAIN_APP_RECEIVED_HEIGHT = `${phalaApi.phalaChain}:${APP_RECEIVED_HEIGHT}`
-  // const CHAIN_APP_VERIFIED_HEIGHT = `${phalaApi.phalaChain}:${APP_VERIFIED_HEIGHT}`
-
-  // let oldHighest = 0
+  let syncLock = false
 
   if (await getGenesisBlock()) {
     logger.info('Genesis block found in cache.')
@@ -146,7 +180,18 @@ export default async () => {
     logger.info('Fetched genesis block.')
   }
 
-  await phalaApi.rpc.chain.subscribeFinalizedHeads(() => {})
+  await phalaApi.rpc.chain.subscribeFinalizedHeads((header) => {
+    const number = header.number.toNumber()
+
+    if (!syncLock) {
+      syncLock = true
+      startSync(number)
+    }
+
+    doSetBlock(number).then(() => {
+      process.send({ [FETCH_RECEIVED_HEIGHT]: number })
+    })
+  })
 
   phalaApi.on('disconnected', () => {
     process.exit(-4)

@@ -1,13 +1,7 @@
 import { phalaApi } from '../utils/api'
 import { DB_BLOCK, getDb } from './db'
-import {
-  DB_ENCODING_BINARY,
-  DB_ENCODING_DEFAULT,
-  DB_ENCODING_SCALE_HEX,
-} from './db_encoding'
+import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import levelErrors from 'level-errors'
-
-const KEY_GENESIS_STATE = 'block:0:genesis_state'
 
 export const DB_BLOCK_BLOCK = Object.freeze({
   blockNumber: [DB_ENCODING_DEFAULT],
@@ -86,6 +80,40 @@ export const getGenesisBlock = async () => {
     )
     const ret = {}
     KEYS_DB_BLOCK_GENESIS_BLOCK.forEach((key, index) => {
+      ret[key] = retArr[index]
+    })
+    return ret
+  } catch (error) {
+    if (error instanceof levelErrors.NotFoundError) {
+      return null
+    }
+    throw error
+  }
+}
+
+export const setBlock = async (number, block) => {
+  const db = getDb(DB_BLOCK)
+  await Promise.all(
+    KEYS_DB_BLOCK_BLOCK.map((key) =>
+      db.put(`block:${number}:${key}`, block[key], {
+        ...DB_BLOCK_BLOCK[key][0],
+      })
+    )
+  )
+  return block
+}
+
+export const getBlock = async (number) => {
+  const db = getDb(DB_BLOCK)
+
+  try {
+    const retArr = await Promise.all(
+      KEYS_DB_BLOCK_BLOCK.map((key) =>
+        db.get(`block:${number}:${key}`, { ...DB_BLOCK_BLOCK[key][0] })
+      )
+    )
+    const ret = {}
+    KEYS_DB_BLOCK_BLOCK.forEach((key, index) => {
       ret[key] = retArr[index]
     })
     return ret
