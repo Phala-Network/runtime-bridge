@@ -13,7 +13,7 @@ const start = () =>
 
     const [syncBlockProcess] = [
       'sync_block',
-      // 'compute_window',
+      'compute_window',
       // 'organize_blob'
     ].map((cmd) => fork(cmd, 'fetch/' + cmd))
 

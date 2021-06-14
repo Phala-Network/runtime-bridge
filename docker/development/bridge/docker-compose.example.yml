@@ -28,7 +28,7 @@ services:
         "--experimental-json-modules",
         "--es-module-specifier-resolution=node",
         "--harmony-top-level-await",
-        "src/index.js",
+        "src/index.mjs",
       ]
 
   lifecycle:
@@ -54,7 +54,7 @@ services:
         "--experimental-json-modules",
         "--es-module-specifier-resolution=node",
         "--harmony-top-level-await",
-        "src/index.js",
+        "src/index.mjs",
         "lifecycle",
         "-r",
         "redis://redis:6379",
