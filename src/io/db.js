@@ -52,5 +52,11 @@ export const getDb = (key, options = {}) => {
   return db
 }
 
-export const getReadonlyDb = (key, options = {}) =>
-  getDb(key, { ...options, readOnly: true })
+export const getReadonlyDb = (key, options = {}) => {
+  const db = dbMap.get(key)
+  if (db) {
+    db.close()
+    dbMap.delete(key)
+  }
+  return getDb(key, { ...options, readOnly: true })
+}

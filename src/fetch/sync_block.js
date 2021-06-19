@@ -1,5 +1,5 @@
 import { DB_BLOCK, setupDb } from '../io/db'
-import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from '.'
+import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from './index'
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import {
   encodeBlock,
@@ -108,7 +108,7 @@ const processGenesisBlock = async () => {
   return block
 }
 
-const _doSetBlock = async (blockNumber) => {
+const _walkBlock = async (blockNumber) => {
   logger.debug({ blockNumber }, 'Starting fetching block...')
   if (await getBlock(blockNumber)) {
     logger.info({ blockNumber }, 'Block found in cache.')
@@ -118,12 +118,12 @@ const _doSetBlock = async (blockNumber) => {
   }
 }
 
-const doSetBlock = (blockNumber) =>
+const walkBlock = (blockNumber) =>
   fetchQueue
     .add(() =>
       promiseRetry(
         (retry, number) => {
-          return _doSetBlock(blockNumber).catch((...args) => {
+          return _walkBlock(blockNumber).catch((...args) => {
             logger.warn(
               { blockNumber, retryTimes: number },
               'Failed setting block, retrying...'
@@ -160,7 +160,7 @@ const startSync = (target) => {
   logger.info({ target }, 'Starting synching...')
 
   for (let number = 1; number < target; number++) {
-    bufferQueue.add(() => doSetBlock(number))
+    bufferQueue.add(() => walkBlock(number))
   }
 }
 
@@ -188,7 +188,7 @@ export default async () => {
       startSync(number)
     }
 
-    doSetBlock(number).then(() => {
+    walkBlock(number).then(() => {
       process.send({ [FETCH_RECEIVED_HEIGHT]: number })
     })
   })
