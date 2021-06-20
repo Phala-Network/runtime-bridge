@@ -1,14 +1,22 @@
-import { DB_BLOCK, DB_WINDOW, setupDb } from '../io/db'
+import { DB_BLOCK, DB_WINDOW, NOT_FOUND_ERROR, setupDb } from '../io/db'
 import { getBlock } from '../io/block'
-import { getWindow, setEmptyWindow, updateWindow } from '../io/window'
+import {
+  getWindow,
+  setBlobRangeEnd,
+  setEmptyWindow,
+  updateWindow,
+} from '../io/window'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const NOT_FOUND_ERROR = new Error('Block not found.')
-
 let startLock = false
 
-const waitForBlock = (blockNumber) =>
+export const range = (start, stop, step = 1) =>
+  Array(Math.ceil((stop - start + 1) / step))
+    .fill(start)
+    .map((x, y) => x + y * step)
+
+export const waitForBlock = (blockNumber) =>
   promiseRetry(
     async (retry, number) => {
       try {
@@ -26,12 +34,10 @@ const waitForBlock = (blockNumber) =>
             error
           )
         } else {
-          if (number > 1) {
-            logger.info(
-              { blockNumber, retryTimes: number },
-              'Waiting for block...'
-            )
-          }
+          logger.debug(
+            { blockNumber, retryTimes: number },
+            'Waiting for block...'
+          )
         }
 
         return retry(error)
@@ -40,8 +46,7 @@ const waitForBlock = (blockNumber) =>
     {
       retries: 30,
       minTimeout: 1000,
-      maxTimeout: 6000,
-      randomize: true,
+      maxTimeout: 12000,
     }
   )
 
@@ -49,10 +54,32 @@ const walkBlock = async (
   currentWindow,
   lastWindow,
   blockNumber,
+  context,
   lastBlock = null
 ) => {
   try {
     const currentBlock = await waitForBlock(blockNumber)
+
+    let nextContext
+
+    if (currentBlock.hasJustification) {
+      context.stopBlock = blockNumber
+
+      await Promise.all(
+        range(context.startBlock, context.stopBlock).map((i) =>
+          setBlobRangeEnd(i, context.stopBlock)
+        )
+      )
+
+      logger.debug(context, 'Created blob index.')
+
+      nextContext = {
+        startBlock: blockNumber + 1,
+        stopBlock: -1,
+      }
+    } else {
+      nextContext = context
+    }
 
     if (currentBlock.setId > lastBlock?.setId) {
       await updateWindow(currentWindow, {
@@ -73,7 +100,13 @@ const walkBlock = async (
         : { currentBlock: currentBlock.blockNumber }
     )
 
-    return walkBlock(currentWindow, lastWindow, blockNumber + 1, currentBlock)
+    return walkBlock(
+      currentWindow,
+      lastWindow,
+      blockNumber + 1,
+      nextContext,
+      currentBlock
+    )
   } catch (error) {
     logger.error(error)
     process.exit(-1)
@@ -101,7 +134,12 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
 
   logger.info(`Processing window #${windowId}...`)
 
-  await walkBlock(currentWindow, lastWindow, startBlock)
+  const context = {
+    startBlock,
+    stopBlock: -1,
+  }
+
+  await walkBlock(currentWindow, lastWindow, startBlock, context)
   logger.info(currentWindow, `Processed window.`)
   return walkWindow(windowId + 1, currentWindow)
 }

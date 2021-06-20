@@ -12,6 +12,7 @@ export const DB_BLOCK_BLOCK = Object.freeze({
   hasJustification: [DB_ENCODING_DEFAULT],
   syncHeaderData: [DB_ENCODING_BINARY, 'HeaderToSync'],
   dispatchBlockData: [DB_ENCODING_BINARY, 'BlockHeaderWithEvents'],
+  authoritySetChange: [DB_ENCODING_BINARY, 'Option<AuthoritySetChange>'],
 })
 export const DB_BLOCK_GENESIS_BLOCK = Object.freeze({
   ...DB_BLOCK_BLOCK,

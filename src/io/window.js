@@ -89,3 +89,22 @@ export const updateWindow = async (windowIdOrObject, data) => {
   Object.assign(windowObject, data)
   return windowObject
 }
+
+export const setBlobRangeEnd = async (blockNumber, target) =>
+  getDb(DB_WINDOW).put(`blobRangeEndByBlock:${blockNumber}`, parseInt(target), {
+    ...DB_ENCODING_DEFAULT,
+  })
+
+export const getBlobRangeEnd = async (blockNumber) => {
+  const db = getDb(DB_WINDOW)
+  try {
+    return db.get(`blobRangeEndByBlock:${blockNumber}`, {
+      ...DB_ENCODING_DEFAULT,
+    })
+  } catch (error) {
+    if (error instanceof levelErrors.NotFoundError) {
+      return -1
+    }
+    throw error
+  }
+}

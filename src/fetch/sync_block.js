@@ -70,6 +70,34 @@ const processBlock = (blockNumber) =>
       storageChanges,
     })
 
+    const hasJustification = justification
+      ? justification.toHex().length > 2
+      : false
+
+    let authoritySetChange = phalaApi.createType(
+      'Option<AuthoritySetChange>',
+      null
+    )
+    if (hasJustification) {
+      const grandpaAuthorities = (
+        await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)
+      ).value
+      const grandpaAuthoritiesStorageProof = (
+        await phalaApi.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)
+      ).proof
+
+      authoritySetChange = phalaApi.createType(
+        'Option<AuthoritySetChange>',
+        phalaApi.createType('AuthoritySetChange', {
+          authoritySet: {
+            authoritySet: grandpaAuthorities.authorityList,
+            setId,
+          },
+          authorityProof: grandpaAuthoritiesStorageProof,
+        })
+      )
+    }
+
     return {
       blockNumber,
       hash,
@@ -77,11 +105,10 @@ const processBlock = (blockNumber) =>
       headerHash,
       setId,
       isNewRound,
-      hasJustification: justification
-        ? justification.toHex().length > 2
-        : false,
+      hasJustification,
       syncHeaderData,
       dispatchBlockData,
+      authoritySetChange,
     }
   })().catch((e) => {
     $logger.error({ blockNumber }, e)

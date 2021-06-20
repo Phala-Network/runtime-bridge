@@ -60,3 +60,5 @@ export const getReadonlyDb = (key, options = {}) => {
   }
   return getDb(key, { ...options, readOnly: true })
 }
+
+export const NOT_FOUND_ERROR = new Error('Not found.')
