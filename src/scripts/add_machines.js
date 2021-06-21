@@ -1,14 +1,14 @@
+import { DB_WORKER, setupDb } from '../io/db'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from '../utils/constants'
-import { getModel } from 'ottoman'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { start as startOttoman } from '../utils/couchbase'
+import { setWorker } from '../io/worker'
+import { v4 as uuidv4 } from 'uuid'
 
 const keyring = new Keyring({ type: 'sr25519', ss58Format: PHALA_SS58_FORMAT })
 
-const main = async ({ couchbaseEndpoint, machines }) => {
-  await startOttoman(couchbaseEndpoint)
-  const Machine = getModel('Machine')
+const main = async ({ machines }) => {
+  await setupDb([DB_WORKER])
 
   const result = []
 
@@ -24,15 +24,15 @@ const main = async ({ couchbaseEndpoint, machines }) => {
       pair: pair.toJson(),
     })
 
-    const m = await Machine.create({
+    const m = {
+      id: uuidv4(),
       nickname: machine.nickname,
       payoutAddress: machine.payoutAddress,
       runtimeEndpoint: machine.runtimeEndpoint,
       phalaSs58Address,
       polkadotJson,
-    })
-    await m.save()
-    return m
+    }
+    return setWorker(m.id, m)
   }
 
   for (const machine of machines) {
