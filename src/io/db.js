@@ -13,8 +13,9 @@ export const DB_TOUCHED_AT = 'DB_TOUCHED_AT'
 export const DB_BLOCK = 0
 export const DB_WINDOW = 1
 export const DB_BLOB = 2
+export const DB_WORKER = 3
 
-export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WINDOW, DB_BLOB])
+export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WINDOW, DB_BLOB, DB_WORKER])
 
 const checkDb = async (db) => {
   let touchedAt

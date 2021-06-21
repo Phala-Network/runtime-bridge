@@ -8,6 +8,7 @@ import {
 } from '../io/window'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
+import wait from '../utils/wait'
 
 let startLock = false
 
@@ -16,35 +17,38 @@ export const range = (start, stop, step = 1) =>
     .fill(start)
     .map((x, y) => x + y * step)
 
+const _getBlock = async (blockNumber) => {
+  try {
+    const ret = await getBlock(blockNumber)
+    if (!ret) {
+      throw NOT_FOUND_ERROR
+    }
+    return ret
+  } catch (error) {
+    if (error === NOT_FOUND_ERROR) {
+      logger.debug({ blockNumber }, 'Waiting for block...')
+      await wait(1000)
+      await setupDb([], [DB_BLOCK])
+      return _getBlock(blockNumber)
+    }
+    throw error
+  }
+}
+
 export const waitForBlock = (blockNumber) =>
   promiseRetry(
-    async (retry, number) => {
-      try {
-        const ret = await getBlock(blockNumber)
-        if (!ret) {
-          await setupDb([], [DB_BLOCK])
-          throw NOT_FOUND_ERROR
-        }
-        return ret
-      } catch (error) {
-        if (error !== NOT_FOUND_ERROR) {
-          logger.warn(
-            { blockNumber, retryTimes: number },
-            'Failed getting block, retrying...',
-            error
-          )
-        } else {
-          logger.debug(
-            { blockNumber, retryTimes: number },
-            'Waiting for block...'
-          )
-        }
-
+    (retry, number) => {
+      return _getBlock(blockNumber).catch((error) => {
+        logger.warn(
+          { blockNumber, retryTimes: number },
+          'Failed getting block, retrying...',
+          error
+        )
         return retry(error)
-      }
+      })
     },
     {
-      retries: 30,
+      retries: 5,
       minTimeout: 1000,
       maxTimeout: 12000,
     }
@@ -71,7 +75,7 @@ const walkBlock = async (
         )
       )
 
-      logger.debug(context, 'Created blob index.')
+      logger.info(context, 'Created blob index.')
 
       nextContext = {
         startBlock: blockNumber + 1,

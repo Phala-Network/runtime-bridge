@@ -6,9 +6,11 @@ logger.debug(env)
 
 const modulePath = './' + env.moduleName
 
-import(modulePath)
-  .then(({ default: start }) => start())
-  .catch((...e) => {
-    $logger.error(...e)
-    process.exit(-1)
-  })
+const { default: start } = await import(modulePath)
+
+try {
+  await start()
+} catch (e) {
+  $logger.error(e)
+  process.exit(-1)
+}
