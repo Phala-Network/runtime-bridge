@@ -1,7 +1,7 @@
 import cluster from 'cluster'
 import fork from '../utils/fork'
 import logger from '../utils/logger'
-import startRpc from './rpc'
+import setupRpc from './rpc'
 
 export const FETCH_RECEIVED_HEIGHT = 'FETCH_RECEIVED_HEIGHT'
 export const FETCH_REACHED_TARGET = 'FETCH_REACHED_TARGET'
@@ -33,7 +33,7 @@ const start = () =>
       }
     })
 
-    startRpc(context)
+    setupRpc(context)
 
     cluster.on('exit', resolve)
   })

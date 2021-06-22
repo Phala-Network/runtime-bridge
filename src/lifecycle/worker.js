@@ -3,6 +3,7 @@ import { phalaApi } from '../utils/api'
 import { protoRoot } from '../message/proto'
 import BN from 'bn.js'
 import Finity from 'finity'
+import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
 
 const Status = protoRoot.lookupEnum('WorkerState.Status')
@@ -20,6 +21,7 @@ const EVENTS = toEnum([
 export const createWorkerContext = async (worker, context) => {
   const snapshot = Object.freeze(Object.assign({}, worker))
   const onChainState = await subscribeOnChainState(snapshot)
+  logger.info(onChainState)
 
   let errorMessage = ''
 

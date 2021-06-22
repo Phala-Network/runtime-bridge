@@ -1,11 +1,5 @@
 {
-  "couchbaseEndpoint": "couchbase://couchbase/phala@phala:phalaphala",
   "machines": [
-    {
-      "payoutAddress": "44FjUvzD24vvKaAFx4mCgNTeUZ1D5LJgHsPpCP5qgrGUpyg9",
-      "nickname": "test",
-      "runtimeEndpoint": "http://10.96.89.137:8000"
-    },
     {
       "payoutAddress": "44FjUvzD24vvKaAFx4mCgNTeUZ1D5LJgHsPpCP5qgrGUpyg9",
       "nickname": "test",

@@ -6,6 +6,7 @@ export const ENV_LIST = [
   ['PHALA_DB_PREFIX', 'dbPrefix'],
   ['PHALA_MAIN_CHAIN_ENDPOINT', 'mainChainEndpoint'],
   ['PHALA_CHAIN_ENDPOINT', 'chainEndpoint'],
+  ['PHALA_REDIS_ENDPOINT', 'redisEndpoint'],
 ]
 
 const _env = {}

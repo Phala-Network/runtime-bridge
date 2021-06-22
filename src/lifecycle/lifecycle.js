@@ -82,7 +82,7 @@ const setupWorkers = async (context) => {
   for (const w of workers) {
     await applyWorker(w, context, result)
   }
-  if (result.add + result.deleted + result.update > 0) {
+  if (result.added + result.deleted + result.updated > 0) {
     logger.info(result, 'Got workers!')
   }
 }
