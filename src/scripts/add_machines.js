@@ -2,7 +2,7 @@ import { DB_WORKER, setupDb } from '../io/db'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from '../utils/constants'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { setWorker } from '../io/worker'
+import { setWorker, validateWorkerInput } from '../io/worker'
 import { v4 as uuidv4 } from 'uuid'
 
 const keyring = new Keyring({ type: 'sr25519', ss58Format: PHALA_SS58_FORMAT })
@@ -32,7 +32,9 @@ const main = async ({ machines }) => {
       phalaSs58Address,
       polkadotJson,
     }
-    return setWorker(m.id, m)
+    await validateWorkerInput(m)
+    await setWorker(m)
+    return m
   }
 
   for (const machine of machines) {

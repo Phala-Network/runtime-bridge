@@ -1,6 +1,6 @@
 import { createWorkerContext, destroyWorkerContext } from './worker'
 import { getAllWorker } from '../io/worker'
-import { isEqual } from 'lodash'
+import isEqual from 'lodash/isEqual'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
 
@@ -8,20 +8,20 @@ const WORKER_ALTER = 'WORKER_ALTER'
 
 const applyWorker = async (worker, context, result) => {
   const { workerContexts } = context
-  let w = workerContexts.get(worker.id)
-  if (!w) {
+  const workerContext = workerContexts.get(worker.id)
+  if (!workerContext) {
     result.added += 1
     await addWorker(worker, context)
     return
   }
-  if (w.deleted) {
+  if (worker.deleted) {
     result.deleted += 1
-    await deleteWorker(worker, context)
+    await deleteWorker(workerContext, context)
     return
   }
-  if (!isEqual(worker, w.snapshot)) {
+  if (!isEqual(worker, workerContext.snapshot)) {
     result.updated += 1
-    await deleteWorker(worker, context)
+    await deleteWorker(workerContext, context)
     await addWorker(worker, context)
     return
   }
@@ -30,14 +30,32 @@ const applyWorker = async (worker, context, result) => {
 const addWorker = async (worker, context) => {
   const ret = await createWorkerContext(worker, context)
   context.workerContexts.set(worker.id, ret)
-  logger.info(worker, 'Started worker lifecycle.')
+  const { id, nickname, phalaSs58Address, runtimeEndpoint } = worker
+  logger.debug(
+    {
+      id,
+      nickname,
+      phalaSs58Address,
+      runtimeEndpoint,
+    },
+    'Started worker lifecycle.'
+  )
   return ret
 }
 
 const deleteWorker = async (worker, context) => {
   await destroyWorkerContext(worker, context)
   context.workerContexts.delete(worker.id)
-  logger.info(worker, 'Stopped worker lifecycle.')
+  const { id, nickname, phalaSs58Address, runtimeEndpoint } = worker
+  logger.debug(
+    {
+      id,
+      nickname,
+      phalaSs58Address,
+      runtimeEndpoint,
+    },
+    'Stopped worker lifecycle.'
+  )
   return worker.id
 }
 
@@ -60,7 +78,7 @@ const setupWorkers = async (context) => {
     deleted: 0,
     updated: 0,
   }
-  const workers = getAllWorker()
+  const workers = await getAllWorker()
   for (const w of workers) {
     await applyWorker(w, context, result)
   }
