@@ -3,8 +3,8 @@ import { setupPhalaApi } from '../utils/api'
 import createKeyring from '../utils/keyring'
 import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
 import env from '../utils/env'
-import * as actions from './actions'
 import logger from '../utils/logger'
+import * as actions from './actions'
 
 const start = async () => {
   await setupPhalaApi(env.chainEndpoint)
