@@ -1,29 +1,60 @@
+import { createWorkerContext, destroyWorkerContext } from './worker'
 import { getAllWorker } from '../io/worker'
+import { isEqual } from 'lodash'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
-const WORKER_ADDED = 'WORKER_ADDED'
-const WORKER_DELETED = 'WORKER_DELETED'
-const WORKER_UPDATED = 'WORKER_UPDATED'
 
-const applyWorker = (worker, context, result) => {}
+const WORKER_ALTER = 'WORKER_ALTER'
+
+const applyWorker = async (worker, context, result) => {
+  const { workerContexts } = context
+  let w = workerContexts.get(worker.id)
+  if (!w) {
+    result.added += 1
+    await addWorker(worker, context)
+    return
+  }
+  if (w.deleted) {
+    result.deleted += 1
+    await deleteWorker(worker, context)
+    return
+  }
+  if (!isEqual(worker, w.snapshot)) {
+    result.updated += 1
+    await deleteWorker(worker, context)
+    await addWorker(worker, context)
+    return
+  }
+}
+
+const addWorker = async (worker, context) => {
+  const ret = await createWorkerContext(worker, context)
+  context.workerContexts.set(worker.id, ret)
+  logger.info(worker, 'Started worker lifecycle.')
+  return ret
+}
+
+const deleteWorker = async (worker, context) => {
+  await destroyWorkerContext(worker, context)
+  context.workerContexts.delete(worker.id)
+  logger.info(worker, 'Stopped worker lifecycle.')
+  return worker.id
+}
 
 const waitUntilWorkerChanges = async (context) => {
   await wait(1000)
   await new Promise((resolve) => {
     const off = () => {
-      context.eventEmitter.off(WORKER_ADDED, off)
-      context.eventEmitter.off(WORKER_DELETED, off)
-      context.eventEmitter.off(WORKER_UPDATED, off)
+      context.eventEmitter.off(WORKER_ALTER, off)
       resolve()
     }
-    context.eventEmitter.on(WORKER_ADDED, off)
-    context.eventEmitter.on(WORKER_DELETED, off)
-    context.eventEmitter.on(WORKER_UPDATED, off)
+    context.eventEmitter.on(WORKER_ALTER, off)
     setTimeout(() => off(), 3600000)
   })
 }
 
 const setupWorkers = async (context) => {
+  await wait(6000)
   const result = {
     added: 0,
     deleted: 0,
