@@ -1,8 +1,11 @@
-import { base64Decode } from '@polkadot/util-crypto'
+// import { base64Decode } from '@polkadot/util-crypto'
+import { phalaApi } from '../utils/api'
 import { waitForBlock } from '../io/block'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
+
+const keyring = await createKeyring()
 
 const wrapRequest = (endpoint) => async (resource, payload = {}) => {
   const url = `${endpoint}${resource}`
@@ -93,7 +96,7 @@ export const initRuntime = async (
   debugSetKey = null
 ) => {
   const {
-    workerContext: { worker, workerBrief },
+    workerContext: { worker, workerBrief, _dispatchTx },
     initInfo,
     request,
   } = runtime
@@ -114,7 +117,25 @@ export const initRuntime = async (
         })
       ).payload
     )
-    console.log(Object.keys(initInfo))
+    await runtime.updateInfo()
     $logger.debug(workerBrief, `Initialized pRuntime.`)
+  }
+
+  const machineId = runtimeInfo['machine_id']
+  const machineOwner = keyring.encodeAddress(
+    await phalaApi.query.phala.machineOwner(machineId)
+  )
+  if (machineOwner === worker.phalaSs58Address) {
+    logger.debug(workerBrief, 'Worker already registered, skipping.')
+  } else {
+    await _dispatchTx({
+      action: 'REGISTER_WORKER',
+      payload: {
+        encodedRuntimeInfo: initInfo['encoded_runtime_info'],
+        attestation: initInfo.attestation,
+        worker,
+      },
+    })
+    logger.debug(workerBrief, 'Registered worker.')
   }
 }

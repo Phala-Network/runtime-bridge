@@ -9,115 +9,49 @@ services:
     hostname: fetch
     volumes:
       - ../../..:/opt/app
-      - bridge-data: /var/data
+      - ./data:/var/data
     environment:
       - NODE_ENV=development
+      - PHALA_MODULE=fetch
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_DB_PREFIX=/var/data
-      - PHALA_MAIN_CHAIN_ENDPOINT=0
-      - PHALA_CHAIN_ENDPOINT=wss://poc4-dev.phala.network/ws
-    depends_on:
-      - redis
-      - couchbase
-    ports:
-      - 9228:9228
-    command:
-      [
-        "pnpm", "node", "--",
-        "--inspect=0.0.0.0:9228",
-        "--experimental-json-modules",
-        "--es-module-specifier-resolution=node",
-        "--harmony-top-level-await",
-        "src/index.mjs",
-      ]
+      - PHALA_MAIN_CHAIN_ENDPOINT=
+      - PHALA_CHAIN_ENDPOINT=wss://path.to.phala.node/ws
+      - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   lifecycle:
     image: phalanetwork/poc4-prb:development
     hostname: lifecycle
     volumes:
       - ../../..:/opt/app
+      - ./data:/var/data
     environment:
       - NODE_ENV=development
-      - DB_WAIT=0
-      # - LOGGER_LEVEL=debug
-    depends_on:
-      - redis
-      - couchbase
-      - fetch
-      - trade
-    ports:
-      - 9229:9229
-    command:
-      [
-        "pnpm", "node", "--",
-        "--inspect=0.0.0.0:9229",
-        "--experimental-json-modules",
-        "--es-module-specifier-resolution=node",
-        "--harmony-top-level-await",
-        "src/index.mjs",
-        "lifecycle",
-        "-r",
-        "redis://redis:6379",
-        "-c",
-        "couchbase://couchbase/phala@phala:phalaphala",
-        "-p",
-        "wss://poc4-dev.phala.network/ws",
-      ]
+      - PHALA_MODULE=lifecycle
+      - PHALA_LOGGER_LEVEL=debug
+      - PHALA_DB_PREFIX=/var/data
+      - PHALA_MAIN_CHAIN_ENDPOINT=
+      - PHALA_CHAIN_ENDPOINT=wss://path.to.phala.node/ws
+      - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   trade:
     image: phalanetwork/poc4-prb:development
     hostname: trade
-    deploy:
-      replicas: 1 # for dev
     volumes:
       - ../../..:/opt/app
     environment:
       - NODE_ENV=development
-      - DB_WAIT=0
-      - LOGGER_LEVEL=debug
-    depends_on:
-      - redis
-      - couchbase
-    command:
-      [
-        "pnpm", "bridge", "--",
-        "trade",
-        "-r",
-        "redis://redis:6379",
-        "-c",
-        "couchbase://couchbase/phala@phala:phalaphala",
-        "-p",
-        "wss://poc4-dev.phala.network/ws",
-      ]
-
-  arena:
-    image: phalanetwork/poc4-prb:development
-    hostname: arena
-    deploy:
-      replicas: 1 # for dev
-    volumes:
-      - ../../..:/opt/app
-    environment:
-      - NODE_ENV=development
-      - DB_WAIT=0
-      - LOGGER_LEVEL=debug
-    depends_on:
-      - redis
-    ports:
-      - '4567:4567'
-    command:
-      [
-        "pnpm", "node",
-        "arena.js"
-      ]
+      - PHALA_MODULE=trade
+      - PHALA_LOGGER_LEVEL=debug
+      - PHALA_MAIN_CHAIN_ENDPOINT=
+      - PHALA_CHAIN_ENDPOINT=wss://path.to.phala.node/ws
+      - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   redis:
     image: redis:alpine
     command: ["redis-server", "--appendonly", "no"]
     restart: always
     hostname: redis
-    ports:
-      - "63791:6379" # debug
 
 volumes:
   bridge-data:
