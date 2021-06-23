@@ -1,12 +1,10 @@
 import { list as redisCommands } from 'redis-commands'
+import PQueue from 'p-queue'
 import Redis from 'ioredis'
-import pQueue from 'p-queue'
-
-const { default: Queue } = pQueue
 
 const createClient = (redisEndpoint) =>
   new Promise((resolve) => {
-    const queue = new Queue({
+    const queue = new PQueue({
       timeout: 3000,
       throwOnTimeout: true,
     })

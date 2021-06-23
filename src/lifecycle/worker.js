@@ -1,38 +1,44 @@
-import { MINIUM_BALANCE } from '../utils/constants'
 import { phalaApi } from '../utils/api'
-import { protoRoot } from '../message/proto'
-import BN from 'bn.js'
-import Finity from 'finity'
+import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../utils/logger'
-import toEnum from '../utils/to_enum'
-
-const Status = protoRoot.lookupEnum('WorkerState.Status')
-const StatusEnumValues = Status.values
-
-const EVENTS = toEnum([
-  'SHOULD_START',
-  'SHOULD_MARK_PENDING_SYNCHING',
-  'SHOULD_MARK_SYNCHING',
-  'SHOULD_MARK_ONLINE',
-  'SHOULD_KICK',
-  'ERROR',
-])
 
 export const createWorkerContext = async (worker, context) => {
   const snapshot = Object.freeze(Object.assign({}, worker))
   const onChainState = await subscribeOnChainState(snapshot)
-  logger.info(onChainState)
+  const stateMachine = await _stateMachine.start()
 
   let errorMessage = ''
+  let stateMachineState = 'S_INIT'
 
-  return {
+  const workerContext = {
     context,
     snapshot,
+    worker: snapshot,
     onChainState,
+    stateMachine,
+    dispatchTx: context.dispatchTx,
+    get stateMachineState() {
+      return stateMachineState
+    },
+    set stateMachineState(state) {
+      stateMachineState = state
+      logger.debug(
+        { workerId: worker.id, state },
+        'Worker stateMachineState changed.'
+      )
+    },
     get errorMessage() {
       return errorMessage
     },
+    set errorMessage(message) {
+      errorMessage = message
+    },
   }
+
+  stateMachine.rootStateMachine.workerContext = workerContext
+  stateMachine.handle(EVENTS.SHOULD_START)
+
+  return workerContext
 }
 
 const subscribeOnChainState = async (worker) => {
@@ -46,7 +52,7 @@ const subscribeOnChainState = async (worker) => {
   let balance = queryAccount.data.free
   let controllerAddress = queryStash.controller.toString()
   let payoutAddress = queryStash.payoutPrefs.target.toString()
-  let workerState = 'S_IDLE'
+  let workerState = 'Empty'
 
   const unsubBalancePromise = phalaApi.query.system.account(
     worker.phalaSs58Address,
@@ -95,6 +101,8 @@ const subscribeOnChainState = async (worker) => {
   }
 }
 
-export const destroyWorkerContext = async (workerContext, context) => {
-  // get mining state, get intension
+export const destroyWorkerContext = async (workerContext) => {
+  workerContext.innerTxQueue.clear()
+  await workerContext.stateMachine.handle(EVENTS.SHOULD_KICK)
+  await workerContext.onChainState.unsubscribe()
 }
