@@ -1,4 +1,5 @@
 import { MINIUM_BALANCE } from '../utils/constants'
+import { initRuntime } from './pruntime'
 import { protoRoot } from '../message/proto'
 import Finity from 'finity'
 import logger from '../utils/logger'
@@ -36,17 +37,14 @@ const setAccount = async (dispatchTx, worker, state) => {
   }
 }
 
-const wrapEventAction = (fn) => async (fromState, toState, context) => {
-  try {
-    return fn(fromState, toState, context)
-  } catch (error) {
-    $logger.error({ fromState, toState }, error)
+const wrapEventAction = (fn) => (fromState, toState, context) =>
+  fn(fromState, toState, context).catch((error) => {
     if (fromState === StatusEnumValues.S_ERROR && fromState === toState) {
+      $logger.error({ fromState, toState }, error)
       return
     }
     context.stateMachine.handle(EVENTS.ERROR, error)
-  }
-}
+  })
 
 const onStarting = async (fromState, toState, context) => {
   const {
@@ -67,42 +65,37 @@ const onStarting = async (fromState, toState, context) => {
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PENDING_SYNCHING)
 }
 const onPendingSynching = async (fromState, toState, context) => {
-  const {
-    pruntime,
-    updateState,
-  } = context.stateMachine.rootStateMachine.workerContext
-  await pruntime.initRuntime()
-  await updateState({
-    initialized: true,
-  })
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  await initRuntime(runtime)
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
 const onSynching = async (fromState, toState, context) => {
   const {
-    pruntime,
-    dispatchTx,
+    runtime,
+    innerTxQueue,
+    _dispatchTx,
     worker,
   } = context.stateMachine.rootStateMachine.workerContext
 
-  pruntime.startSendBlob().catch((e) => {
-    $logger.error(e)
-    context.stateMachine.handle(EVENTS.ERROR, e)
+  await innerTxQueue.add(async () => {
+    const { waitUntilSynched } = await runtime.startSendBlob()
+    await waitUntilSynched()
+    await _dispatchTx({
+      action: 'START_MINING_INTENTION',
+      payload: {
+        worker,
+      },
+    })
   })
-  await pruntime.waitUntilSynched()
-  await dispatchTx({
-    action: 'START_MINING_INTENTION',
-    payload: {
-      machineRecordId: worker.id,
-    },
-  })
+
   context.stateMachine.handle(EVENTS.SHOULD_MARK_ONLINE)
 }
 const onOnline = async (fromState, toState, context) => {
-  const { pruntime } = context.stateMachine.rootStateMachine.workerContext
-  await pruntime.startSyncWorkerIngress()
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  await runtime.startSyncWorkerIngress()
 }
-const onError = (fromState, toState, context) => {
+const onError = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.errorMessage =
     context.eventPayload
 
@@ -130,6 +123,16 @@ const onError = (fromState, toState, context) => {
       payload: {
         worker,
       },
+    }).catch((e) => {
+      logger.warn(
+        {
+          fromState,
+          toState,
+          workerId: worker.id,
+          phalaSs58Address: worker.phalaSs58Address,
+        },
+        e
+      )
     })
   }
 }
@@ -153,7 +156,7 @@ const onKicked = async (fromState, toState, context) => {
   // todo: send /kick to pruntime
 }
 
-const onStateTransition = (fromState, toState, context) => {
+const onStateTransition = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.stateMachineState = toState
 }
 

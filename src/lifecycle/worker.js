@@ -1,4 +1,6 @@
 import { phalaApi } from '../utils/api'
+import { setupRuntime } from './pruntime'
+import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../utils/logger'
 
@@ -7,16 +9,32 @@ export const createWorkerContext = async (worker, context) => {
   const onChainState = await subscribeOnChainState(snapshot)
   const stateMachine = await _stateMachine.start()
 
+  const { id, nickname, phalaSs58Address, runtimeEndpoint } = snapshot
+  const snapshotBrief = {
+    id,
+    nickname,
+    phalaSs58Address,
+    runtimeEndpoint,
+  }
+
   let errorMessage = ''
   let stateMachineState = 'S_INIT'
+
+  const innerTxQueue = new PQueue({
+    concurrency: 1,
+  })
 
   const workerContext = {
     context,
     snapshot,
+    snapshotBrief,
     worker: snapshot,
+    workerBrief: snapshotBrief,
     onChainState,
     stateMachine,
-    dispatchTx: context.dispatchTx,
+    runtime: null,
+    innerTxQueue,
+
     get stateMachineState() {
       return stateMachineState
     },
@@ -33,7 +51,13 @@ export const createWorkerContext = async (worker, context) => {
     set errorMessage(message) {
       errorMessage = message
     },
+
+    dispatchTx: (...args) =>
+      innerTxQueue.add(() => context.txQueue.dispatch(...args)),
+    _dispatchTx: context.txQueue.dispatch,
   }
+
+  setupRuntime(workerContext)
 
   stateMachine.rootStateMachine.workerContext = workerContext
   stateMachine.handle(EVENTS.SHOULD_START)

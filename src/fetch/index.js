@@ -14,6 +14,12 @@ const start = () =>
       hasReachedTarget: false,
     }
 
+    const getContext = () => ({
+      receivedHeight: context.receivedHeight,
+      initTarget: context.initTarget,
+      hasReachedTarget: context.hasReachedTarget,
+    })
+
     const [syncBlockProcess] = ['sync_block', 'compute_window'].map((cmd) =>
       fork(cmd, 'fetch/' + cmd)
     )
@@ -21,7 +27,7 @@ const start = () =>
     syncBlockProcess.on('message', (message) => {
       if (typeof message[FETCH_RECEIVED_HEIGHT] === 'number') {
         context.receivedHeight = message[FETCH_RECEIVED_HEIGHT]
-        logger.debug(context, 'Block Received.')
+        logger.debug(getContext(), 'Block Received.')
       }
       if (typeof message[FETCH_REACHED_TARGET] === 'number') {
         if (context.initTarget > -1 || context.hasReachedTarget) {
@@ -29,7 +35,7 @@ const start = () =>
         }
         context.hasReachedTarget = true
         context.initTarget = message[FETCH_REACHED_TARGET]
-        logger.info(context, 'Synched to init target height...')
+        logger.info(getContext(), 'Synched to init target height...')
       }
     })
 

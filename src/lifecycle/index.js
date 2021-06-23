@@ -1,24 +1,16 @@
-import { DB_WORKER, setupDb } from '../io/db'
+import { DB_BLOCK, DB_WORKER, setupDb } from '../io/db'
 import { EventEmitter } from 'events'
 import { setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
-import PQueue from 'p-queue'
 import createTradeQueue from '../utils/trade_queue'
 import env from '../utils/env'
 import setupRpc from './rpc'
 
 const start = async () => {
-  await setupDb([DB_WORKER])
+  await setupDb([DB_WORKER], [DB_BLOCK])
   await setupPhalaApi(env.chainEndpoint)
   const txQueue = createTradeQueue(env.redisEndpoint)
   await txQueue.ready()
-
-  const innerTxQueue = new PQueue({
-    concurrency: 1,
-  })
-
-  const dispatchTx = (...args) =>
-    innerTxQueue.add(() => txQueue.dispatch(...args))
 
   const context = {
     workerContexts: new Map(),
@@ -28,8 +20,7 @@ const start = async () => {
     query: null,
     tunnelConnection: null,
     txQueue,
-    innerTxQueue,
-    dispatchTx,
+    _dispatchTx: txQueue.dispatch,
   }
 
   await setupRpc(context)

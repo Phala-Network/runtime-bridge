@@ -28,8 +28,6 @@ const applyWorker = async (worker, context, result) => {
 }
 
 const addWorker = async (worker, context) => {
-  const ret = await createWorkerContext(worker, context)
-  context.workerContexts.set(worker.id, ret)
   const { id, nickname, phalaSs58Address, runtimeEndpoint } = worker
   logger.debug(
     {
@@ -38,8 +36,11 @@ const addWorker = async (worker, context) => {
       phalaSs58Address,
       runtimeEndpoint,
     },
-    'Started worker lifecycle.'
+    'Starting worker lifecycle.'
   )
+  const ret = await createWorkerContext(worker, context)
+  context.workerContexts.set(worker.id, ret)
+
   return ret
 }
 
@@ -60,7 +61,7 @@ const deleteWorker = async (worker, context) => {
 }
 
 const waitUntilWorkerChanges = async (context) => {
-  await wait(1000)
+  await wait(6000)
   await new Promise((resolve) => {
     const off = () => {
       context.eventEmitter.off(WORKER_ALTER, off)
@@ -72,7 +73,8 @@ const waitUntilWorkerChanges = async (context) => {
 }
 
 const setupWorkers = async (context) => {
-  await wait(6000)
+  // TODO: wait for db write queue being empty
+  await wait(3000)
   const result = {
     added: 0,
     deleted: 0,

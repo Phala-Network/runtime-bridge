@@ -1,7 +1,10 @@
-import { DB_BLOCK, getDb } from './db'
+import { DB_BLOCK, NOT_FOUND_ERROR, getDb, setupDb } from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import levelErrors from 'level-errors'
+import logger from '../utils/logger'
+import promiseRetry from 'promise-retry'
+import wait from '../utils/wait'
 
 export const DB_BLOCK_BLOCK = Object.freeze({
   blockNumber: [DB_ENCODING_DEFAULT],
@@ -125,3 +128,41 @@ export const getBlock = async (number) => {
     throw error
   }
 }
+
+const _waitForBlock = async (blockNumber) => {
+  try {
+    const ret =
+      blockNumber > 0 ? await getBlock(blockNumber) : await getGenesisBlock()
+    if (!ret) {
+      throw NOT_FOUND_ERROR
+    }
+    return ret
+  } catch (error) {
+    if (error === NOT_FOUND_ERROR) {
+      logger.debug({ blockNumber }, 'Waiting for block...')
+      await wait(1000)
+      await setupDb([], [DB_BLOCK])
+      return _waitForBlock(blockNumber)
+    }
+    throw error
+  }
+}
+
+export const waitForBlock = (blockNumber) =>
+  promiseRetry(
+    (retry, number) => {
+      return _waitForBlock(blockNumber).catch((error) => {
+        logger.warn(
+          { blockNumber, retryTimes: number },
+          'Failed getting block, retrying...',
+          error
+        )
+        return retry(error)
+      })
+    },
+    {
+      retries: 5,
+      minTimeout: 1000,
+      maxTimeout: 12000,
+    }
+  )
