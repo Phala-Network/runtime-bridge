@@ -48,7 +48,7 @@ const wrapEventAction = (fn) => (fromState, toState, context) =>
 
 const onStarting = async (fromState, toState, context) => {
   const {
-    context: { dispatchTx },
+    dispatchTx,
     onChainState,
     worker,
   } = context.stateMachine.rootStateMachine.workerContext

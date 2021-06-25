@@ -124,7 +124,7 @@ const processGenesisBlock = async () => {
   ).value
   const grandpaAuthoritiesStorageProof = (
     await phalaApi.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], block.hash)
-  ).proof
+  )
 
   block.bridgeGenesisInfo = phalaApi.createType('GenesisInfo', {
     header: block.header,
