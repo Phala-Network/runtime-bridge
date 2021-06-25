@@ -325,15 +325,15 @@
                   "id": 1
                 },
                 "latestSynchedHeaderPhala": {
-                  "type": "uint64",
+                  "type": "int64",
                   "id": 2
                 },
                 "latestSynchedHeaderRococo": {
-                  "type": "uint64",
+                  "type": "int64",
                   "id": 3
                 },
                 "latestSynchedBlock": {
-                  "type": "uint64",
+                  "type": "int64",
                   "id": 4
                 },
                 "initialized": {

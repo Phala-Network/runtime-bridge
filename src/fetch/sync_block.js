@@ -79,9 +79,11 @@ const processBlock = (blockNumber) =>
       null
     )
     if (hasJustification) {
-      const grandpaAuthorities = (
-        await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)
-      ).value
+      const grandpaAuthorities = phalaApi.createType(
+        'VersionedAuthorityList',
+        (await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash))
+          .value
+      )
       const grandpaAuthoritiesStorageProof = (
         await phalaApi.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)
       ).proof
@@ -119,12 +121,14 @@ const processGenesisBlock = async () => {
   const block = await processBlock(0)
   block.genesisState = await phalaApi.rpc.state.getPairs('', block.hash)
 
-  const grandpaAuthorities = (
-    await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, block.hash)
-  ).value
+  const grandpaAuthorities = phalaApi.createType(
+    'VersionedAuthorityList',
+    (await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, block.hash))
+      .value
+  )
   const grandpaAuthoritiesStorageProof = (
     await phalaApi.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], block.hash)
-  )
+  ).proof
 
   block.bridgeGenesisInfo = phalaApi.createType('GenesisInfo', {
     header: block.header,
