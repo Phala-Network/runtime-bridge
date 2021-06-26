@@ -32,7 +32,11 @@ const walkBlock = async (
 
       await Promise.all(
         range(context.startBlock, context.stopBlock).map((i) =>
-          setBlobRangeEnd(i, context.stopBlock)
+          setBlobRangeEnd(
+            i,
+            context.stopBlock,
+            currentBlock.setId > lastBlock?.setId
+          )
         )
       )
 

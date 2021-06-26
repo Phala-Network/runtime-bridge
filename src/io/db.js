@@ -1,10 +1,13 @@
 import { DB_ENCODING_DEFAULT } from './db_encoding'
 import encode from 'encoding-down'
 import env from '../utils/env'
+import levelErrors from 'level-errors'
 import levelup from 'levelup'
 import logger from '../utils/logger'
 import path from 'path'
+
 import rocksdb from 'rocksdb'
+import wait from '../utils/wait'
 
 const dbMap = new Map()
 
@@ -53,13 +56,45 @@ export const getDb = (key, options = {}) => {
   return db
 }
 
-export const getReadonlyDb = (key, options = {}) => {
-  const db = dbMap.get(key)
-  if (db) {
-    db.close()
-    dbMap.delete(key)
+export const forceCreateDb = (key, options = {}) => {
+  const oldDb = dbMap.get(key)
+
+  const db = levelup(
+    encode(rocksdb(path.join(env.dbPrefix, `${key}`)), DB_ENCODING_DEFAULT),
+    options
+  )
+  dbMap.set(key, db)
+
+  if (oldDb) {
+    setTimeout(() => oldDb.close(), 12000)
   }
-  return getDb(key, { ...options, readOnly: true })
+
+  return db
+}
+
+export const getReadonlyDb = (key, options = {}) => {
+  return forceCreateDb(key, { ...options, readOnly: true })
 }
 
 export const NOT_FOUND_ERROR = new Error('Not found.')
+
+export const readonlyGet = async (dbKey, key, options = {}) => {
+  let db
+  try {
+    db = levelup(
+      encode(rocksdb(path.join(env.dbPrefix, `${dbKey}`)), DB_ENCODING_DEFAULT),
+      { ...options, readOnly: true }
+    )
+    return db.get(key, options)
+  } catch (error) {
+    setTimeout(db.close, 1)
+    if (
+      error === NOT_FOUND_ERROR ||
+      error instanceof levelErrors.NotFoundError
+    ) {
+      await wait(2000)
+      return readonlyGet
+    }
+    throw error
+  }
+}

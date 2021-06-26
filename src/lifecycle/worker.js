@@ -26,6 +26,7 @@ export const createWorkerContext = async (worker, context) => {
 
   const workerContext = {
     context,
+    appContext: context,
     snapshot,
     snapshotBrief,
     worker: snapshot,
@@ -129,4 +130,10 @@ export const destroyWorkerContext = async (workerContext) => {
   workerContext.innerTxQueue.clear()
   await workerContext.stateMachine.handle(EVENTS.SHOULD_KICK)
   await workerContext.onChainState.unsubscribe()
+  if (workerContext.runtime) {
+    clearInterval(workerContext.runtime.updateInfoInterval)
+    if (workerContext.runtime.stopSync) {
+      workerContext.runtime.stopSync()
+    }
+  }
 }

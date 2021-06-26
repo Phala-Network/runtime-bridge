@@ -1,13 +1,15 @@
 // import { base64Decode } from '@polkadot/util-crypto'
+import { getBlockBlobs, getHeaderBlobs, waitForBlock } from '../io/block'
 import { phalaApi } from '../utils/api'
-import { waitForBlock } from '../io/block'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
+import wait from '../utils/wait'
 
 const keyring = await createKeyring()
 
 const wrapRequest = (endpoint) => async (resource, payload = {}) => {
+  // TODO: retry
   const url = `${endpoint}${resource}`
   const body = {
     input: payload,
@@ -82,6 +84,7 @@ export const setupRuntime = (workerContext) => {
     initInfo,
     request,
     plainQuery,
+    stopSync: null,
   }
 
   runtime.updateInfo = wrapUpdateInfo(runtime)
@@ -138,4 +141,99 @@ export const initRuntime = async (
     })
     logger.debug(workerBrief, 'Registered worker.')
   }
+  await runtime.updateInfo()
+  runtime.updateInfoInterval = setInterval(runtime.updateInfo, 3000)
+}
+
+export const startSync = (runtime) => {
+  const {
+    workerContext: {
+      workerBrief,
+      appContext: { fetchStatus },
+    },
+    info,
+    request,
+  } = runtime
+  let shouldStop = false
+  let headerSynchedTo = 0
+
+  let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
+  let synchedToTargetPromiseFinished = false
+  const synchedToTargetPromise = new Promise((resolve, reject) => {
+    synchedToTargetPromiseResolve = resolve
+    synchedToTargetPromiseReject = reject
+  })
+
+  const headerSyncLoop = async (next) => {
+    if (shouldStop) {
+      return
+    }
+    let { headernum } = info
+    if (typeof next === 'number') {
+      headernum = next
+    }
+    const data = await getHeaderBlobs(headernum)
+    const {
+      payload: { synced_to: synchedTo },
+    } = await request('/sync_header', data)
+
+    headerSynchedTo = synchedTo
+
+    return headerSyncLoop(synchedTo + 1).catch(doReject)
+  }
+  const blockSyncLoop = async (next) => {
+    if (shouldStop) {
+      return
+    }
+    let { blocknum } = info
+    if (typeof next === 'number') {
+      blocknum = next
+    }
+
+    const { latestBlock, synched } = fetchStatus
+
+    if (headerSynchedTo >= blocknum) {
+      const data = await getBlockBlobs(blocknum)
+      const {
+        payload: { dispatched_to: dispatchedTo },
+      } = await request('/dispatch_block', data)
+
+      if (!synchedToTargetPromiseFinished) {
+        if (synched && dispatchedTo === latestBlock) {
+          synchedToTargetPromiseFinished = true
+          synchedToTargetPromiseResolve(dispatchedTo)
+        }
+      }
+
+      return blockSyncLoop(dispatchedTo + 1).catch(doReject)
+    }
+
+    await wait(2000)
+    return blockSyncLoop(next).catch(doReject)
+  }
+
+  runtime.stopSync = () => {
+    shouldStop = true
+    runtime.stopSync = null
+    runtime.syncPromise = null
+    logger.warn(workerBrief, 'Stopping synching...')
+  }
+
+  const doReject = (error) => {
+    if (synchedToTargetPromiseFinished) {
+      logger.warn('Unexcepted rejection.', error)
+      return
+    }
+    runtime.stopSync()
+    clearInterval(runtime.updateInfoInterval)
+    synchedToTargetPromiseFinished = true
+    synchedToTargetPromiseReject(error)
+  }
+
+  runtime.syncPromise = Promise.all([
+    headerSyncLoop().catch(doReject),
+    blockSyncLoop().catch(doReject),
+  ])
+
+  return () => synchedToTargetPromise
 }

@@ -1,6 +1,15 @@
-import { DB_BLOCK, NOT_FOUND_ERROR, getDb, setupDb } from './db'
+import {
+  DB_BLOCK,
+  DB_WINDOW,
+  NOT_FOUND_ERROR,
+  getDb,
+  readonlyGet,
+  setupDb,
+} from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import { phalaApi } from '../utils/api'
+import { range } from '../fetch/compute_window'
+import { waitForBlobRangeEnd } from './window'
 import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
@@ -140,7 +149,7 @@ const _waitForBlock = async (blockNumber) => {
   } catch (error) {
     if (error === NOT_FOUND_ERROR) {
       logger.debug({ blockNumber }, 'Waiting for block...')
-      await wait(1000)
+      await wait(2000)
       await setupDb([], [DB_BLOCK])
       return _waitForBlock(blockNumber)
     }
@@ -166,3 +175,56 @@ export const waitForBlock = (blockNumber) =>
       maxTimeout: 12000,
     }
   )
+
+export const getHeaderBlobs = async (blockNumber) => {
+  const blockRange = range(blockNumber, await waitForBlobRangeEnd(blockNumber))
+  const headerBlobs = await Promise.all(
+    blockRange.map((b) =>
+      readonlyGet(DB_BLOCK, `block:${b}:syncHeaderData`, {
+        ...DB_ENCODING_BINARY,
+      }).then((buf) => buf.toString('base64'))
+    )
+  )
+
+  const lastBlockInRange = blockRange[blockRange.length - 1]
+  const hasAuthoritySetChange = await readonlyGet(
+    DB_WINDOW,
+    `setIdChanged:${lastBlockInRange}`
+  )
+  const authoritySetChange = hasAuthoritySetChange
+    ? Buffer.from(
+        phalaApi
+          .createType(
+            'Option<AuthoritySetChange>',
+            await readonlyGet(
+              DB_BLOCK,
+              `block:${lastBlockInRange}:authoritySetChange`,
+              {
+                ...DB_ENCODING_BINARY,
+              }
+            )
+          )
+          .unwrapOrDefault()
+          .toU8a()
+      ).toString('base64')
+    : undefined
+
+  return {
+    headers_b64: headerBlobs,
+    authority_set_change_b64: authoritySetChange,
+  }
+}
+
+export const getBlockBlobs = async (blockNumber) => {
+  const blockRange = range(blockNumber, await waitForBlobRangeEnd(blockNumber))
+
+  return {
+    blocks_b64: await Promise.all(
+      blockRange.map((b) =>
+        readonlyGet(DB_BLOCK, `block:${b}:dispatchBlockData`, {
+          ...DB_ENCODING_BINARY,
+        }).then((i) => i.toString('base64'))
+      )
+    ),
+  }
+}

@@ -20,11 +20,7 @@ const setupRpc = async (context) => {
     tunnelConnection,
     dispatch: async (message) => {
       try {
-        if (
-          message.to === 'MTG_BROADCAST' ||
-          message.to === 'MTG_MANAGER' ||
-          message.to === 'MTG_WORKER'
-        ) {
+        if (message.to === 'MTG_BROADCAST' || message.to === 'MTG_FETCHER') {
           switch (message.type) {
             case 'MTP_QUERY':
               dispatcher.queryCallback(injectMessage(message))

@@ -1,5 +1,5 @@
 import { MINIUM_BALANCE } from '../utils/constants'
-import { initRuntime } from './pruntime'
+import { initRuntime, startSync } from './pruntime'
 import { protoRoot } from '../message/proto'
 import Finity from 'finity'
 import logger from '../utils/logger'
@@ -65,28 +65,32 @@ const onStarting = async (fromState, toState, context) => {
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PENDING_SYNCHING)
 }
 const onPendingSynching = async (fromState, toState, context) => {
-  const { runtime } = context.stateMachine.rootStateMachine.workerContext
-  await initRuntime(runtime)
+  const {
+    runtime,
+    innerTxQueue,
+  } = context.stateMachine.rootStateMachine.workerContext
+  await innerTxQueue.add(async () => {
+    await initRuntime(runtime)
+  })
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
 const onSynching = async (fromState, toState, context) => {
   const {
     runtime,
-    innerTxQueue,
-    _dispatchTx,
+    dispatchTx,
     worker,
+    workerBrief,
   } = context.stateMachine.rootStateMachine.workerContext
 
-  await innerTxQueue.add(async () => {
-    const { waitUntilSynched } = await runtime.startSendBlob()
-    await waitUntilSynched()
-    await _dispatchTx({
-      action: 'START_MINING_INTENTION',
-      payload: {
-        worker,
-      },
-    })
+  const waitUntilSynched = await startSync(runtime)
+  await waitUntilSynched()
+  logger.info(workerBrief, 'waitUntilSynched done.')
+  await dispatchTx({
+    action: 'START_MINING_INTENTION',
+    payload: {
+      worker,
+    },
   })
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_ONLINE)
@@ -144,6 +148,7 @@ const onKicked = async (fromState, toState, context) => {
     worker,
     onChainState: { workerState },
     dispatchTx,
+    runtime,
   } = context.stateMachine.rootStateMachine.workerContext
   if (workerState === 'Mining' || workerState === 'MiningPending') {
     await dispatchTx({
@@ -153,6 +158,7 @@ const onKicked = async (fromState, toState, context) => {
       },
     })
   }
+  await runtime.request('/kick')
   // todo: send /kick to pruntime
 }
 

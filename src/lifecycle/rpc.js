@@ -50,6 +50,7 @@ const setupRpc = async (context) => {
     tunnelConnection,
   })
   await subscribe(dispatcher)
+
   $logger.info('Now listening to the redis channel for RPC.')
 }
 

@@ -1,7 +1,9 @@
+import { DB_BLOCK, DB_WINDOW, NOT_FOUND_ERROR, getDb, setupDb } from './db'
 import { DB_ENCODING_DEFAULT } from './db_encoding'
-import { DB_WINDOW, getDb } from './db'
 import levelErrors from 'level-errors'
 import logger from '../utils/logger'
+import promiseRetry from 'promise-retry'
+import wait from '../utils/wait'
 
 export const DB_WINDOW_WINDOW = Object.freeze({
   startBlock: [DB_ENCODING_DEFAULT],
@@ -90,10 +92,19 @@ export const updateWindow = async (windowIdOrObject, data) => {
   return windowObject
 }
 
-export const setBlobRangeEnd = async (blockNumber, target) =>
-  getDb(DB_WINDOW).put(`blobRangeEndByBlock:${blockNumber}`, parseInt(target), {
+export const setBlobRangeEnd = async (
+  blockNumber,
+  target,
+  setIdChanged = false
+) => {
+  const db = getDb(DB_WINDOW)
+  await db.put(`setIdChanged:${blockNumber}`, setIdChanged, {
     ...DB_ENCODING_DEFAULT,
   })
+  return db.put(`blobRangeEndByBlock:${blockNumber}`, parseInt(target), {
+    ...DB_ENCODING_DEFAULT,
+  })
+}
 
 export const getBlobRangeEnd = async (blockNumber) => {
   const db = getDb(DB_WINDOW)
@@ -108,3 +119,43 @@ export const getBlobRangeEnd = async (blockNumber) => {
     throw error
   }
 }
+
+const _waitForBlobRangeEnd = async (blockNumber) => {
+  try {
+    const ret = await getBlobRangeEnd(blockNumber)
+    if (ret <= -1) {
+      throw NOT_FOUND_ERROR
+    }
+    return ret
+  } catch (error) {
+    if (
+      error === NOT_FOUND_ERROR ||
+      error instanceof levelErrors.NotFoundError
+    ) {
+      logger.debug({ blockNumber }, 'Waiting for block...')
+      await wait(2000)
+      await setupDb([], [DB_BLOCK, DB_WINDOW])
+      return _waitForBlobRangeEnd(blockNumber)
+    }
+    throw error
+  }
+}
+
+export const waitForBlobRangeEnd = async (blockNumber) =>
+  promiseRetry(
+    (retry, number) => {
+      return _waitForBlobRangeEnd(blockNumber).catch((error) => {
+        logger.warn(
+          { blockNumber, retryTimes: number },
+          'Failed waitForBlobRangeEnd, retrying...',
+          error
+        )
+        return retry(error)
+      })
+    },
+    {
+      retries: 5,
+      minTimeout: 1000,
+      maxTimeout: 12000,
+    }
+  )
