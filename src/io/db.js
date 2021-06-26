@@ -85,7 +85,9 @@ export const readonlyGet = async (dbKey, key, options = {}) => {
       encode(rocksdb(path.join(env.dbPrefix, `${dbKey}`)), DB_ENCODING_DEFAULT),
       { ...options, readOnly: true }
     )
-    return db.get(key, options)
+    const ret = await db.get(key, options)
+    setTimeout(db.close, 1)
+    return ret
   } catch (error) {
     setTimeout(db.close, 1)
     if (
@@ -93,7 +95,7 @@ export const readonlyGet = async (dbKey, key, options = {}) => {
       error instanceof levelErrors.NotFoundError
     ) {
       await wait(2000)
-      return readonlyGet
+      return readonlyGet(dbKey, key, options)
     }
     throw error
   }
