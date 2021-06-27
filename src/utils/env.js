@@ -7,6 +7,7 @@ export const ENV_LIST = [
   ['PHALA_MAIN_CHAIN_ENDPOINT', 'mainChainEndpoint'],
   ['PHALA_CHAIN_ENDPOINT', 'chainEndpoint'],
   ['PHALA_REDIS_ENDPOINT', 'redisEndpoint'],
+  ['PHALA_ENABLE_HTTP_KEEPALIVE', 'httpKeepAliveEnabled'],
   ['PHALA_DEV_SKIP_RA', 'devSkipRa'],
 ]
 
@@ -20,4 +21,5 @@ ENV_LIST.forEach((i) => {
 export const env = Object.freeze(_env)
 export const isDev = env.NODE_ENV === 'development'
 export const shouldSkipRa = env.devSkipRa === 'true'
+export const httpKeepAliveEnabled = env.httpKeepAliveEnabled === 'true'
 export default env

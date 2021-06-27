@@ -1,12 +1,19 @@
 // import { base64Decode } from '@polkadot/util-crypto'
 import { base64Decode } from '@polkadot/util-crypto'
 import { getBlockBlobs, getHeaderBlobs, waitForBlock } from '../io/block'
+import { httpKeepAliveEnabled } from '../utils/env'
 import { phalaApi } from '../utils/api'
-import { shouldSkipRa } from '../utils/env'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
+import http from 'http'
+import https from 'https'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
+
+const httpAgent = new http.Agent({ keepAlive: true })
+const httpsAgent = new https.Agent({ keepAlive: true })
+const fetchAgent = (parsedUrl) =>
+  parsedUrl.protocol == 'http:' ? httpAgent : httpsAgent
 
 const keyring = await createKeyring()
 
@@ -20,13 +27,17 @@ const wrapRequest = (endpoint) => async (resource, payload = {}) => {
     },
   }
   $logger.debug({ url }, 'Sending HTTP request...')
-  const res = await fetch(url, {
+  const fetchOptions = {
     method: 'POST',
     body: JSON.stringify(body),
     headers: {
       'Content-Type': 'application/json',
     },
-  })
+  }
+  if (httpKeepAliveEnabled) {
+    fetchOptions.agent = fetchAgent
+  }
+  const res = await fetch(url, fetchOptions)
   const data = await res.json()
 
   if (data.status === 'ok') {
