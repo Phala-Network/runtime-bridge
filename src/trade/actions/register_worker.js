@@ -1,15 +1,13 @@
 import { base64Decode } from '@polkadot/util-crypto'
-import { getModel } from 'ottoman'
 import wrapTx from '../wrap_tx'
 
 const registerWorker = (
-  { encodedRuntimeInfo, attestation, machineRecordId },
+  { encodedRuntimeInfo, attestation, worker },
   { keyring, api }
 ) => {
-  const Machine = getModel('Machine')
   return new Promise((resolve, reject) =>
     (async () => {
-      const { polkadotJson } = await Machine.findById(machineRecordId)
+      const { polkadotJson } = worker
       const account = keyring.createFromJson(JSON.parse(polkadotJson).pair)
 
       const encodedRuntimeInfoBytes = api.createType(
@@ -41,7 +39,7 @@ const registerWorker = (
         resolve,
         reject
       )
-    })()
+    })().catch(reject)
   )
 }
 

@@ -1,29 +1,26 @@
-import { getModel } from 'ottoman'
 import wrapTx from '../wrap_tx'
 
-const startMiningIntention = ({ machineRecordId }, { keyring, api }) => {
-  const Machine = getModel('Machine')
+const startMiningIntention = ({ worker }, { keyring, api }) => {
   return new Promise((resolve, reject) =>
     (async () => {
-      const { polkadotJson } = await Machine.findById(machineRecordId)
+      const { polkadotJson } = worker
       const account = keyring.createFromJson(JSON.parse(polkadotJson).pair)
       account.decodePkcs8()
 
       wrapTx(api, api.tx.phala.startMiningIntention(), account, resolve, reject)
-    })()
+    })().catch(reject)
   )
 }
 
-const stopMiningIntention = ({ machineRecordId }, { keyring, api }) => {
-  const Machine = getModel('Machine')
+const stopMiningIntention = ({ worker }, { keyring, api }) => {
   return new Promise((resolve, reject) =>
     (async () => {
-      const { polkadotJson } = await Machine.findById(machineRecordId)
+      const { polkadotJson } = worker
       const account = keyring.createFromJson(JSON.parse(polkadotJson).pair)
       account.decodePkcs8()
 
       wrapTx(api, api.tx.phala.stopMiningIntention(), account, resolve, reject)
-    })()
+    })().catch(reject)
   )
 }
 

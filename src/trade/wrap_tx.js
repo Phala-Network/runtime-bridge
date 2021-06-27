@@ -1,4 +1,4 @@
-const wrapTx = (api, tx, account, resolve, reject) => {
+export const wrapTx = (api, tx, account, resolve, reject) => {
   tx.signAndSend(account, ({ status, dispatchError }) => {
     if (status.isUsurped || status.isDropped || status.isInvalid) {
       return reject(`${status}`)
@@ -22,7 +22,5 @@ const wrapTx = (api, tx, account, resolve, reject) => {
     }
   }).catch(reject)
 }
-
-export { wrapTx }
 
 export default wrapTx

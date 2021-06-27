@@ -1,155 +1,51 @@
-import toEnum from '../utils/to_enum'
-import Finity from 'finity'
-import pQueue from 'p-queue'
-import wait from '../utils/wait'
-
+import { DB_BLOCK, setupDb } from '../io/db'
+import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from './index'
+import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import {
-  FRNK,
-  GRANDPA_AUTHORITIES_KEY,
-  APP_RECEIVED_HEIGHT,
-  APP_VERIFIED_HEIGHT,
-  EVENTS_STORAGE_KEY,
-  FETCH_IS_SYNCHED,
-} from '../utils/constants'
-import { wrapIo } from '../utils/couchbase'
+  encodeBlock,
+  getBlock,
+  getGenesisBlock,
+  setBlock,
+  setGenesisBlock,
+} from '../io/block'
+import { phalaApi, setupPhalaApi } from '../utils/api'
+import Queue from 'promise-queue'
+import env from '../utils/env'
+import logger from '../utils/logger'
+import promiseRetry from 'promise-retry'
 
-const { default: Queue } = pQueue
+const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
 
-const STATES = toEnum([
-  'IDLE',
-  'SYNCHING_OLD_BLOCKS',
-  'SYNCHING_FINALIZED',
-  'ERROR',
-])
+let startLock = false
+const fetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
 
-const EVENTS = toEnum([
-  'RECEIVING_BLOCK_HEADER',
-  'FINISHING_SYNCHING_OLD_BLOCKS',
-])
+const processBlock = (blockNumber) =>
+  (async () => {
+    const hash = await phalaApi.rpc.chain.getBlockHash(blockNumber)
+    const blockData = await phalaApi.rpc.chain.getBlock(hash)
 
-const tryGetBlockExistence = (BlockModel, number) => {
-  return wrapIo(() => BlockModel.count({ number }))
-    .then((i) => !!i)
-    .catch((e) => {
-      $logger.error('tryGetBlockExistence', e, { number })
-      process.exit(-2)
-    })
-}
+    const header = blockData.block.header
+    const headerHash = header.hash
 
-const trySnapshotOnlineWorker = async ({ api, hash }) => {
-  let onlineWorkersNum = await api.query.phala.onlineWorkers.at(hash)
-  if (onlineWorkersNum.isEmpty) {
-    $logger.warn({ hash }, 'No onlineWorkers available.')
-    return '0x'
-  }
-  let computeWorkersNum = await api.query.phala.computeWorkers.at(hash)
-  if (computeWorkersNum.isEmpty) {
-    $logger.warn({ hash }, 'No computeWorkers available.')
-    return '0x'
-  }
+    const setId = (await phalaApi.query.grandpa.currentSetId.at(hash)).toJSON()
 
-  $logger.info(
-    { hash, onlineWorkersNum, computeWorkersNum },
-    'Starting SnapshotOnlineWorker...'
-  )
-
-  const onlineWorkersKey = api.query.phala.onlineWorkers.key()
-  const computeWorkersKey = api.query.phala.computeWorkers.key()
-
-  const stashes = []
-  const onlineWorkersData = (
-    await Promise.all(
-      (await api.query.phala.workerState.keysAt(hash)).map(async (key) => {
-        const data = await api.rpc.state.getStorage(key, hash)
-        if (data.state.isMining || data.state.isMiningStopping) {
-          const accountId = key._args[0].toString()
-          stashes.push(accountId)
-          return [key, data]
-        }
-        return undefined
-      })
-    )
-  ).filter((i) => i)
-
-  const stakeReceivedData = (
-    await Promise.all(
-      (await api.query.miningStaking.stakeReceived.keysAt(hash)).map(
-        async (key) => {
-          const data = (
-            await api.rpc.state.getStorage(key, hash)
-          ).unwrapOrDefault()
-          const accountId = key._args[0].toString()
-          if (stashes.indexOf(accountId) > -1) {
-            return [key, data]
-          }
-          return undefined
-        }
-      )
-    )
-  ).filter((i) => i)
-
-  const storageKeys = [
-    ...onlineWorkersData.map((i) => i[0].toHex()),
-    ...stakeReceivedData.map((i) => i[0].toHex()),
-    onlineWorkersKey,
-    computeWorkersKey,
-  ]
-
-  const proof = (await api.rpc.state.getReadProof(storageKeys, hash)).proof
-
-  return api
-    .createType('OnlineWorkerSnapshot', {
-      workerStateKv: onlineWorkersData,
-      stakeReceivedKv: stakeReceivedData,
-      onlineWorkersKv: [onlineWorkersKey, onlineWorkersNum],
-      computeWorkersKv: [computeWorkersKey, computeWorkersNum],
-      proof,
-    })
-    .toHex()
-}
-
-const _setBlock = async ({
-  api,
-  number,
-  timeout = 1,
-  chainName,
-  BlockModel,
-  eventsStorageKey,
-}) => {
-  await wait(timeout)
-  const block = await tryGetBlockExistence(BlockModel, number)
-
-  if (!block) {
-    const hash = (await api.rpc.chain.getBlockHash(number)).toHex()
-    const blockData = await api.rpc.chain.getBlock(hash).catch((e) => {
-      $logger.error({ hash, number }, e)
-      throw e
-    })
     let justification = blockData.justifications.toJSON()
-
     if (justification) {
-      justification = justification.reduce(
-        (acc, current) => (current[0] === FRNK ? current[1] : acc),
-        '0x'
+      justification = phalaApi.createType(
+        'JustificationToSync',
+        justification.reduce(
+          (acc, current) => (current[0] === FRNK ? current[1] : acc),
+          '0x'
+        )
       )
     }
-    const events = (await api.rpc.state.getStorage(eventsStorageKey, hash))
-      .value
-    const eventsStorageProof = (
-      await api.rpc.state.getReadProof([eventsStorageKey], hash)
-    ).proof.toHex()
-    const grandpaAuthorities = (
-      await api.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash)
-    ).value.toHex()
-    const grandpaAuthoritiesStorageProof = (
-      await api.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)
-    ).proof.toHex()
-    const setId = (await api.query.grandpa.currentSetId.at(hash)).toJSON()
 
+    const events = (
+      await phalaApi.rpc.state.getStorage(phalaApi.eventsStorageKey, hash)
+    ).value
     let isNewRound = false
-    let snapshotOnlineWorker
-    if (number > 0) {
-      const records = api.createType('Vec<EventRecord>', events)
+    if (blockNumber > 0) {
+      const records = phalaApi.createType('Vec<EventRecord>', events)
       isNewRound = records.reduce(
         (acc, current) =>
           current.event.section === 'phala' &&
@@ -160,176 +56,175 @@ const _setBlock = async ({
       )
     }
 
-    if (isNewRound) {
-      snapshotOnlineWorker = await trySnapshotOnlineWorker({
-        api,
-        hash,
-      })
-    }
+    const storageChanges = (
+      await phalaApi.rpc.pha.getStorageChanges(headerHash, headerHash)
+    )[0]
 
-    await wrapIo(() =>
-      BlockModel.create({
-        number,
-        hash,
-        header: blockData.block.header.toHex(),
-        justification,
-        events: events.toHex(),
-        eventsStorageProof,
-        grandpaAuthorities,
-        grandpaAuthoritiesStorageProof,
-        setId,
-        snapshotOnlineWorker,
-      })
+    const syncHeaderData = phalaApi.createType('HeaderToSync', {
+      header,
+      justification,
+    })
+
+    const dispatchBlockData = phalaApi.createType('BlockHeaderWithEvents', {
+      blockHeader: header,
+      storageChanges,
+    })
+
+    const hasJustification = justification
+      ? justification.toHex().length > 2
+      : false
+
+    let authoritySetChange = phalaApi.createType(
+      'Option<AuthoritySetChange>',
+      null
     )
-    $logger.info({ chain: chainName }, `Fetched block #${number}.`)
-  } else {
-    $logger.info({ chain: chainName }, `Block #${number} found in cache.`)
-  }
-}
-const setBlock = (...args) => {
-  return wrapIo(() => _setBlock(...args)).catch((e) => {
-    $logger.error(e)
-    process.exit(-2)
-  })
-}
+    if (hasJustification) {
+      const grandpaAuthorities = phalaApi.createType(
+        'VersionedAuthorityList',
+        (await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, hash))
+          .value
+      )
+      const grandpaAuthoritiesStorageProof = (
+        await phalaApi.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], hash)
+      ).proof
 
-const _syncBlock = async ({
-  api,
-  redis,
-  chainName,
-  BlockModel,
-  parallelBlocks,
-  resolve,
-}) => {
-  let oldHighest = 0
-  const CHAIN_APP_RECEIVED_HEIGHT = `${chainName}:${APP_RECEIVED_HEIGHT}`
-  const CHAIN_APP_VERIFIED_HEIGHT = `${chainName}:${APP_VERIFIED_HEIGHT}`
-  const CHAIN_EVENTS_STORAGE_KEY = `${chainName}:${EVENTS_STORAGE_KEY}`
-
-  const eventsStorageKey = api.query.system.events.key()
-
-  const fetchQueue = new Queue({
-    concurrency: parallelBlocks,
-    interval: 1,
-    timeout: 60 * 1000,
-    throwOnTimeout: true,
-  })
-
-  const syncOldBlocks = async () => {
-    await redis.set(CHAIN_EVENTS_STORAGE_KEY, eventsStorageKey)
-
-    const queue = new Queue({ concurrency: 60, interval: 1 })
-    globalThis.$q = queue
-
-    const verifiedHeight =
-      (parseInt(await redis.get(CHAIN_APP_VERIFIED_HEIGHT)) || 1) - 1
-    $logger.info(`${CHAIN_APP_VERIFIED_HEIGHT}: ${verifiedHeight}`)
-
-    process.send(oldHighest)
-
-    for (let number = verifiedHeight; number < oldHighest; number++) {
-      queue.add(() =>
-        setBlock({
-          api,
-          redis,
-          number,
-          chainName,
-          BlockModel,
-          eventsStorageKey,
-          fetchQueue,
+      authoritySetChange = phalaApi.createType(
+        'Option<AuthoritySetChange>',
+        phalaApi.createType('AuthoritySetChange', {
+          authoritySet: {
+            authoritySet: grandpaAuthorities.authorityList,
+            setId,
+          },
+          authorityProof: grandpaAuthoritiesStorageProof,
         })
       )
     }
 
-    await queue.onIdle().catch(console.error)
-    await redis.set(CHAIN_APP_VERIFIED_HEIGHT, oldHighest)
-    $logger.info(
-      `${CHAIN_APP_VERIFIED_HEIGHT}: ${await redis.get(
-        CHAIN_APP_VERIFIED_HEIGHT
-      )}`
+    return {
+      blockNumber,
+      hash,
+      header,
+      headerHash,
+      setId,
+      isNewRound,
+      hasJustification,
+      syncHeaderData,
+      dispatchBlockData,
+      authoritySetChange,
+    }
+  })().catch((e) => {
+    $logger.error({ blockNumber }, e)
+    throw e
+  })
+
+const processGenesisBlock = async () => {
+  const block = await processBlock(0)
+  block.genesisState = await phalaApi.rpc.state.getPairs('', block.hash)
+
+  const grandpaAuthorities = phalaApi.createType(
+    'VersionedAuthorityList',
+    (await phalaApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, block.hash))
+      .value
+  )
+  const grandpaAuthoritiesStorageProof = (
+    await phalaApi.rpc.state.getReadProof([GRANDPA_AUTHORITIES_KEY], block.hash)
+  ).proof
+
+  block.bridgeGenesisInfo = phalaApi.createType('GenesisInfo', {
+    header: block.header,
+    validators: grandpaAuthorities.authorityList,
+    proof: grandpaAuthoritiesStorageProof,
+  })
+
+  return block
+}
+
+const _walkBlock = async (blockNumber) => {
+  logger.debug({ blockNumber }, 'Starting fetching block...')
+  if (await getBlock(blockNumber)) {
+    logger.info({ blockNumber }, 'Block found in cache.')
+  } else {
+    await setBlock(blockNumber, encodeBlock(await processBlock(blockNumber)))
+    logger.info({ blockNumber }, 'Fetched block.')
+  }
+}
+
+const walkBlock = (blockNumber) =>
+  fetchQueue
+    .add(() =>
+      promiseRetry(
+        (retry, number) => {
+          return _walkBlock(blockNumber).catch((...args) => {
+            logger.warn(
+              { blockNumber, retryTimes: number },
+              'Failed setting block, retrying...'
+            )
+            return retry(...args)
+          })
+        },
+        {
+          retries: 3,
+          minTimeout: 1000,
+          maxTimeout: 30000,
+        }
+      )
     )
+    .catch((e) => {
+      logger.error({ blockNumber }, e)
+      process.exit(-1)
+    })
+
+const startSync = (target) => {
+  const bufferQueue = new Queue(
+    parseInt(FETCH_QUEUE_CONCURRENT * 1.618),
+    Infinity,
+    {
+      onEmpty: () => {
+        if (!bufferQueue.getPendingLength() && !bufferQueue.getQueueLength()) {
+          logger.info({ target }, 'Synched to init target height...')
+          process.send({ [FETCH_REACHED_TARGET]: target })
+        }
+      },
+    }
+  )
+
+  logger.info({ target }, 'Starting synching...')
+
+  for (let number = 1; number < target; number++) {
+    bufferQueue.add(() => walkBlock(number))
+  }
+}
+
+export default async () => {
+  if (startLock) {
+    throw new Error('Unexpected re-initialization.')
+  }
+  await setupDb([DB_BLOCK])
+  await setupPhalaApi(env.chainEndpoint)
+
+  let syncLock = false
+
+  if (await getGenesisBlock()) {
+    logger.info('Genesis block found in cache.')
+  } else {
+    await setGenesisBlock(encodeBlock(await processGenesisBlock()))
+    logger.info('Fetched genesis block.')
   }
 
-  const stateMachine = Finity.configure()
-
-  stateMachine
-    .initialState(STATES.IDLE)
-    .on(EVENTS.RECEIVING_BLOCK_HEADER)
-    .transitionTo(STATES.SYNCHING_OLD_BLOCKS)
-    .withAction(
-      (
-        ...{
-          2: { eventPayload: header },
-        }
-      ) => {
-        $logger.info(
-          { chain: chainName },
-          'Start synching blocks...It may take a long time...'
-        )
-        oldHighest = header.number.toNumber()
-      }
-    )
-
-  stateMachine
-    .state(STATES.SYNCHING_OLD_BLOCKS)
-    .do(() => syncOldBlocks())
-    .onSuccess()
-    .transitionTo(STATES.SYNCHING_FINALIZED)
-    .withAction(async () => {
-      await redis.set(FETCH_IS_SYNCHED, true)
-      $logger.info({ chain: chainName }, 'Old blocks synched.')
-      resolve()
-    })
-    .onFailure()
-    .transitionTo(STATES.ERROR)
-    .withAction((from, to, context) => {
-      console.error('error', context.error)
-      $logger.error({ chain: chainName }, context.error)
-    })
-    .onAny()
-    .ignore()
-
-  stateMachine.state(STATES.SYNCHING_FINALIZED).onAny().ignore()
-
-  stateMachine
-    .state(STATES.ERROR)
-    .do(() => process.exit(-2))
-    .onSuccess()
-    .selfTransition()
-    .onAny()
-    .ignore()
-
-  const worker = stateMachine.start()
-
-  const onSub = (header) => {
+  await phalaApi.rpc.chain.subscribeFinalizedHeads((header) => {
     const number = header.number.toNumber()
 
-    if (oldHighest <= 0) {
-      worker.handle(EVENTS.RECEIVING_BLOCK_HEADER, header)
+    if (!syncLock) {
+      syncLock = true
+      startSync(number)
     }
-    $redis.set(CHAIN_APP_RECEIVED_HEIGHT, number)
 
-    setBlock({
-      api,
-      redis,
-      number,
-      chainName,
-      BlockModel,
-      eventsStorageKey,
-      fetchQueue,
+    walkBlock(number).then(() => {
+      process.send({ [FETCH_RECEIVED_HEIGHT]: number })
     })
-  }
+  })
 
-  await api.rpc.chain.subscribeFinalizedHeads(onSub)
-
-  api.on('disconnected', () => {
+  phalaApi.on('disconnected', () => {
     process.exit(-4)
   })
 }
-
-const syncBlock = ({ api, redis, chainName, BlockModel, parallelBlocks }) =>
-  new Promise((resolve) =>
-    _syncBlock({ api, redis, chainName, BlockModel, parallelBlocks, resolve })
-  )
-
-export default syncBlock

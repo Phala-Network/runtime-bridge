@@ -1,14 +1,17 @@
-export const callOnlineLifecycleManager = async (message, context) => {
-  const col = await context.ottoman.bucket.defaultCollection()
-  const { content } = await col.get('lifecycleManagerStateUpdate')
+import logger from '../../utils/logger'
+import os from 'os'
+
+export const callOnlineLifecycleManager = async () => {
   return {
-    lifecycleManagerStateUpdate: content,
+    lifecycleManagerStateUpdate: {
+      hostname: os.hostname(),
+    },
   }
 }
 
 export const fetcherStateUpdate = async (message, context) => {
-  const col = await context.ottoman.bucket.defaultCollection()
-  await col.upsert('fetcherState', message)
+  context.fetchStatus = message
+  logger.info(message, 'fetcherStateUpdate')
 
   return {
     ack: {

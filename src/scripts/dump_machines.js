@@ -1,12 +1,9 @@
-import { start as startOttoman } from '../utils/couchbase'
-import { getModel } from 'ottoman'
+import { DB_WORKER, setupDb } from '../io/db'
+import { getAllWorker } from '../io/worker'
 
 const main = async () => {
-  await startOttoman(process.env.COUCHBASE_ENDPOINT)
-  const Machine = getModel('Machine')
-
-  const m = await Machine.find({})
-  console.log(JSON.stringify(m))
+  await setupDb([], [DB_WORKER])
+  console.log(JSON.stringify(await getAllWorker()))
 }
 
 try {

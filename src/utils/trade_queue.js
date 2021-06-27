@@ -1,15 +1,16 @@
-import BeeQueue from 'bee-queue'
 import { APP_MESSAGE_QUEUE_NAME } from './constants'
+import { phalaApi } from './api'
+import BeeQueue from 'bee-queue'
 
 const createSubQueue = ({
   redisUrl,
-  machineRecordId,
+  worker,
   actions,
   txQueue,
   keyring,
-  api,
+  context,
 }) => {
-  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${machineRecordId}`
+  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${worker.id}`
   const ret = new BeeQueue(queueName, {
     redis: {
       url: redisUrl,
@@ -21,15 +22,17 @@ const createSubQueue = ({
     return waitForJob(queueName, job)
   }
 
+  console.log(worker)
   ret.process(1, async (job) => {
-    $logger.info(job.data, `${machineRecordId}: Processing job #${job.id}...`)
+    $logger.info(job.data, `${worker.id}: Processing job #${job.id}...`)
 
     const actionFn = actions[job.data.action]
 
     return actionFn(job.data.payload, {
       txQueue,
       keyring,
-      api,
+      api: phalaApi,
+      context,
     })
   })
 

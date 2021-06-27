@@ -1,10 +1,11 @@
-import createRedisClient from '../utils/redis'
 import {
   APP_MESSAGE_TUNNEL_CHANNEL,
   APP_MESSAGE_TUNNEL_QUERY_TIMEOUT,
 } from '../utils/constants'
 import { Message, MessageTarget, MessageType } from './proto'
 import { v4 as uuidv4 } from 'uuid'
+import createRedisClient from '../utils/redis'
+import logger from '../utils/logger'
 
 const defaultEncode = (request) =>
   Message.encode(Message.create(request)).finish()
@@ -37,6 +38,18 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
     })
 
     await pubClient.publish(APP_MESSAGE_TUNNEL_CHANNEL, data)
+    logger.debug(
+      {
+        from,
+        to,
+        createdAt,
+        nonce: _nonce,
+        nonceRef,
+        type,
+        content: request,
+      },
+      'published to rpc.'
+    )
     return _nonce
   }
 
@@ -93,10 +106,10 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
             $logger.warn('Invalid message received.', { channel, message })
             return
           }
-
           let _message
           try {
             _message = (decode || defaultDecode)(message)
+            logger.debug(_message, 'Receiving...')
           } catch (error) {
             $logger.warn('Invalid message received.', error, { message })
           }

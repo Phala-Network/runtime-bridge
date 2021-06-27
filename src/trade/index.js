@@ -1,71 +1,41 @@
-import { start as startOttoman } from '../utils/couchbase'
-import { createMessageTunnel, createDispatcher } from '../message'
-import { MessageTarget } from '../message/proto'
-import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
-import createKeyring from '../utils/keyring'
-import * as actions from './actions'
 import { TX_QUEUE_SIZE } from '../utils/constants'
-import { createPhalaApi } from '../utils/api'
+import { setupPhalaApi } from '../utils/api'
+import createKeyring from '../utils/keyring'
+import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
+import env from '../utils/env'
+import logger from '../utils/logger'
+import * as actions from './actions'
 
-const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
-  await startOttoman(couchbaseEndpoint)
-
-  const phalaApi = await createPhalaApi(phalaRpc)
-
+const start = async () => {
+  await setupPhalaApi(env.chainEndpoint)
   const keyring = await createKeyring()
-
-  const tunnelConnection = await createMessageTunnel({
-    redisEndpoint,
-    from: MessageTarget.values.MTG_FETCHER,
-  })
-  const { subscribe } = tunnelConnection
-
-  const txQueue = createTradeQueue(redisEndpoint)
+  const txQueue = createTradeQueue(env.redisEndpoint)
   const subQueues = new Map()
 
   await txQueue.ready()
 
-  const dispatcher = createDispatcher({
-    tunnelConnection,
-    queryHandlers: {},
-    plainHandlers: {},
-    dispatch: (message) => {
-      if (message.to === 'MTG_BROADCAST' || message.to === 'MTG_TRADE_WORKER') {
-        switch (message.type) {
-          case 'MTP_QUERY':
-            dispatcher.queryCallback(message)
-            break
-          case 'MTP_REPLY':
-            dispatcher.replyCallback(message)
-            break
-          default:
-            dispatcher.plainCallback(message)
-            break
-        }
-      }
-    },
-  })
-  await subscribe(dispatcher)
-  $logger.info(
-    'Now listening to the redis channel, old messages may be ignored.'
-  )
+  const context = {
+    keyring,
+    txQueue,
+    subQueues,
+  }
 
   txQueue.process(TX_QUEUE_SIZE, async (job) => {
     $logger.info(job.data, `Processing job #${job.id}...`)
 
-    const { machineRecordId } = job.data.payload
+    const { worker } = job.data.payload
 
-    let subQueue = subQueues.get(machineRecordId)
+    let subQueue = subQueues.get(worker.id)
     if (!subQueue) {
       subQueue = createSubQueue({
-        redisUrl: redisEndpoint,
-        machineRecordId,
+        redisUrl: env.redisEndpoint,
+        worker,
         actions,
         txQueue,
         keyring,
-        api: phalaApi,
+        context,
       })
-      subQueues.set(machineRecordId, subQueue)
+      subQueues.set(worker.id, subQueue)
     }
 
     try {
@@ -77,6 +47,9 @@ const start = async ({ phalaRpc, couchbaseEndpoint, redisEndpoint }) => {
       throw e
     }
   })
+  logger.info('Now accepting incoming transaction requests...')
+
+  return
 }
 
 export default start

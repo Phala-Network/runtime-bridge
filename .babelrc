@@ -2,5 +2,14 @@
   "plugins": [
     "@babel/plugin-syntax-top-level-await",
     "@babel/plugin-syntax-class-properties"
+  ],
+  "presets": [
+    ["@babel/preset-env", {
+      "useBuiltIns": "usage",
+      "corejs": 3
+    }]
+  ],
+  "ignore": [
+    "**/node_modules"
   ]
 }
