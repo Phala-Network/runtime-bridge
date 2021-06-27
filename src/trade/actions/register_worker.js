@@ -39,7 +39,7 @@ const registerWorker = (
         resolve,
         reject
       )
-    })()
+    })().catch(reject)
   )
 }
 

@@ -1,6 +1,8 @@
 // import { base64Decode } from '@polkadot/util-crypto'
+import { base64Decode } from '@polkadot/util-crypto'
 import { getBlockBlobs, getHeaderBlobs, waitForBlock } from '../io/block'
 import { phalaApi } from '../utils/api'
+import { shouldSkipRa } from '../utils/env'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
@@ -43,18 +45,18 @@ const wrapRequest = (endpoint) => async (resource, payload = {}) => {
   }
 }
 
-const wrapPlainQuery = (request) => async (contractId, payload = {}) =>
-  JSON.parse(
-    await request('/query', {
-      query_payload: JSON.stringify({
-        Plain: JSON.stringify({
-          contract_id: contractId,
-          nonce: Math.round(Math.randoum() * 1_000_000_000),
-          request: payload,
-        }),
+const wrapPlainQuery = (request) => async (contractId, payload = {}) => {
+  const res = await request('/query', {
+    query_payload: JSON.stringify({
+      Plain: JSON.stringify({
+        contract_id: contractId,
+        nonce: Math.round(Math.random() * 1_000_000_000),
+        request: payload,
       }),
-    })
-  )
+    }),
+  })
+  return JSON.parse(res.payload.Plain)
+}
 
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, request } = runtime
@@ -95,8 +97,8 @@ export const setupRuntime = (workerContext) => {
 
 export const initRuntime = async (
   runtime,
-  skipRa = false,
-  debugSetKey = null
+  debugSetKey = undefined,
+  skipRa = false
 ) => {
   const {
     workerContext: { worker, workerBrief, _dispatchTx },
@@ -104,21 +106,26 @@ export const initRuntime = async (
     request,
   } = runtime
   const runtimeInfo = await runtime.updateInfo()
+  runtime.skipRa = skipRa
+
   if (runtimeInfo.initialized) {
     Object.assign(initInfo, (await request('/get_runtime_info')).payload)
     logger.debug(workerBrief, 'Already initialized.')
   } else {
     const { genesisState, bridgeGenesisInfo } = await waitForBlock(0)
+    const initRequestPayload = {
+      bridge_genesis_info_b64: bridgeGenesisInfo.toString('base64'),
+      genesis_state_b64: genesisState.toString('base64'),
+      skip_ra: skipRa,
+    }
+    if (skipRa) {
+      initRequestPayload.debugSetKey = debugSetKey
+      logger.info({ skipRa, debugSetKey }, 'Init runtime in debug mode.')
+    }
+
     Object.assign(
       initInfo,
-      (
-        await request('/init_runtime', {
-          skip_ra: skipRa,
-          debug_set_key: debugSetKey,
-          bridge_genesis_info_b64: bridgeGenesisInfo.toString('base64'),
-          genesis_state_b64: genesisState.toString('base64'),
-        })
-      ).payload
+      (await request('/init_runtime', initRequestPayload)).payload
     )
     await runtime.updateInfo()
     $logger.debug(workerBrief, `Initialized pRuntime.`)
@@ -128,24 +135,27 @@ export const initRuntime = async (
   const machineOwner = keyring.encodeAddress(
     await phalaApi.query.phala.machineOwner(machineId)
   )
-  if (machineOwner === worker.phalaSs58Address) {
-    logger.debug(workerBrief, 'Worker already registered, skipping.')
-  } else {
-    await _dispatchTx({
-      action: 'REGISTER_WORKER',
-      payload: {
-        encodedRuntimeInfo: initInfo['encoded_runtime_info'],
-        attestation: initInfo.attestation,
-        worker,
-      },
-    })
-    logger.debug(workerBrief, 'Registered worker.')
+  if (!skipRa) {
+    if (machineOwner === worker.phalaSs58Address) {
+      logger.debug(workerBrief, 'Worker already registered, skipping.')
+    } else {
+      await _dispatchTx({
+        action: 'REGISTER_WORKER',
+        payload: {
+          encodedRuntimeInfo: initInfo['encoded_runtime_info'],
+          attestation: initInfo.attestation,
+          worker,
+        },
+      })
+      logger.debug(workerBrief, 'Registered worker.')
+    }
   }
+
   await runtime.updateInfo()
   runtime.updateInfoInterval = setInterval(runtime.updateInfo, 3000)
 }
 
-export const startSync = (runtime) => {
+export const startSyncBlob = (runtime) => {
   const {
     workerContext: {
       workerBrief,
@@ -236,4 +246,141 @@ export const startSync = (runtime) => {
   ])
 
   return () => synchedToTargetPromise
+}
+
+const startSyncMqEgress = async (syncContext) => {
+  if (syncContext.shouldStop) {
+    return
+  }
+  const {
+    worker,
+    workerBrief,
+    onError,
+    dispatchTx,
+    runtime: { request },
+  } = syncContext
+
+  const messages = phalaApi.createType(
+    'Vec<(MessageOrigin, Vec<SignedMessage>)>',
+    base64Decode((await request('/get_egress_messages')).payload.messages)
+  )
+
+  const ret = []
+  for (const m of messages) {
+    const origin = m[0]
+    const onChainSequence = (
+      await phalaApi.query.phalaMq.offchainIngress(origin)
+    ).unwrapOrDefault()
+    const innerMessages = m[1]
+    for (const _m of innerMessages) {
+      if (_m.sequence.lt(onChainSequence)) {
+        logger.debug(`${_m.sequence.toJSON()} has been submitted. Skipping...`)
+        console.log(`${_m.sequence.toJSON()} has been submitted. Skipping...`)
+      } else {
+        ret.push(_m.toHex())
+      }
+    }
+  }
+
+  if (ret.length) {
+    await dispatchTx({
+      action: 'BATCH_SYNC_WORKER_MESSAGE',
+      payload: {
+        messages: ret,
+        worker,
+      },
+    })
+    logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)
+  }
+
+  await wait(6000)
+  return startSyncMqEgress(syncContext).catch(onError)
+}
+
+const startSyncSystemEgress = async (syncContext) => {
+  if (syncContext.shouldStop) {
+    return
+  }
+  const {
+    worker,
+    workerBrief,
+    onError,
+    dispatchTx,
+    runtime: { plainQuery },
+  } = syncContext
+  const onChainSequence = await phalaApi.query.phala.workerIngress(
+    worker.phalaSs58Address
+  )
+  const {
+    GetWorkerEgress: { encoded_egress_b64: encodedEgressB64, length },
+  } = await plainQuery(0, {
+    GetWorkerEgress: {
+      start_sequence: onChainSequence.toNumber(),
+    },
+  })
+
+  if (!length) {
+    logger.debug(workerBrief, 'No worker message to sync.')
+    await wait(6000)
+    return startSyncSystemEgress(syncContext).catch(onError)
+  }
+  const messageQueue = phalaApi.createType(
+    'Vec<SignedWorkerMessage>',
+    base64Decode(encodedEgressB64)
+  )
+
+  await dispatchTx({
+    action: 'BATCH_SYNC_WORKER_MESSAGE',
+    payload: {
+      messages: messageQueue
+        .map((message) => {
+          if (message.data.sequence.lt(onChainSequence)) {
+            return undefined
+          }
+
+          return message.toHex()
+        })
+        .filter((i) => i),
+      worker,
+    },
+  })
+  logger.debug(workerBrief, 'Synched worker message(s).')
+
+  await wait(6000)
+  return startSyncSystemEgress(syncContext).catch(onError)
+}
+
+export const startSyncMessage = (runtime) => {
+  const {
+    workerContext: { worker, workerBrief, dispatchTx },
+    plainQuery,
+  } = runtime
+
+  const stopSyncMessage = () => {
+    syncContext.shouldStop = true
+    runtime.stopSyncMessage = null
+  }
+  const onError = (error) => {
+    stopSyncMessage()
+    throw error
+  }
+
+  const syncContext = {
+    runtime,
+    shouldStop: false,
+    worker,
+    workerBrief,
+    dispatchTx,
+    stopSyncMessage,
+    plainQuery,
+  }
+
+  runtime.mqSyncContext = syncContext
+  runtime.stopSyncMessage = stopSyncMessage
+
+  return Promise.all(
+    [startSyncMqEgress, startSyncSystemEgress].map((i) =>
+      i(syncContext).catch(onError)
+    )
+  )
 }

@@ -8,4 +8,5 @@ export {
 export {
   SYNC_WORKER_MESSAGE,
   BATCH_SYNC_WORKER_MESSAGE,
+  BATCH_SYNC_MQ_MESSAGE,
 } from './sync_worker_message'

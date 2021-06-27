@@ -8,7 +8,7 @@ const startMiningIntention = ({ worker }, { keyring, api }) => {
       account.decodePkcs8()
 
       wrapTx(api, api.tx.phala.startMiningIntention(), account, resolve, reject)
-    })()
+    })().catch(reject)
   )
 }
 
@@ -20,7 +20,7 @@ const stopMiningIntention = ({ worker }, { keyring, api }) => {
       account.decodePkcs8()
 
       wrapTx(api, api.tx.phala.stopMiningIntention(), account, resolve, reject)
-    })()
+    })().catch(reject)
   )
 }
 

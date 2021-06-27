@@ -43,24 +43,24 @@ export const bridgeTypes = {
   //   computeReceived: 'Balance',
   //   onlineReceived: 'Balance',
   // },
-  // SignedWorkerMessage: {
-  //   data: 'WorkerMessage',
-  //   signature: 'Vec<u8>',
-  // },
-  // WorkerMessage: {
-  //   payload: 'WorkerMessagePayload',
-  //   sequence: 'u64',
-  // },
-  // WorkerMessagePayload: {
-  //   _enum: {
-  //     Heartbeat: 'WorkerMessagePayloadHeartbeat',
-  //   },
-  // },
-  // WorkerMessagePayloadHeartbeat: {
-  //   blockNum: 'u32',
-  //   claimOnline: 'bool',
-  //   claimCompute: 'bool',
-  // },
+  SignedWorkerMessage: {
+    data: 'WorkerMessage',
+    signature: 'Vec<u8>',
+  },
+  WorkerMessage: {
+    payload: 'WorkerMessagePayload',
+    sequence: 'u64',
+  },
+  WorkerMessagePayload: {
+    _enum: {
+      Heartbeat: 'WorkerMessagePayloadHeartbeat',
+    },
+  },
+  WorkerMessagePayloadHeartbeat: {
+    blockNum: 'u32',
+    claimOnline: 'bool',
+    claimCompute: 'bool',
+  },
   StorageCollection: 'Vec<(Vec<u8>, Option<Vec<u8>>)>',
   ChildStorageCollection: 'Vec<(Vec<u8>, StorageCollection)>',
   StorageChanges: {

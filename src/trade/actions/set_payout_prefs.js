@@ -14,7 +14,7 @@ const setPayoutPrefs = ({ target, worker }, { keyring, api }) => {
         resolve,
         reject
       )
-    })()
+    })().catch(reject)
   )
 }
 

@@ -13,7 +13,7 @@ const main = async ({ machines }) => {
   const result = []
 
   const createMachine = async (machine) => {
-    const mnemonic = mnemonicGenerate()
+    const mnemonic = machine.mnemonic || mnemonicGenerate()
     const pair = keyring.createFromUri(mnemonic)
 
     const { publicKey, address: phalaSs58Address } = pair

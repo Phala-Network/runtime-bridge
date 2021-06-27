@@ -8,7 +8,7 @@ const setStash = ({ address, worker }, { keyring, api }) => {
       account.decodePkcs8()
 
       wrapTx(api, api.tx.phala.setStash(address), account, resolve, reject)
-    })()
+    })().catch(reject)
   )
 }
 

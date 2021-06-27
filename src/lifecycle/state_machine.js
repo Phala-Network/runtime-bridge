@@ -1,6 +1,7 @@
 import { MINIUM_BALANCE } from '../utils/constants'
-import { initRuntime, startSync } from './pruntime'
+import { initRuntime, startSyncBlob, startSyncMessage } from './pruntime'
 import { protoRoot } from '../message/proto'
+import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
@@ -70,7 +71,15 @@ const onPendingSynching = async (fromState, toState, context) => {
     innerTxQueue,
   } = context.stateMachine.rootStateMachine.workerContext
   await innerTxQueue.add(async () => {
-    await initRuntime(runtime)
+    if (shouldSkipRa) {
+      await initRuntime(
+        runtime,
+        '0000000000000000000000000000000000000000000000000000000000000001',
+        true
+      )
+    } else {
+      await initRuntime(runtime, undefined, false)
+    }
   })
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
@@ -83,21 +92,23 @@ const onSynching = async (fromState, toState, context) => {
     workerBrief,
   } = context.stateMachine.rootStateMachine.workerContext
 
-  const waitUntilSynched = await startSync(runtime)
+  const waitUntilSynched = await startSyncBlob(runtime)
   await waitUntilSynched()
   logger.info(workerBrief, 'waitUntilSynched done.')
-  await dispatchTx({
-    action: 'START_MINING_INTENTION',
-    payload: {
-      worker,
-    },
-  })
+  if (runtime.skipRa) {
+    await dispatchTx({
+      action: 'START_MINING_INTENTION',
+      payload: {
+        worker,
+      },
+    })
+  }
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_ONLINE)
 }
 const onOnline = async (fromState, toState, context) => {
   const { runtime } = context.stateMachine.rootStateMachine.workerContext
-  await runtime.startSyncWorkerIngress()
+  await startSyncMessage(runtime)
 }
 const onError = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.errorMessage =

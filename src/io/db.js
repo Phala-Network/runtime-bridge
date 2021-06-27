@@ -86,10 +86,10 @@ export const readonlyGet = async (dbKey, key, options = {}) => {
       { ...options, readOnly: true }
     )
     const ret = await db.get(key, options)
-    setTimeout(db.close, 1)
+    setTimeout(() => db.close(), 1)
     return ret
   } catch (error) {
-    setTimeout(db.close, 1)
+    setTimeout(() => db.close(), 1)
     if (
       error === NOT_FOUND_ERROR ||
       error instanceof levelErrors.NotFoundError
