@@ -53,7 +53,7 @@ services:
     restart: always
     hostname: redis
     ports:
-      - "63791:6379" # debug
+      - "63791:6379"
 
 volumes:
   bridge-data:

@@ -52,6 +52,8 @@ services:
     command: ["redis-server", "--appendonly", "no"]
     restart: always
     hostname: redis
+    ports:
+      - "63791:6379"
 
 volumes:
   bridge-data:
