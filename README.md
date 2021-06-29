@@ -74,7 +74,7 @@ Use the sample `docker-compose.yml `from <https://github.com/Phala-Network/runti
 A Phala full node is not included in the setup, you need to deploy it in another place.
 
 0. Apply sysctl configuration as in `system` folder on the machine running `liftcycle` and `fetch`.
-1. Run `ddocker-compose run --no-deps --use-aliases --entrypoint "pnpm db_init" fetch` to initialize database.
+1. Run `docker-compose run --no-deps --use-aliases --entrypoint "pnpm db_init" fetch` to initialize database.
 2. Edit the YAML file to fit the credentials and Phala node endpoint.
    * search `-p` for Phala node endpoint.
 3. Run `docker-compose up -d redis` to start Redis.
