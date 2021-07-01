@@ -8,7 +8,6 @@ services:
       dockerfile: docker/testing/Dockerfile
     hostname: fetch
     volumes:
-      - ../../..:/opt/app
       - ./data:/var/data
     environment:
       - NODE_ENV=testing
@@ -23,7 +22,6 @@ services:
     image: phalanetwork/poc4-prb:testing
     hostname: lifecycle
     volumes:
-      - ../../..:/opt/app
       - ./data:/var/data
     environment:
       - NODE_ENV=testing
@@ -37,8 +35,6 @@ services:
   trade:
     image: phalanetwork/poc4-prb:testing
     hostname: trade
-    volumes:
-      - ../../..:/opt/app
     environment:
       - NODE_ENV=testing
       - PHALA_MODULE=trade
@@ -54,6 +50,3 @@ services:
     hostname: redis
     ports:
       - "63791:6379"
-
-volumes:
-  bridge-data:

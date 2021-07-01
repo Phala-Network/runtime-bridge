@@ -54,6 +54,3 @@ services:
     hostname: redis
     ports:
       - "63791:6379"
-
-volumes:
-  bridge-data:
