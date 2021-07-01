@@ -1,7 +1,7 @@
 // import { base64Decode } from '@polkadot/util-crypto'
 import { base64Decode } from '@polkadot/util-crypto'
 import { getBlockBlobs, getHeaderBlobs, waitForBlock } from '../io/block'
-import { httpKeepAliveEnabled } from '../utils/env'
+import { httpKeepAliveEnabled, legacySystemMqEnabled } from '../utils/env'
 import { phalaApi } from '../utils/api'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
@@ -389,9 +389,10 @@ export const startSyncMessage = (runtime) => {
   runtime.mqSyncContext = syncContext
   runtime.stopSyncMessage = stopSyncMessage
 
-  return Promise.all(
-    [startSyncMqEgress, startSyncSystemEgress].map((i) =>
-      i(syncContext).catch(onError)
-    )
-  )
+  const enabledMqArr = [startSyncMqEgress]
+  if (legacySystemMqEnabled) {
+    enabledMqArr.push(startSyncSystemEgress)
+  }
+
+  return Promise.all(enabledMqArr.map((i) => i(syncContext).catch(onError)))
 }

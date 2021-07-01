@@ -9,6 +9,7 @@ export const ENV_LIST = [
   ['PHALA_REDIS_ENDPOINT', 'redisEndpoint'],
   ['PHALA_ENABLE_HTTP_KEEPALIVE', 'httpKeepAliveEnabled'],
   ['PHALA_DEV_SKIP_RA', 'devSkipRa'],
+  ['PHALA_ENABLE_LEGACY_SYSTEM_MQ', 'enableLegacySystemMq'],
 ]
 
 const _env = {}
@@ -22,4 +23,5 @@ export const env = Object.freeze(_env)
 export const isDev = env.NODE_ENV === 'development'
 export const shouldSkipRa = env.devSkipRa === 'true'
 export const httpKeepAliveEnabled = env.httpKeepAliveEnabled === 'true'
+export const legacySystemMqEnabled = env.enableLegacySystemMq === 'true'
 export default env
