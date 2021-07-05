@@ -1,7 +1,6 @@
 import { MessageTarget } from '../message/proto'
 import { createDispatcher, createMessageTunnel } from '../message'
 import env from '../utils/env'
-import os from 'os'
 
 const setupRpc = async (context) => {
   const tunnelConnection = await createMessageTunnel({
@@ -41,11 +40,7 @@ const setupRpc = async (context) => {
       callOnlineFetcher: async () => {
         return {
           fetcherStateUpdate: {
-            hostname: os.hostname(),
-            latestHeaderPhala: context.receivedHeight,
-            latestHeaderRococo: 0,
-            latestBlock: context.receivedHeight,
-            synched: context.hasReachedTarget,
+            ...context,
           },
         }
       },

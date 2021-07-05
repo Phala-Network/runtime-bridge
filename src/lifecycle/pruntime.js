@@ -29,11 +29,20 @@ const wrapRequest = (endpoint) => async (resource, payload = {}) => {
   $logger.debug({ url }, 'Sending HTTP request...')
   const fetchOptions = {
     method: 'POST',
-    body: JSON.stringify(body),
-    headers: {
-      'Content-Type': 'application/json',
-    },
   }
+
+  if (Buffer.isBuffer(payload)) {
+    fetchOptions.body = payload
+    fetchOptions.headers = {
+      'Content-Type': 'application/octet-stream',
+    }
+  } else {
+    fetchOptions.body = JSON.stringify(body)
+    fetchOptions.headers = {
+      'Content-Type': 'application/json',
+    }
+  }
+
   if (httpKeepAliveEnabled) {
     fetchOptions.agent = fetchAgent
   }
@@ -196,7 +205,7 @@ export const startSyncBlob = (runtime) => {
     const data = await getHeaderBlobs(headernum)
     const {
       payload: { synced_to: synchedTo },
-    } = await request('/sync_header', data)
+    } = await request('/bin_api/sync_header', data)
 
     headerSynchedTo = synchedTo
 
@@ -217,7 +226,7 @@ export const startSyncBlob = (runtime) => {
       const data = await getBlockBlobs(blocknum)
       const {
         payload: { dispatched_to: dispatchedTo },
-      } = await request('/dispatch_block', data)
+      } = await request('/bin_api/dispatch_block', data)
 
       if (!synchedToTargetPromiseFinished) {
         if (synched && dispatchedTo === latestBlock) {
@@ -286,7 +295,6 @@ const startSyncMqEgress = async (syncContext) => {
     for (const _m of innerMessages) {
       if (_m.sequence.lt(onChainSequence)) {
         logger.debug(`${_m.sequence.toJSON()} has been submitted. Skipping...`)
-        console.log(`${_m.sequence.toJSON()} has been submitted. Skipping...`)
       } else {
         ret.push(_m.toHex())
       }
@@ -295,7 +303,7 @@ const startSyncMqEgress = async (syncContext) => {
 
   if (ret.length) {
     await dispatchTx({
-      action: 'BATCH_SYNC_WORKER_MESSAGE',
+      action: 'BATCH_SYNC_MQ_MESSAGE',
       payload: {
         messages: ret,
         worker,

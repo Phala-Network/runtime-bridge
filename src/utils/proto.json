@@ -16,7 +16,7 @@
             "MTG_MANAGER": 1,
             "MTG_FETCHER": 2,
             "MTG_TRADE_WORKER": 3,
-            "MTG_WORKER": 4,
+            "MTG_APP": 4,
             "MTG_INTERNAL_PRESERVED": 5
           }
         },
@@ -471,21 +471,25 @@
                   "type": "string",
                   "id": 1
                 },
-                "latestHeaderPhala": {
+                "initHeight": {
                   "type": "uint32",
                   "id": 2
                 },
-                "latestHeaderRococo": {
+                "knownHeight": {
                   "type": "uint32",
                   "id": 3
                 },
-                "latestBlock": {
+                "blobHeight": {
                   "type": "uint32",
                   "id": 4
                 },
-                "synched": {
-                  "type": "bool",
+                "archivedHeight": {
+                  "type": "uint32",
                   "id": 5
+                },
+                "hasReachedInitTarget": {
+                  "type": "bool",
+                  "id": 6
                 }
               }
             },

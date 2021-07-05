@@ -1,6 +1,6 @@
 import { DB_BLOCK, setupDb } from '../io/db'
-import { FETCH_REACHED_TARGET, FETCH_RECEIVED_HEIGHT } from './index'
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
+import { SET_INIT_HEIGHT, SET_KNOWN_HEIGHT } from '.'
 import {
   encodeBlock,
   getBlock,
@@ -142,10 +142,10 @@ const processGenesisBlock = async () => {
 const _walkBlock = async (blockNumber) => {
   logger.debug({ blockNumber }, 'Starting fetching block...')
   if (await getBlock(blockNumber)) {
-    logger.info({ blockNumber }, 'Block found in cache.')
+    logger.debug({ blockNumber }, 'Block found in cache.')
   } else {
     await setBlock(blockNumber, encodeBlock(await processBlock(blockNumber)))
-    logger.info({ blockNumber }, 'Fetched block.')
+    logger.debug({ blockNumber }, 'Fetched block.')
   }
 }
 
@@ -181,8 +181,10 @@ const startSync = (target) => {
     {
       onEmpty: () => {
         if (!bufferQueue.getPendingLength() && !bufferQueue.getQueueLength()) {
-          logger.info({ target }, 'Synched to init target height...')
-          process.send({ [FETCH_REACHED_TARGET]: target })
+          logger.info(
+            { target },
+            'Block cache synched to init target height...'
+          )
         }
       },
     }
@@ -213,15 +215,15 @@ export default async () => {
 
   await phalaApi.rpc.chain.subscribeFinalizedHeads((header) => {
     const number = header.number.toNumber()
+    process.send({ [SET_KNOWN_HEIGHT]: number })
 
     if (!syncLock) {
       syncLock = true
+      process.send({ [SET_INIT_HEIGHT]: number })
       startSync(number)
     }
 
-    walkBlock(number).then(() => {
-      process.send({ [FETCH_RECEIVED_HEIGHT]: number })
-    })
+    walkBlock(number)
   })
 
   phalaApi.on('disconnected', () => {

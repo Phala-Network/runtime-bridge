@@ -1,11 +1,16 @@
+import { BLOB_MAX_RANGE_COUNT } from '../utils/constants'
 import { DB_BLOCK, DB_WINDOW, setupDb } from '../io/db'
+import { SET_ARCHIVED_HEIGHT, SET_BLOB_HEIGHT } from '.'
 import {
+  commitBlobRange,
   getWindow,
-  setBlobRangeEnd,
+  setDryRange,
   setEmptyWindow,
   updateWindow,
 } from '../io/window'
+import { setupPhalaApi } from '../utils/api'
 import { waitForBlock } from '../io/block'
+import env from '../utils/env'
 import logger from '../utils/logger'
 
 let startLock = false
@@ -20,6 +25,7 @@ const walkBlock = async (
   lastWindow,
   blockNumber,
   context,
+  ranges,
   lastBlock = null
 ) => {
   try {
@@ -30,17 +36,14 @@ const walkBlock = async (
     if (currentBlock.hasJustification) {
       context.stopBlock = blockNumber
 
-      await Promise.all(
-        range(context.startBlock, context.stopBlock).map((i) =>
-          setBlobRangeEnd(
-            i,
-            context.stopBlock,
-            currentBlock.setId > lastBlock?.setId
-          )
+      ranges.push(
+        await setDryRange(
+          context.startBlock,
+          context.stopBlock,
+          currentBlock.setId
         )
       )
-
-      logger.info(context, 'Created blob index.')
+      process.send({ [SET_BLOB_HEIGHT]: currentBlock.blockNumber })
 
       nextContext = {
         startBlock: blockNumber + 1,
@@ -50,7 +53,20 @@ const walkBlock = async (
       nextContext = context
     }
 
+    let alreadyCommited = false
+
+    if (ranges.length >= BLOB_MAX_RANGE_COUNT) {
+      await commitBlobRange(ranges)
+      process.send({ [SET_ARCHIVED_HEIGHT]: currentBlock.blockNumber })
+      alreadyCommited = true
+    }
+
     if (currentBlock.setId > lastBlock?.setId) {
+      if (!alreadyCommited) {
+        await commitBlobRange(ranges)
+        process.send({ [SET_ARCHIVED_HEIGHT]: currentBlock.blockNumber })
+      }
+
       await updateWindow(currentWindow, {
         currentBlock: currentBlock.blockNumber,
         stopBlock: currentBlock.blockNumber,
@@ -74,6 +90,7 @@ const walkBlock = async (
       lastWindow,
       blockNumber + 1,
       nextContext,
+      ranges,
       currentBlock
     )
   } catch (error) {
@@ -92,23 +109,22 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
   let startBlock
 
   if (currentWindow) {
-    startBlock =
-      currentWindow.currentBlock > -1
-        ? currentWindow.currentBlock + 1
-        : currentWindow.startBlock
+    startBlock = currentWindow.startBlock
   } else {
     startBlock = windowId > 0 ? lastWindow.stopBlock + 1 : 0
     currentWindow = await setEmptyWindow(windowId, startBlock)
   }
 
-  logger.info(`Processing window #${windowId}...`)
+  logger.info({ startBlock }, `Processing window #${windowId}...`)
 
   const context = {
     startBlock,
     stopBlock: -1,
   }
 
-  await walkBlock(currentWindow, lastWindow, startBlock, context)
+  const ranges = []
+
+  await walkBlock(currentWindow, lastWindow, startBlock, context, ranges)
   logger.info(currentWindow, `Processed window.`)
   return walkWindow(windowId + 1, currentWindow)
 }
@@ -118,5 +134,6 @@ export default async () => {
     throw new Error('Unexpected re-initialization.')
   }
   await setupDb([DB_WINDOW], [DB_BLOCK])
+  await setupPhalaApi(env.chainEndpoint)
   await walkWindow()
 }

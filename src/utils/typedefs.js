@@ -67,6 +67,13 @@ export const bridgeTypes = {
     mainStorageChanges: 'StorageCollection',
     childStorageChanges: 'ChildStorageCollection',
   },
+  SyncHeaderReq: {
+    headers: 'Vec<HeaderToSync>',
+    authoritySetChange: 'Option<AuthoritySetChange>',
+  },
+  DispatchBlockReq: {
+    blocks: 'Vec<BlockHeaderWithEvents>',
+  },
 }
 
 export const phalaTypes = {

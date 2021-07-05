@@ -79,10 +79,14 @@ const setupWorkers = async (context) => {
     added: 0,
     deleted: 0,
     updated: 0,
+    _failed: 0,
   }
   const workers = await getAllWorker()
   for (const w of workers) {
-    await applyWorker(w, context, result)
+    await applyWorker(w, context, result).catch((e) => {
+      logger.warn(e)
+      result._failed += 1
+    })
   }
   if (result.added + result.deleted + result.updated > 0) {
     logger.info(result, 'Got workers!')
