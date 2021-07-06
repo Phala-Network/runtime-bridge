@@ -1,8 +1,7 @@
-// import { base64Decode } from '@polkadot/util-crypto'
 import { base64Decode } from '@polkadot/util-crypto'
-import { getBlockBlobs, getHeaderBlobs, waitForBlock } from '../io/block'
 import { httpKeepAliveEnabled, legacySystemMqEnabled } from '../utils/env'
 import { phalaApi } from '../utils/api'
+import { waitForBlock } from '../io/block'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
 import http from 'http'
@@ -179,7 +178,7 @@ export const startSyncBlob = (runtime) => {
   const {
     workerContext: {
       workerBrief,
-      appContext: { fetchStatus },
+      appContext: { fetchStatus, getHeaderBlob, getBlockBlob },
     },
     info,
     request,
@@ -202,7 +201,7 @@ export const startSyncBlob = (runtime) => {
     if (typeof next === 'number') {
       headernum = next
     }
-    const data = await getHeaderBlobs(headernum)
+    const data = await getHeaderBlob(headernum)
     const {
       payload: { synced_to: synchedTo },
     } = await request('/bin_api/sync_header', data)
@@ -220,16 +219,16 @@ export const startSyncBlob = (runtime) => {
       blocknum = next
     }
 
-    const { latestBlock, synched } = fetchStatus
+    const { blobHeight, hasReachedInitTarget } = fetchStatus
 
     if (headerSynchedTo >= blocknum) {
-      const data = await getBlockBlobs(blocknum)
+      const data = await getBlockBlob(blocknum)
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)
 
       if (!synchedToTargetPromiseFinished) {
-        if (synched && dispatchedTo === latestBlock) {
+        if (hasReachedInitTarget && dispatchedTo === blobHeight) {
           synchedToTargetPromiseFinished = true
           synchedToTargetPromiseResolve(dispatchedTo)
         }

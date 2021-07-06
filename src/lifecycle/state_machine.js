@@ -174,6 +174,8 @@ const onKicked = async (fromState, toState, context) => {
 }
 
 const onStateTransition = async (fromState, toState, context) => {
+  const { workerBrief } = context.stateMachine.rootStateMachine.workerContext
+  logger.debug(workerBrief, 'State changed.')
   context.stateMachine.rootStateMachine.workerContext.stateMachineState = toState
 }
 

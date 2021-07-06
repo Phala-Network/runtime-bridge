@@ -150,7 +150,12 @@ export const waitForRange = async (blockNumber, readonly = true) =>
     }
   )
 
-export const setDryRange = async (startBlock, stopBlock, latestSetId) => {
+export const setDryRange = async (
+  startBlock,
+  stopBlock,
+  latestSetId,
+  setIdChanged
+) => {
   const windowDb = getDb(DB_WINDOW)
   const blockDb = getDb(DB_BLOCK)
   const currentRange = range(startBlock, stopBlock)
@@ -194,12 +199,11 @@ export const setDryRange = async (startBlock, stopBlock, latestSetId) => {
     }
   }
 
-  const authoritySetChange = await blockDb.get(
-    `block:${stopBlock}:authoritySetChange`,
-    {
-      ...DB_ENCODING_BINARY,
-    }
-  )
+  const authoritySetChange = setIdChanged
+    ? await blockDb.get(`block:${stopBlock}:authoritySetChange`, {
+        ...DB_ENCODING_BINARY,
+      })
+    : null
   const headers = await Promise.all(
     currentRange.map((b) =>
       blockDb.get(`block:${b}:syncHeaderData`, {
@@ -252,6 +256,7 @@ export const setDryRange = async (startBlock, stopBlock, latestSetId) => {
   )
 
   logger.info({ startBlock, stopBlock }, `Saved dryCache.`)
+  await windowDb.put('dry', stopBlock)
 
   rangeMeta.rawScaleData = rawScaleData
 
@@ -313,9 +318,9 @@ export const commitBlobRange = async (ranges) => {
   )
 
   const startBlockRangeMetaKey = `rangeByBlock:${startBlock}`
-  const startBlockRangeMeta = windowDb.get(startBlockRangeMetaKey)
+  const startBlockRangeMeta = await windowDb.get(startBlockRangeMetaKey)
   startBlockRangeMeta.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
-  startBlockRangeMeta.blobDispatchBlockReq = blobRangeKey_DispatchBlockReq
+  startBlockRangeMeta.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
   await windowDb.put(startBlockRangeMetaKey, startBlockRangeMeta)
 
   logger.info({ startBlock, stopBlock }, `Commited blobRange.`)

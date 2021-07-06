@@ -16,7 +16,7 @@ const start = () =>
       initHeight: -1,
       blobHeight: -1,
       archivedHeight: -1,
-      hasReachedInitHeight: false,
+      hasReachedInitTarget: false,
     }
 
     const [syncBlockProcess, computeWindowProcess] = [
@@ -42,9 +42,9 @@ const start = () =>
       if (typeof message[SET_BLOB_HEIGHT] === 'number') {
         if (context.blobHeight < message[SET_BLOB_HEIGHT]) {
           context.blobHeight = message[SET_BLOB_HEIGHT]
-          if (!context.hasReachedInitHeight) {
+          if (!context.hasReachedInitTarget) {
             if (context.blobHeight >= context.initHeight) {
-              context.hasReachedInitHeight = true
+              context.hasReachedInitTarget = true
             }
           }
         }

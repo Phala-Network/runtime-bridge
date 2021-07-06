@@ -40,7 +40,8 @@ const walkBlock = async (
         await setDryRange(
           context.startBlock,
           context.stopBlock,
-          currentBlock.setId
+          currentBlock.setId,
+          currentBlock.setId > lastBlock?.setId
         )
       )
       process.send({ [SET_BLOB_HEIGHT]: currentBlock.blockNumber })
@@ -111,7 +112,7 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
   if (currentWindow) {
     startBlock = currentWindow.startBlock
   } else {
-    startBlock = windowId > 0 ? lastWindow.stopBlock + 1 : 0
+    startBlock = windowId > 0 ? lastWindow.stopBlock + 1 : 1
     currentWindow = await setEmptyWindow(windowId, startBlock)
   }
 
