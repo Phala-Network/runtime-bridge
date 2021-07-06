@@ -95,7 +95,7 @@ const onSynching = async (fromState, toState, context) => {
   const waitUntilSynched = await startSyncBlob(runtime)
   await waitUntilSynched()
   logger.info(workerBrief, 'waitUntilSynched done.')
-  if (runtime.skipRa) {
+  if (!runtime.skipRa) {
     await dispatchTx({
       action: 'START_MINING_INTENTION',
       payload: {
