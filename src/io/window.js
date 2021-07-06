@@ -319,6 +319,7 @@ export const commitBlobRange = async (ranges) => {
 
   const startBlockRangeMetaKey = `rangeByBlock:${startBlock}`
   const startBlockRangeMeta = await windowDb.get(startBlockRangeMetaKey)
+  startBlockRangeMeta.blobStopBlock = stopBlock
   startBlockRangeMeta.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
   startBlockRangeMeta.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
   await windowDb.put(startBlockRangeMetaKey, startBlockRangeMeta)

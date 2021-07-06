@@ -36,12 +36,17 @@ export const createGetBlockBlobReadonlyContext = () => {
     }
   }
 
-  const getBlockBlob = async ({ blockNumber, resolve, reject }) => {
+  const getBlockBlob = async ({
+    blockNumber,
+    headerSynchedTo,
+    resolve,
+    reject,
+  }) => {
     try {
       const meta = await windowDb.get(`rangeByBlock:${blockNumber}`)
       await windowDb.open()
       const blobDispatchBlockReq = await windowDb.get(
-        blockNumber === meta.startBlock
+        blockNumber === meta.startBlock && headerSynchedTo >= meta.blobStopBlock
           ? meta.blobDispatchBlockReqKey || meta.dryDispatchBlockReqKey
           : meta.dryDispatchBlockReqKey,
         {
@@ -85,9 +90,15 @@ export const createGetBlockBlobReadonlyContext = () => {
       new Promise((resolve, reject) => {
         taskQueue.push({ blockNumber, resolve, reject, fn: getHeaderBlob })
       }),
-    getBlockBlob: (blockNumber) =>
+    getBlockBlob: (blockNumber, headerSynchedTo) =>
       new Promise((resolve, reject) => {
-        taskQueue.push({ blockNumber, resolve, reject, fn: getBlockBlob })
+        taskQueue.push({
+          blockNumber,
+          headerSynchedTo,
+          resolve,
+          reject,
+          fn: getBlockBlob,
+        })
       }),
   }
 }

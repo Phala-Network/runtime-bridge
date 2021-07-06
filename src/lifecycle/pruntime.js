@@ -222,7 +222,7 @@ export const startSyncBlob = (runtime) => {
     const { blobHeight, hasReachedInitTarget } = fetchStatus
 
     if (headerSynchedTo >= blocknum) {
-      const data = await getBlockBlob(blocknum)
+      const data = await getBlockBlob(blocknum, headerSynchedTo)
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)
