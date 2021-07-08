@@ -1,13 +1,9 @@
 import { DB_ENCODING_DEFAULT } from './db_encoding'
-import encode from 'encoding-down'
+import { client as multileveldownClient } from 'multileveldown'
+import { pipeline } from 'readable-stream'
 import env from '../utils/env'
-import levelErrors from 'level-errors'
-import levelup from 'levelup'
 import logger from '../utils/logger'
-import path from 'path'
-
-import rocksdb from 'rocksdb'
-import wait from '../utils/wait'
+import net from 'net'
 
 const dbMap = new Map()
 
@@ -18,85 +14,69 @@ export const DB_WINDOW = 1
 export const DB_BLOB = 2
 export const DB_WORKER = 3
 
-export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WINDOW, DB_BLOB, DB_WORKER])
+export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WINDOW, DB_WORKER])
+
+export const getPort = (dbNum) => (parseInt(env.dbPortBase) || 9000) + dbNum
 
 const checkDb = async (db) => {
   let touchedAt
 
   try {
-    touchedAt = await db.get(DB_TOUCHED_AT)
+    touchedAt = await db.get('DB_TOUCHED_AT')
   } catch (error) {
-    logger.debug(error)
+    logger.error(error)
   }
 
   if (typeof touchedAt !== 'number') {
-    throw new Error('DB not initialized, run `pnpm db_init`.')
+    console.log(111, typeof touchedAt, touchedAt)
+    throw new Error('DB not initialized, did IO service start correctly?')
   }
   return db
 }
 
-export const setupDb = (dbs = [], readonlyDbs = []) =>
-  Promise.all(
-    [...dbs.map(getDb), ...readonlyDbs.map(getReadonlyDb)].map(checkDb)
-  )
+export const setupDb = async (...dbNums) => {
+  const dbs = await Promise.all([...dbNums.map(getDb)])
+  return Promise.all(dbs.map(checkDb))
+}
 
-export const getDb = (key, options = {}) => {
-  let db = dbMap.get(key)
+export const getDb = async (dbNum) => {
+  let db = dbMap.get(dbNum)
 
   if (db) {
     return db
   }
 
-  db = levelup(
-    encode(rocksdb(path.join(env.dbPrefix, `${key}`)), DB_ENCODING_DEFAULT),
-    options
-  )
-  dbMap.set(key, db)
+  const rawDb = multileveldownClient({ retry: false, ...DB_ENCODING_DEFAULT })
 
-  return db
-}
+  const host = env.dbHost.trim() || '127.0.0.1'
+  const port = getPort(dbNum)
 
-export const forceCreateDb = (key, options = {}) => {
-  const oldDb = dbMap.get(key)
+  const connect = () =>
+    new Promise((resolve) => {
+      const socket = net.connect({ port, host })
+      const remote = rawDb.connect()
 
-  const db = levelup(
-    encode(rocksdb(path.join(env.dbPrefix, `${key}`)), DB_ENCODING_DEFAULT),
-    options
-  )
-  dbMap.set(key, db)
+      socket.on('error', (err) => {
+        logger.error({ port, host }, err)
+      })
 
-  if (oldDb) {
-    setTimeout(() => oldDb.close(), 12000)
-  }
+      socket.on('close', (err) => {
+        logger.error({ port, host }, err)
+        remote.destroy()
+      })
 
-  return db
-}
+      socket.on('connect', () => {
+        db = rawDb
+        dbMap.set(dbNum, db)
+        logger.info(`Connected to db ${dbNum}`)
+        resolve(db)
+      })
 
-export const getReadonlyDb = (key, options = {}) => {
-  return forceCreateDb(key, { ...options, readOnly: true })
+      pipeline(socket, remote, socket, (err) => {
+        console.log(err)
+      })
+    })
+  return connect()
 }
 
 export const NOT_FOUND_ERROR = new Error('Not found.')
-
-export const readonlyGet = async (dbKey, key, options = {}) => {
-  let db
-  try {
-    db = levelup(
-      encode(rocksdb(path.join(env.dbPrefix, `${dbKey}`)), DB_ENCODING_DEFAULT),
-      { ...options, readOnly: true }
-    )
-    const ret = await db.get(key, options)
-    setTimeout(() => db.close(), 1)
-    return ret
-  } catch (error) {
-    setTimeout(() => db.close(), 1)
-    if (
-      error === NOT_FOUND_ERROR ||
-      error instanceof levelErrors.NotFoundError
-    ) {
-      await wait(2000)
-      return readonlyGet(dbKey, key, options)
-    }
-    throw error
-  }
-}

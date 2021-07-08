@@ -12,9 +12,7 @@ export const createGetBlockBlobReadonlyContext = () => {
   const ioQueue = new PQueue({})
 
   const updateKnownHeight = async () => {
-    await windowDb.close()
     await wait(2000)
-    await windowDb.open({ readOnly: true })
     knownHeight = await windowDb.get('dry')
   }
 

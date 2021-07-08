@@ -10,6 +10,8 @@ export const ENV_LIST = [
   ['PHALA_ENABLE_HTTP_KEEPALIVE', 'httpKeepAliveEnabled'],
   ['PHALA_DEV_SKIP_RA', 'devSkipRa'],
   ['PHALA_ENABLE_LEGACY_SYSTEM_MQ', 'enableLegacySystemMq'],
+  ['PHALA_DB_HOST', 'dbHost'],
+  ['PHALA_DB_PORT_BASE', 'dbPortBase'],
 ]
 
 const _env = {}

@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid'
 const keyring = new Keyring({ type: 'sr25519', ss58Format: PHALA_SS58_FORMAT })
 
 const main = async ({ machines }) => {
-  await setupDb([DB_WORKER])
+  await setupDb(DB_WORKER)
 
   const result = []
 

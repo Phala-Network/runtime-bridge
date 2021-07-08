@@ -1,4 +1,4 @@
-import { DB_BLOCK, NOT_FOUND_ERROR, getDb, setupDb } from './db'
+import { DB_BLOCK, NOT_FOUND_ERROR, getDb } from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import levelErrors from 'level-errors'
@@ -62,7 +62,7 @@ export const encodeBlock = (block) => {
 }
 
 export const setGenesisBlock = async (block) => {
-  const db = getDb(DB_BLOCK)
+  const db = await getDb(DB_BLOCK)
   await Promise.all(
     KEYS_DB_BLOCK_GENESIS_BLOCK.map((key) =>
       db.put(`block:0:${key}`, block[key], {
@@ -74,7 +74,7 @@ export const setGenesisBlock = async (block) => {
 }
 
 export const getGenesisBlock = async () => {
-  const db = getDb(DB_BLOCK)
+  const db = await getDb(DB_BLOCK)
 
   try {
     const retArr = await Promise.all(
@@ -96,7 +96,7 @@ export const getGenesisBlock = async () => {
 }
 
 export const setBlock = async (number, block) => {
-  const db = getDb(DB_BLOCK)
+  const db = await getDb(DB_BLOCK)
   await Promise.all(
     KEYS_DB_BLOCK_BLOCK.map((key) =>
       db.put(`block:${number}:${key}`, block[key], {
@@ -108,7 +108,7 @@ export const setBlock = async (number, block) => {
 }
 
 export const getBlock = async (number) => {
-  const db = getDb(DB_BLOCK)
+  const db = await getDb(DB_BLOCK)
 
   try {
     const retArr = await Promise.all(
@@ -141,7 +141,6 @@ const _waitForBlock = async (blockNumber) => {
     if (error === NOT_FOUND_ERROR) {
       logger.debug({ blockNumber }, 'Waiting for block...')
       await wait(2000)
-      await setupDb([], [DB_BLOCK])
       return _waitForBlock(blockNumber)
     }
     throw error

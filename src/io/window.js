@@ -1,4 +1,4 @@
-import { DB_BLOCK, DB_WINDOW, NOT_FOUND_ERROR, getDb, setupDb } from './db'
+import { DB_BLOCK, DB_WINDOW, NOT_FOUND_ERROR, getDb } from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { range } from '../fetch/compute_window'
@@ -20,7 +20,7 @@ export const KEYS_DB_WINDOW_WINDOW = Object.freeze(
 )
 
 export const getWindow = async (windowId) => {
-  const db = getDb(DB_WINDOW)
+  const db = await getDb(DB_WINDOW)
 
   try {
     const retArr = await Promise.all(
@@ -42,14 +42,14 @@ export const getWindow = async (windowId) => {
 }
 
 const setWindowKv = async (windowId, key, value, _db = null) => {
-  const db = _db || getDb(DB_WINDOW)
+  const db = _db || (await getDb(DB_WINDOW))
   return db.put(`window:${windowId}:${key}`, value, {
     ...DB_WINDOW_WINDOW[key][0],
   })
 }
 
 export const createWindow = async (windowId, data) => {
-  const db = getDb(DB_WINDOW)
+  const db = await getDb(DB_WINDOW)
   await Promise.all(
     KEYS_DB_WINDOW_WINDOW.map((key) =>
       setWindowKv(windowId, key, data[key], db)
@@ -69,7 +69,7 @@ export const setEmptyWindow = (windowId, startBlock) => {
   })
 }
 export const updateWindow = async (windowIdOrObject, data) => {
-  const db = getDb(DB_WINDOW)
+  const db = await getDb(DB_WINDOW)
 
   const windowId =
     typeof windowIdOrObject === 'number'
@@ -95,7 +95,7 @@ export const updateWindow = async (windowIdOrObject, data) => {
 }
 
 export const getBlobRange = async (blockNumber) => {
-  const db = getDb(DB_WINDOW)
+  const db = await getDb(DB_WINDOW)
   try {
     return db.get(`rangeByBlock:${blockNumber}`, {
       ...DB_ENCODING_DEFAULT,
@@ -108,7 +108,7 @@ export const getBlobRange = async (blockNumber) => {
   }
 }
 
-const _waitForRange = async (blockNumber, readonly = true) => {
+const _waitForRange = async (blockNumber) => {
   try {
     const ret = await getBlobRange(blockNumber)
     if (!ret) {
@@ -122,19 +122,16 @@ const _waitForRange = async (blockNumber, readonly = true) => {
     ) {
       logger.debug({ blockNumber }, 'Waiting for block...')
       await wait(2000)
-      if (readonly) {
-        await setupDb([], [DB_BLOCK, DB_WINDOW])
-      }
-      return _waitForRange(blockNumber, readonly)
+      return _waitForRange(blockNumber)
     }
     throw error
   }
 }
 
-export const waitForRange = async (blockNumber, readonly = true) =>
+export const waitForRange = async (blockNumber) =>
   promiseRetry(
     (retry, number) => {
-      return _waitForRange(blockNumber, readonly).catch((error) => {
+      return _waitForRange(blockNumber).catch((error) => {
         logger.warn(
           { blockNumber, retryTimes: number },
           'Failed waitForRange, retrying...',
@@ -156,8 +153,8 @@ export const setDryRange = async (
   latestSetId,
   setIdChanged
 ) => {
-  const windowDb = getDb(DB_WINDOW)
-  const blockDb = getDb(DB_BLOCK)
+  const windowDb = await getDb(DB_WINDOW)
+  const blockDb = await getDb(DB_BLOCK)
   const currentRange = range(startBlock, stopBlock)
 
   const drySyncHeaderReqKey = `drySyncHeader:${startBlock}:${stopBlock}`
@@ -264,7 +261,7 @@ export const setDryRange = async (
 }
 
 export const commitBlobRange = async (ranges) => {
-  const windowDb = getDb(DB_WINDOW)
+  const windowDb = await getDb(DB_WINDOW)
   const startBlock = ranges[0].startBlock
   const stopBlock = ranges[ranges.length - 1].stopBlock
   const blobRangeKey_SyncHeaderReq = `blobRangeKey:${startBlock}:${stopBlock}:SyncHeaderReq`

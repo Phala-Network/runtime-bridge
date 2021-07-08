@@ -201,7 +201,7 @@ export default async () => {
   if (startLock) {
     throw new Error('Unexpected re-initialization.')
   }
-  await setupDb([DB_BLOCK])
+  await setupDb(DB_BLOCK)
   await setupPhalaApi(env.chainEndpoint)
 
   let syncLock = false

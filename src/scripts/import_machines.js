@@ -2,7 +2,7 @@ import { DB_WORKER, setupDb } from '../io/db'
 import { setWorker, validateWorkerInput } from '../io/worker'
 
 const main = async (data) => {
-  await setupDb([DB_WORKER])
+  await setupDb(DB_WORKER)
   for (const w of data) {
     await validateWorkerInput(w)
     await setWorker(w)

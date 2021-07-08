@@ -1,9 +1,5 @@
-import { DB_KEYS, DB_TOUCHED_AT, getDb } from '../io/db'
-
 const main = () => {
-  return Promise.all(
-    DB_KEYS.map(getDb).map((db) => db.put(DB_TOUCHED_AT, Date.now()))
-  )
+  console.error('Please start IO service directly, db_init is no more needed.')
 }
 
 try {

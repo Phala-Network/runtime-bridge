@@ -2,7 +2,7 @@ import { DB_WORKER, setupDb } from '../io/db'
 import { getAllWorker } from '../io/worker'
 
 const main = async () => {
-  await setupDb([], [DB_WORKER])
+  await setupDb(DB_WORKER)
   console.log(JSON.stringify(await getAllWorker()))
 }
 

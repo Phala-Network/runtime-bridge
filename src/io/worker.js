@@ -15,13 +15,14 @@ export const ERROR_DUPLICATED_SS58 = new Error('ERROR_DUPLICATED_SS58')
 export const ERROR_DUPLICATED_ENDPOINT = new Error('ERROR_DUPLICATED_ENDPOINT')
 
 export const _getItem = (key, defaultValue = null) => {
-  const db = getDb(DB_WORKER)
-  return db.get(key).catch((e) => {
-    if (e instanceof levelErrors.NotFoundError) {
-      return defaultValue
-    }
-    throw e
-  })
+  return getDb(DB_WORKER)
+    .then((db) => db.get(key))
+    .catch((e) => {
+      if (e instanceof levelErrors.NotFoundError) {
+        return defaultValue
+      }
+      throw e
+    })
 }
 
 const logAndThrow = (worker, error) => {
@@ -77,7 +78,7 @@ export const validateWorkerInput = async (worker) => {
 }
 
 export const setWorker = async (worker) => {
-  const db = getDb(DB_WORKER)
+  const db = await getDb(DB_WORKER)
   const { id, nickname, runtimeEndpoint, phalaSs58Address } = worker
   await db.put(`${PREFIX_WORKER}${id}`, worker)
   await db.put(`${PREFIX_WORKER_BY_SS58}${phalaSs58Address}`, id)
@@ -89,8 +90,8 @@ export const setWorker = async (worker) => {
   return worker
 }
 
-export const getWorker = (workerId) => {
-  const db = getDb(DB_WORKER)
+export const getWorker = async (workerId) => {
+  const db = await getDb(DB_WORKER)
   return db
     .get(`${PREFIX_WORKER}${workerId}`, {
       ...DB_ENCODING_DEFAULT,
@@ -103,9 +104,9 @@ export const getWorker = (workerId) => {
     })
 }
 
-export const getAllWorker = () =>
-  new Promise((resolve, reject) => {
-    const db = getDb(DB_WORKER)
+export const getAllWorker = async () => {
+  const db = await getDb(DB_WORKER)
+  return new Promise((resolve, reject) => {
     const stream = db.createKeyStream({
       gte: PREFIX_WORKER,
       lte: PREFIX_WORKER + '~',
@@ -121,3 +122,4 @@ export const getAllWorker = () =>
     stream.on('end', () => resolve(Promise.all(ret)))
     stream.on('error', reject)
   })
+}
