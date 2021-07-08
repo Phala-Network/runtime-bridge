@@ -51,11 +51,16 @@ export const getDb = async (dbNum) => {
   const host = env.dbHost.trim() || '127.0.0.1'
   const port = getPort(dbNum)
 
+  const socket = net.connect({ port, host })
+  const remote = rawDb.connect()
+
+  socket.setKeepAlive(true, 1000)
+  pipeline(socket, remote, socket, (err) => {
+    console.log(err)
+  })
+
   const connect = () =>
     new Promise((resolve) => {
-      const socket = net.connect({ port, host })
-      const remote = rawDb.connect()
-
       socket.on('error', (err) => {
         logger.error({ port, host }, err)
       })
@@ -70,10 +75,6 @@ export const getDb = async (dbNum) => {
         dbMap.set(dbNum, db)
         logger.info(`Connected to db ${dbNum}`)
         resolve(db)
-      })
-
-      pipeline(socket, remote, socket, (err) => {
-        console.log(err)
       })
     })
   return connect()

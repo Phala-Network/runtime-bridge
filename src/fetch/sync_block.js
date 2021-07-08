@@ -14,7 +14,7 @@ import env from '../utils/env'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
+const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 100
 
 let startLock = false
 const fetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)

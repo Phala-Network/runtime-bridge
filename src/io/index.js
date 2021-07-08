@@ -2,8 +2,10 @@ import { DB_ENCODING_DEFAULT } from './db_encoding'
 import { DB_KEYS, DB_TOUCHED_AT, getPort } from './db'
 import { server as multileveldownServer } from 'multileveldown'
 import { pipeline } from 'readable-stream'
+import EncodingDown from 'encoding-down'
+import LevelUp from 'levelup'
+import RocksDB from 'rocksdb'
 import env from '../utils/env'
-import level from 'level'
 import logger from '../utils/logger'
 import net from 'net'
 import path from 'path'
@@ -12,11 +14,14 @@ const start = async () => {
   const ports = await Promise.all(
     DB_KEYS.map(async (dbNum) => {
       const port = getPort(dbNum)
-      const db = level(path.join(env.dbPrefix, `${dbNum}`), {
-        ...DB_ENCODING_DEFAULT,
-      })
+      const db = LevelUp(
+        EncodingDown(RocksDB(path.join(env.dbPrefix, `${dbNum}`)), {
+          ...DB_ENCODING_DEFAULT,
+        })
+      )
       await db.put(DB_TOUCHED_AT, Date.now())
       const server = net.createServer((socket) => {
+        socket.setKeepAlive(true, 1000)
         socket.on('error', (err) => {
           logger.warn({ dbNum }, 'Socket error!', err)
         })
