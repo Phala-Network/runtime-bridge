@@ -7,6 +7,9 @@ x-defaults: &defaults
 services:
   fetch:
     image: phalanetwork/poc4-prb:development
+    build:
+      context: ../../..
+      dockerfile: docker/development/Dockerfile
     hostname: fetch
     depends_on:
       - redis
