@@ -1,47 +1,73 @@
 version: "3"
 
+x-defaults: &defaults
+  volumes: &default-volume-config
+    - ./data:/var/data
+
 services:
   fetch:
-    image: phalanetwork/poc4-prb:testing
-    build:
-      context: ../../..
-      dockerfile: docker/testing/Dockerfile
+    image: phalanetwork/poc4-prb:development
     hostname: fetch
-    volumes:
-      - ./data:/var/data
+    depends_on:
+      - redis
+      - io
+    volumes: *default-volume-config
     environment:
-      - NODE_ENV=testing
       - PHALA_MODULE=fetch
+      - NODE_ENV=development
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_DB_PREFIX=/var/data
       - PHALA_MAIN_CHAIN_ENDPOINT=
-      - PHALA_CHAIN_ENDPOINT=wss://path.to.phala.node/ws
+      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   lifecycle:
-    image: phalanetwork/poc4-prb:testing
+    image: phalanetwork/poc4-prb:development
     hostname: lifecycle
-    volumes:
-      - ./data:/var/data
+    depends_on:
+      - redis
+      - io
+    volumes: *default-volume-config
     environment:
-      - NODE_ENV=testing
       - PHALA_MODULE=lifecycle
+      - NODE_ENV=development
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_DB_PREFIX=/var/data
       - PHALA_MAIN_CHAIN_ENDPOINT=
-      - PHALA_CHAIN_ENDPOINT=wss://path.to.phala.node/ws
+      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   trade:
-    image: phalanetwork/poc4-prb:testing
+    image: phalanetwork/poc4-prb:development
     hostname: trade
+    depends_on:
+      - redis
+      - io
+    volumes: *default-volume-config
     environment:
-      - NODE_ENV=testing
       - PHALA_MODULE=trade
+      - NODE_ENV=development
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_MAIN_CHAIN_ENDPOINT=
-      - PHALA_CHAIN_ENDPOINT=wss://path.to.phala.node/ws
+      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+
+  io:
+    << : *defaults
+    image: phalanetwork/poc4-prb:development
+    hostname: io
+    restart: always
+    environment:
+      - PHALA_MODULE=io
+      - NODE_ENV=development
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
+      - PHALA_LOGGER_LEVEL=debug
+      - PHALA_DB_PREFIX=/var/data
 
   redis:
     image: redis:alpine
