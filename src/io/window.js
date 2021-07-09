@@ -120,7 +120,7 @@ const _waitForRange = async (blockNumber) => {
       error === NOT_FOUND_ERROR ||
       error instanceof levelErrors.NotFoundError
     ) {
-      logger.debug({ blockNumber }, 'Waiting for block...')
+      logger.debug({ blockNumber }, 'Waiting for range meta...')
       await wait(2000)
       return _waitForRange(blockNumber)
     }

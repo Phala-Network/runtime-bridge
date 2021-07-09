@@ -1,4 +1,5 @@
 import { base64Decode } from '@polkadot/util-crypto'
+import { getBlockBlob, getHeaderBlob } from '../io/blob'
 import { httpKeepAliveEnabled, legacySystemMqEnabled } from '../utils/env'
 import { phalaApi } from '../utils/api'
 import { waitForBlock } from '../io/block'
@@ -178,7 +179,7 @@ export const startSyncBlob = (runtime) => {
   const {
     workerContext: {
       workerBrief,
-      appContext: { fetchStatus, getHeaderBlob, getBlockBlob },
+      appContext: { fetchStatus },
     },
     info,
     request,

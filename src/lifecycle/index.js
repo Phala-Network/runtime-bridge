@@ -1,7 +1,6 @@
 import { DB_BLOCK, DB_WINDOW, DB_WORKER, setupDb } from '../io/db'
 import { EventEmitter } from 'events'
 import { MessageTarget } from '../message/proto'
-import { createGetBlockBlobReadonlyContext } from '../io/blob'
 import { setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
 import createTradeQueue from '../utils/trade_queue'
@@ -24,8 +23,6 @@ const start = async () => {
   const txQueue = createTradeQueue(env.redisEndpoint)
   await txQueue.ready()
 
-  const { getHeaderBlob, getBlockBlob } = createGetBlockBlobReadonlyContext()
-
   const context = {
     workerContexts: new Map(),
     fetchStatus: {},
@@ -34,8 +31,6 @@ const start = async () => {
     query: null,
     tunnelConnection: null,
     txQueue,
-    getHeaderBlob,
-    getBlockBlob,
     _dispatchTx: txQueue.dispatch,
   }
 
