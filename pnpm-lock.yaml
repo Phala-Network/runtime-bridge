@@ -24,8 +24,11 @@ specifiers:
   chalk: ^4.1.1
   commander: ^6.2.1
   core-js: ^3.15.2
+  datagram-stream: ^1.1.1
   dayjs: ^1.10.6
+  duplexify: ^4.1.1
   encoding-down: ^7.0.0
+  end-of-stream: ^1.4.4
   escodegen: ^2.0.0
   eslint: ^7.30.0
   eslint-config-prettier: ^8.3.0
@@ -43,6 +46,7 @@ specifiers:
   glob: ^7.1.7
   ioredis: ^4.27.6
   jsdoc: ^3.6.7
+  length-prefixed-stream: ^2.0.0
   level: ^7.0.0
   level-errors: ^3.0.0
   leveldown: ^6.0.0
@@ -56,6 +60,7 @@ specifiers:
   promise-queue: ^2.2.5
   promise-retry: ^2.0.1
   protobufjs: ^6.11.2
+  reachdown: ^1.1.0
   readable-stream: ^3.6.0
   redis-commands: ^1.7.0
   rocksdb: ^5.0.0
@@ -80,11 +85,15 @@ dependencies:
   byte-base64: 1.1.0
   commander: 6.2.1
   core-js: 3.15.2
+  datagram-stream: 1.1.1
   dayjs: 1.10.6
+  duplexify: 4.1.1
   encoding-down: 7.0.0
+  end-of-stream: 1.4.4
   esm: 3.2.25
   finity: 0.5.4
   ioredis: 4.27.6
+  length-prefixed-stream: 2.0.0
   level: 7.0.0
   level-errors: 3.0.0
   leveldown: 6.0.0
@@ -96,6 +105,7 @@ dependencies:
   promise-queue: 2.2.5
   promise-retry: 2.0.1
   protobufjs: 6.11.2
+  reachdown: 1.1.0
   readable-stream: 3.6.0
   redis-commands: 1.7.0
   rocksdb: 5.0.0
@@ -2563,6 +2573,10 @@ packages:
     dependencies:
       es5-ext: 0.10.53
       type: 1.2.0
+    dev: false
+
+  /datagram-stream/1.1.1:
+    resolution: {integrity: sha1-qn2ElZo6GxpeQ9THwDRh9AqP+30=}
     dev: false
 
   /dayjs/1.10.6:

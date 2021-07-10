@@ -1,4 +1,4 @@
-import { DB_BLOCK, NOT_FOUND_ERROR, getDb } from './db'
+import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistance } from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import levelErrors from 'level-errors'
@@ -63,13 +63,14 @@ export const encodeBlock = (block) => {
 
 export const setGenesisBlock = async (block) => {
   const db = await getDb(DB_BLOCK)
-  await Promise.all(
-    KEYS_DB_BLOCK_GENESIS_BLOCK.map((key) =>
-      db.put(`block:0:${key}`, block[key], {
+  const batch = db.batch()
+  await KEYS_DB_BLOCK_GENESIS_BLOCK.reduce(
+    (b, key) =>
+      b.put(`block:${0}:${key}`, block[key], {
         ...DB_BLOCK_GENESIS_BLOCK[key][0],
-      })
-    )
-  )
+      }),
+    batch
+  ).write()
   return block
 }
 
@@ -97,14 +98,26 @@ export const getGenesisBlock = async () => {
 
 export const setBlock = async (number, block) => {
   const db = await getDb(DB_BLOCK)
-  await Promise.all(
-    KEYS_DB_BLOCK_BLOCK.map((key) =>
-      db.put(`block:${number}:${key}`, block[key], {
+  const batch = db.batch()
+  await KEYS_DB_BLOCK_BLOCK.reduce(
+    (b, key) =>
+      b.put(`block:${number}:${key}`, block[key], {
         ...DB_BLOCK_BLOCK[key][0],
-      })
-    )
-  )
+      }),
+    batch
+  ).write()
   return block
+}
+
+export const getBlockExistance = async (number) => {
+  const db = await getDb(DB_BLOCK)
+  return (
+    await Promise.all(
+      KEYS_DB_BLOCK_BLOCK.map((key) =>
+        getKeyExistance(db, `block:${number}:${key}`)
+      )
+    )
+  ).reduce((ret, curr) => ret && curr, true)
 }
 
 export const getBlock = async (number) => {

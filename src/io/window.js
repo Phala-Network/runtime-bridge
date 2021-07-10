@@ -1,4 +1,10 @@
-import { DB_BLOCK, DB_WINDOW, NOT_FOUND_ERROR, getDb } from './db'
+import {
+  DB_BLOCK,
+  DB_WINDOW,
+  NOT_FOUND_ERROR,
+  getDb,
+  getKeyExistance,
+} from './db'
 import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { range } from '../fetch/compute_window'
@@ -160,25 +166,17 @@ export const setDryRange = async (
   const drySyncHeaderReqKey = `drySyncHeader:${startBlock}:${stopBlock}`
   const dryDispatchBlockReqKey = `dryDispatchBlock:${startBlock}:${stopBlock}`
 
-  try {
+  const shouldSkip = (
     await Promise.all(
-      currentRange.map((blockNumber) =>
-        windowDb.get(`rangeByBlock:${blockNumber}`)
-      )
+      [
+        ...currentRange.map((blockNumber) => `rangeByBlock:${blockNumber}`),
+        drySyncHeaderReqKey,
+        dryDispatchBlockReqKey,
+      ].map((k) => getKeyExistance(windowDb, k))
     )
-    const _drySyncHeaderReq = phalaApi.createType(
-      'SyncHeaderReq',
-      await windowDb.get(drySyncHeaderReqKey, {
-        ...DB_ENCODING_BINARY,
-      })
-    )
-    const _dryDispatchBlockReq = phalaApi.createType(
-      'DispatchBlockReq',
-      await windowDb.get(dryDispatchBlockReqKey, {
-        ...DB_ENCODING_BINARY,
-      })
-    )
+  ).reduce((ret, curr) => ret && curr, true)
 
+  if (shouldSkip) {
     logger.info({ startBlock, stopBlock }, `Found dryCache, skipping.`)
 
     return {
@@ -188,11 +186,6 @@ export const setDryRange = async (
       drySyncHeaderReqKey,
       dryDispatchBlockReqKey,
       latestSetId,
-      rawScaleData: [_drySyncHeaderReq, _dryDispatchBlockReq],
-    }
-  } catch (error) {
-    if (!(error instanceof levelErrors.NotFoundError)) {
-      throw error
     }
   }
 
@@ -237,23 +230,41 @@ export const setDryRange = async (
     latestSetId,
   }
 
-  await Promise.all([
-    windowDb.put(drySyncHeaderReqKey, drySyncHeaderReq, {
-      ...DB_ENCODING_BINARY,
-    }),
-    windowDb.put(dryDispatchBlockReqKey, dryDispatchBlockReq, {
-      ...DB_ENCODING_BINARY,
-    }),
-  ])
+  // await Promise.all([
+  //   windowDb.put(drySyncHeaderReqKey, drySyncHeaderReq, {
+  //     ...DB_ENCODING_BINARY,
+  //   }),
+  //   windowDb.put(dryDispatchBlockReqKey, dryDispatchBlockReq, {
+  //     ...DB_ENCODING_BINARY,
+  //   }),
+  // ])
 
-  await Promise.all(
-    currentRange.map((blockNumber) =>
-      windowDb.put(`rangeByBlock:${blockNumber}`, rangeMeta)
+  // await Promise.all(
+  //   currentRange.map((blockNumber) =>
+  //     windowDb.put(`rangeByBlock:${blockNumber}`, rangeMeta)
+  //   )
+  // )
+
+  // logger.info({ startBlock, stopBlock }, `Saved dryCache.`)
+  // await windowDb.put('dry', stopBlock)
+
+  const batch = windowDb
+    .batch()
+    .put(drySyncHeaderReqKey, drySyncHeaderReq, {
+      ...DB_ENCODING_BINARY,
+    })
+    .put(dryDispatchBlockReqKey, dryDispatchBlockReq, {
+      ...DB_ENCODING_BINARY,
+    })
+
+  await currentRange
+    .reduce(
+      (b, blockNumber) => b.put(`rangeByBlock:${blockNumber}`, rangeMeta),
+      batch
     )
-  )
+    .write()
 
   logger.info({ startBlock, stopBlock }, `Saved dryCache.`)
-  await windowDb.put('dry', stopBlock)
 
   rangeMeta.rawScaleData = rawScaleData
 
@@ -267,59 +278,100 @@ export const commitBlobRange = async (ranges) => {
   const blobRangeKey_SyncHeaderReq = `blobRangeKey:${startBlock}:${stopBlock}:SyncHeaderReq`
   const blobRangeKey_DispatchBlockReq = `blobRangeKey:${startBlock}:${stopBlock}:DispatchBlockReq`
 
-  try {
+  const shouldSkip = (
     await Promise.all(
       [blobRangeKey_SyncHeaderReq, blobRangeKey_DispatchBlockReq].map((k) =>
-        windowDb.get(k, {
-          ...DB_ENCODING_BINARY,
-        })
+        getKeyExistance(windowDb, k)
       )
     )
+  ).reduce((ret, curr) => ret && curr, true)
 
+  if (shouldSkip) {
     logger.info({ startBlock, stopBlock }, `Found blobRange, skipping.`)
     ranges.length = 0
     return
-  } catch (error) {
-    if (!(error instanceof levelErrors.NotFoundError)) {
-      throw error
+  }
+
+  const headers = []
+  const blocks = []
+  let authoritySetChange
+
+  for (const [index, range] of ranges.entries()) {
+    if (range.rawScaleData) {
+      for (const h of range.rawScaleData[0].headers) {
+        headers.push(h)
+      }
+      for (const b of range.rawScaleData[1].blocks) {
+        blocks.push(b)
+      }
+      if (index === ranges.length - 1) {
+        authoritySetChange = range.rawScaleData[0].authoritySetChange
+      }
+    } else {
+      const drySyncHeader = phalaApi.createType(
+        'SyncHeaderReq',
+        await windowDb.get(
+          `drySyncHeader:${range.startBlock}:${range.stopBlock}`,
+          { ...DB_ENCODING_BINARY }
+        )
+      )
+      const dryDispatchBlock = phalaApi.createType(
+        'DispatchBlockReq',
+        await windowDb.get(
+          `dryDispatchBlock:${range.startBlock}:${range.stopBlock}`,
+          { ...DB_ENCODING_BINARY }
+        )
+      )
+
+      for (const h of drySyncHeader.headers) {
+        headers.push(h)
+      }
+      for (const b of dryDispatchBlock.blocks) {
+        blocks.push(b)
+      }
+      if (index === ranges.length - 1) {
+        authoritySetChange = drySyncHeader.authoritySetChange
+      }
     }
   }
 
   const blobSyncHeaderReq = phalaApi.createType('SyncHeaderReq', {
-    headers: ranges.reduce((ret, curr) => {
-      for (const h of curr.rawScaleData[0].headers) {
-        ret.push(h)
-      }
-      return ret
-    }, []),
-    authoritySetChange:
-      ranges[ranges.length - 1].rawScaleData[0].authoritySetChange,
+    headers,
+    authoritySetChange,
   })
-
-  const blobDispatchBlockReq = ranges.reduce((ret, curr) => {
-    for (const b of curr.rawScaleData[1].blocks) {
-      ret.blocks.push(b)
-    }
-    return ret
-  }, phalaApi.createType('DispatchBlockReq', { blocks: [] }))
-
-  await windowDb.put(
-    blobRangeKey_SyncHeaderReq,
-    Buffer.from(blobSyncHeaderReq.toU8a()),
-    { ...DB_ENCODING_BINARY }
-  )
-  await windowDb.put(
-    blobRangeKey_DispatchBlockReq,
-    Buffer.from(blobDispatchBlockReq.toU8a()),
-    { ...DB_ENCODING_BINARY }
-  )
+  const blobDispatchBlockReq = phalaApi.createType('DispatchBlockReq', {
+    blocks,
+  })
+  // await windowDb.put(
+  //   blobRangeKey_SyncHeaderReq,
+  //   Buffer.from(blobSyncHeaderReq.toU8a()),
+  //   { ...DB_ENCODING_BINARY }
+  // )
+  // await windowDb.put(
+  //   blobRangeKey_DispatchBlockReq,
+  //   Buffer.from(blobDispatchBlockReq.toU8a()),
+  //   { ...DB_ENCODING_BINARY }
+  // )
 
   const startBlockRangeMetaKey = `rangeByBlock:${startBlock}`
   const startBlockRangeMeta = await windowDb.get(startBlockRangeMetaKey)
   startBlockRangeMeta.blobStopBlock = stopBlock
   startBlockRangeMeta.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
   startBlockRangeMeta.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
-  await windowDb.put(startBlockRangeMetaKey, startBlockRangeMeta)
+
+  await windowDb
+    .batch()
+    .put(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()), {
+      ...DB_ENCODING_BINARY,
+    })
+    .put(
+      blobRangeKey_DispatchBlockReq,
+      Buffer.from(blobDispatchBlockReq.toU8a()),
+      { ...DB_ENCODING_BINARY }
+    )
+    .put(startBlockRangeMetaKey, startBlockRangeMeta)
+    .write()
+  // await windowDb.put(startBlockRangeMetaKey, startBlockRangeMeta)
 
   logger.info({ startBlock, stopBlock }, `Commited blobRange.`)
 

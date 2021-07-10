@@ -3,7 +3,7 @@ import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import { SET_INIT_HEIGHT, SET_KNOWN_HEIGHT } from '.'
 import {
   encodeBlock,
-  getBlock,
+  getBlockExistance,
   getGenesisBlock,
   setBlock,
   setGenesisBlock,
@@ -14,7 +14,7 @@ import env from '../utils/env'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 100
+const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
 
 let startLock = false
 const fetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
@@ -141,7 +141,7 @@ const processGenesisBlock = async () => {
 
 const _walkBlock = async (blockNumber) => {
   logger.debug({ blockNumber }, 'Starting fetching block...')
-  if (await getBlock(blockNumber)) {
+  if (await getBlockExistance(blockNumber)) {
     logger.debug({ blockNumber }, 'Block found in cache.')
   } else {
     await setBlock(blockNumber, encodeBlock(await processBlock(blockNumber)))

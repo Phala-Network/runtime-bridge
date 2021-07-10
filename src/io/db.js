@@ -81,3 +81,30 @@ export const getDb = async (dbNum) => {
 }
 
 export const NOT_FOUND_ERROR = new Error('Not found.')
+
+export const getKeyExistance = (db, key) =>
+  new Promise((resolve, reject) => {
+    let resolved = false
+    db.createKeyStream({
+      limit: 1,
+      gte: key,
+      lte: key,
+    })
+      .on('data', () => {
+        resolved = true
+        resolve(true)
+      })
+      .on('error', reject)
+      .on('end', () => {
+        if (!resolved) {
+          resolve(false)
+          resolved = true
+        }
+      })
+      .on('close', () => {
+        if (!resolved) {
+          resolve(false)
+          resolved = true
+        }
+      })
+  })
