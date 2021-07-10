@@ -26,6 +26,7 @@
     "ioredis": "^4.27.6",
     "level": "^7.0.0",
     "level-errors": "^3.0.0",
+    "leveldown": "^6.0.0",
     "levelup": "^5.0.1",
     "lodash": "^4.17.21",
     "multileveldown": "github:Level/multileveldown",

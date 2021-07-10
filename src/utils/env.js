@@ -1,3 +1,6 @@
+import LevelDOWN from 'leveldown'
+import RocksDB from 'rocksdb'
+
 export const ENV_LIST = [
   ['NODE_ENV', 'nodeEnv'],
   ['PHALA_PARALLEL_BLOCKS', 'parallelBlocks'],
@@ -12,6 +15,7 @@ export const ENV_LIST = [
   ['PHALA_ENABLE_LEGACY_SYSTEM_MQ', 'enableLegacySystemMq'],
   ['PHALA_DB_HOST', 'dbHost'],
   ['PHALA_DB_PORT_BASE', 'dbPortBase'],
+  ['PHALA_DB_TYPE', 'dbType'],
 ]
 
 const _env = {}
@@ -26,4 +30,5 @@ export const isDev = env.NODE_ENV === 'development'
 export const shouldSkipRa = env.devSkipRa === 'true'
 export const httpKeepAliveEnabled = env.httpKeepAliveEnabled === 'true'
 export const legacySystemMqEnabled = env.enableLegacySystemMq === 'true'
+export const dbType = env.dbType === 'leveldb' ? LevelDOWN : RocksDB
 export default env

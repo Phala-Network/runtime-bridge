@@ -45,6 +45,7 @@ specifiers:
   jsdoc: ^3.6.7
   level: ^7.0.0
   level-errors: ^3.0.0
+  leveldown: ^6.0.0
   levelup: ^5.0.1
   lodash: ^4.17.21
   minimist: ^1.2.5
@@ -86,6 +87,7 @@ dependencies:
   ioredis: 4.27.6
   level: 7.0.0
   level-errors: 3.0.0
+  leveldown: 6.0.0
   levelup: 5.0.1
   lodash: 4.17.21
   multileveldown: github.com/Level/multileveldown/96d613571309523cd4058c24d93846f93d43d9a0

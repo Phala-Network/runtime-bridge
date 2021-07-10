@@ -4,8 +4,7 @@ import { server as multileveldownServer } from 'multileveldown'
 import { pipeline } from 'readable-stream'
 import EncodingDown from 'encoding-down'
 import LevelUp from 'levelup'
-import RocksDB from 'rocksdb'
-import env from '../utils/env'
+import env, { dbType } from '../utils/env'
 import logger from '../utils/logger'
 import net from 'net'
 import path from 'path'
@@ -15,7 +14,7 @@ const start = async () => {
     DB_KEYS.map(async (dbNum) => {
       const port = getPort(dbNum)
       const db = LevelUp(
-        EncodingDown(RocksDB(path.join(env.dbPrefix, `${dbNum}`)), {
+        EncodingDown(dbType(path.join(env.dbPrefix, `${dbNum}`)), {
           ...DB_ENCODING_DEFAULT,
         })
       )
