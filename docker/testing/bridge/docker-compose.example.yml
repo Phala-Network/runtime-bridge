@@ -6,10 +6,7 @@ x-defaults: &defaults
 
 services:
   fetch:
-    image: phalanetwork/poc4-prb:development
-    build:
-      context: ../../..
-      dockerfile: docker/development/Dockerfile
+    image: phalanetwork/poc4-prb:latest
     hostname: fetch
     depends_on:
       - redis
@@ -26,7 +23,7 @@ services:
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   lifecycle:
-    image: phalanetwork/poc4-prb:development
+    image: phalanetwork/poc4-prb:latest
     hostname: lifecycle
     depends_on:
       - redis
@@ -43,7 +40,7 @@ services:
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   trade:
-    image: phalanetwork/poc4-prb:development
+    image: phalanetwork/poc4-prb:latest
     hostname: trade
     depends_on:
       - redis
@@ -61,7 +58,7 @@ services:
 
   io:
     << : *defaults
-    image: phalanetwork/poc4-prb:development
+    image: phalanetwork/poc4-prb:latest
     hostname: io
     restart: always
     environment:
