@@ -9,7 +9,7 @@ import setupRpc from './rpc'
 
 const updateFetcherState = async (query, state) => {
   const { content: fetcherStateUpdate } = await query({
-    to: MessageTarget.values.MTG_FETCHER,
+    to: MessageTarget.MTG_FETCHER,
     callOnlineFetcher: {},
   })
   Object.assign(state, fetcherStateUpdate.fetcherStateUpdate)

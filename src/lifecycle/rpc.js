@@ -6,7 +6,7 @@ import env from '../utils/env'
 const setupRpc = async (context) => {
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint: env.redisEndpoint,
-    from: MessageTarget.values.MTG_MANAGER,
+    from: MessageTarget.MTG_MANAGER,
   })
 
   const { subscribe, query } = tunnelConnection

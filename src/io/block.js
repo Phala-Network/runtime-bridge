@@ -1,139 +1,65 @@
 import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistance } from './db'
-import { DB_ENCODING_BINARY, DB_ENCODING_DEFAULT } from './db_encoding'
+import { DB_PB_TO_OBJECT_OPTIONS, pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
+import { prb } from '../message/proto.generated'
 import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../utils/wait'
 
-export const DB_BLOCK_BLOCK = Object.freeze({
-  blockNumber: [DB_ENCODING_DEFAULT],
-  hash: [DB_ENCODING_BINARY, 'BlockHash'],
-  header: [DB_ENCODING_BINARY, 'Header'],
-  setId: [DB_ENCODING_DEFAULT],
-  isNewRound: [DB_ENCODING_DEFAULT],
-  hasJustification: [DB_ENCODING_DEFAULT],
-  syncHeaderData: [DB_ENCODING_BINARY, 'HeaderToSync'],
-  dispatchBlockData: [DB_ENCODING_BINARY, 'BlockHeaderWithEvents'],
-  authoritySetChange: [DB_ENCODING_BINARY, 'Option<AuthoritySetChange>'],
+const { Block } = prb.db
+
+export const SCALE_TYPES__BLOCK = Object.freeze({
+  hash: 'BlockHash',
+  header: 'Header',
+  syncHeaderData: 'HeaderToSync',
+  dispatchBlockData: 'BlockHeaderWithEvents',
+  authoritySetChange: 'Option<AuthoritySetChange>',
+  genesisState: 'Vec<KeyValue>',
+  bridgeGenesisInfo: 'GenesisInfo',
 })
-export const DB_BLOCK_GENESIS_BLOCK = Object.freeze({
-  ...DB_BLOCK_BLOCK,
-  genesisState: [DB_ENCODING_BINARY, 'Vec<KeyValue>'],
-  bridgeGenesisInfo: [DB_ENCODING_BINARY, 'GenesisInfo'],
-})
-export const KEYS_DB_BLOCK_BLOCK = Object.freeze(Object.keys(DB_BLOCK_BLOCK))
-export const KEYS_DB_BLOCK_GENESIS_BLOCK = Object.freeze(
-  Object.keys(DB_BLOCK_GENESIS_BLOCK)
+
+export const keys__SCALE_TYPES__BLOCK = Object.freeze(
+  Object.keys(SCALE_TYPES__BLOCK)
 )
 
-export const decodeBlock = (block) => {
-  const ret = {}
-  Object.keys(block).forEach((key) => {
-    if (!DB_BLOCK_GENESIS_BLOCK[key]) {
-      return
+export const decodeBlockScale = (block, shouldCopy = false) => {
+  const ret = shouldCopy ? { ...block } : block
+  for (const key of keys__SCALE_TYPES__BLOCK) {
+    if (Buffer.isBuffer(ret[key])) {
+      ret[key] = phalaApi.createType(SCALE_TYPES__BLOCK[key], ret[key])
     }
-    const [encoding, scaleTypeName] = DB_BLOCK_GENESIS_BLOCK[key]
-    if (encoding === DB_ENCODING_DEFAULT) {
-      ret[key] = block[key]
-      return
-    }
-    ret[key] = phalaApi.createType(scaleTypeName, block[key])
-  })
-  return ret
-}
-export const encodeBlock = (block) => {
-  const ret = {}
-  Object.keys(block).forEach((key) => {
-    if (!DB_BLOCK_GENESIS_BLOCK[key]) {
-      return
-    }
-    const [encoding] = DB_BLOCK_GENESIS_BLOCK[key]
-    if (encoding === DB_ENCODING_DEFAULT) {
-      ret[key] = block[key]
-      return
-    }
-    if (!block[key]?.toU8a) {
-      return
-    }
-    ret[key] = block[key].toU8a()
-  })
-  return ret
-}
-
-export const setGenesisBlock = async (block) => {
-  const db = await getDb(DB_BLOCK)
-  const batch = db.batch()
-  await KEYS_DB_BLOCK_GENESIS_BLOCK.reduce(
-    (b, key) =>
-      b.put(`block:${0}:${key}`, block[key], {
-        ...DB_BLOCK_GENESIS_BLOCK[key][0],
-      }),
-    batch
-  ).write()
-  return block
-}
-
-export const getGenesisBlock = async () => {
-  const db = await getDb(DB_BLOCK)
-
-  try {
-    const retArr = await Promise.all(
-      KEYS_DB_BLOCK_GENESIS_BLOCK.map((key) =>
-        db.get(`block:0:${key}`, { ...DB_BLOCK_GENESIS_BLOCK[key][0] })
-      )
-    )
-    const ret = {}
-    KEYS_DB_BLOCK_GENESIS_BLOCK.forEach((key, index) => {
-      ret[key] = retArr[index]
-    })
-    return ret
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
   }
+  return ret
 }
-
-export const setBlock = async (number, block) => {
-  const db = await getDb(DB_BLOCK)
-  const batch = db.batch()
-  await KEYS_DB_BLOCK_BLOCK.reduce(
-    (b, key) =>
-      b.put(`block:${number}:${key}`, block[key], {
-        ...DB_BLOCK_BLOCK[key][0],
-      }),
-    batch
-  ).write()
-  return block
+export const encodeBlockScale = (block, shouldCopy = false) => {
+  const ret = shouldCopy ? { ...block } : block
+  for (const key of keys__SCALE_TYPES__BLOCK) {
+    if (ret[key]) {
+      ret[key] = ret[key].toU8a()
+    }
+  }
+  return ret
 }
 
 export const getBlockExistance = async (number) => {
   const db = await getDb(DB_BLOCK)
-  return (
-    await Promise.all(
-      KEYS_DB_BLOCK_BLOCK.map((key) =>
-        getKeyExistance(db, `block:${number}:${key}`)
-      )
-    )
-  ).reduce((ret, curr) => ret && curr, true)
+  return getKeyExistance(db, `block:${number}:written`)
+}
+
+export const setBlock = async (number, block) => {
+  const db = await getDb(DB_BLOCK)
+  const blockPb = Block.create(block)
+  await db.put(`block:${number}:pb`, Block.encode(blockPb).finish())
+  await db.put(`block:${number}:written`, Buffer.from([1]))
+  return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getBlock = async (number) => {
   const db = await getDb(DB_BLOCK)
-
   try {
-    const retArr = await Promise.all(
-      KEYS_DB_BLOCK_BLOCK.map((key) =>
-        db.get(`block:${number}:${key}`, { ...DB_BLOCK_BLOCK[key][0] })
-      )
-    )
-    const ret = {}
-    KEYS_DB_BLOCK_BLOCK.forEach((key, index) => {
-      ret[key] = retArr[index]
-    })
-    return ret
+    const buffer = await db.get(`block:${number}:pb`)
+    return pbToObject(Block.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
   } catch (error) {
     if (error instanceof levelErrors.NotFoundError) {
       return null
@@ -141,6 +67,9 @@ export const getBlock = async (number) => {
     throw error
   }
 }
+
+export const getGenesisBlock = () => getBlock(0)
+export const setGenesisBlock = (block) => setBlock(0, block)
 
 const _waitForBlock = async (blockNumber) => {
   try {

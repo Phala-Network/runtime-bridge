@@ -1,4 +1,4 @@
-import { DB_ENCODING_DEFAULT } from './db_encoding'
+import { DB_ENCODING_DEFAULT, DB_ENCODING_JSON } from './db_encoding'
 import { client as multileveldownClient } from 'multileveldown'
 import { pipeline } from 'readable-stream'
 import env from '../utils/env'
@@ -22,13 +22,16 @@ const checkDb = async (db) => {
   let touchedAt
 
   try {
-    touchedAt = await db.get('DB_TOUCHED_AT')
+    touchedAt = await db.get('DB_TOUCHED_AT', { ...DB_ENCODING_JSON })
   } catch (error) {
     logger.error(error)
   }
 
   if (typeof touchedAt !== 'number') {
-    console.log(111, typeof touchedAt, touchedAt)
+    logger.debug({
+      'typeof touchedAt': typeof touchedAt,
+      touchedAt,
+    })
     throw new Error('DB not initialized, did IO service start correctly?')
   }
   return db

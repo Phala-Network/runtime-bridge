@@ -1,4 +1,4 @@
-import { DB_ENCODING_DEFAULT } from './db_encoding'
+import { DB_ENCODING_JSON } from './db_encoding'
 import { DB_KEYS, DB_TOUCHED_AT, getPort } from './db'
 import { server as multileveldownServer } from 'multileveldown'
 import { pipeline } from 'readable-stream'
@@ -15,7 +15,7 @@ const start = async () => {
       const port = getPort(dbNum)
       const db = LevelUp(
         EncodingDown(dbType(path.join(env.dbPrefix, `${dbNum}`)), {
-          ...DB_ENCODING_DEFAULT,
+          ...DB_ENCODING_JSON,
         })
       )
       await db.put(DB_TOUCHED_AT, Date.now())

@@ -2,7 +2,7 @@ import { DB_BLOCK, setupDb } from '../io/db'
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import { SET_INIT_HEIGHT, SET_KNOWN_HEIGHT } from '.'
 import {
-  encodeBlock,
+  encodeBlockScale,
   getBlockExistance,
   getGenesisBlock,
   setBlock,
@@ -144,7 +144,10 @@ const _walkBlock = async (blockNumber) => {
   if (await getBlockExistance(blockNumber)) {
     logger.debug({ blockNumber }, 'Block found in cache.')
   } else {
-    await setBlock(blockNumber, encodeBlock(await processBlock(blockNumber)))
+    await setBlock(
+      blockNumber,
+      encodeBlockScale(await processBlock(blockNumber))
+    )
     logger.debug({ blockNumber }, 'Fetched block.')
   }
 }
@@ -209,7 +212,7 @@ export default async () => {
   if (await getGenesisBlock()) {
     logger.info('Genesis block found in cache.')
   } else {
-    await setGenesisBlock(encodeBlock(await processGenesisBlock()))
+    await setGenesisBlock(encodeBlockScale(await processGenesisBlock()))
     logger.info('Fetched genesis block.')
   }
 

@@ -19,7 +19,7 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
 
   const publish = async (request) => {
     const {
-      to = MessageTarget.values.MTG_BROADCAST,
+      to = MessageTarget.MTG_BROADCAST,
       nonce = '',
       nonceRef = '',
       type = MessageType.values.MTP_BROADCAST,
