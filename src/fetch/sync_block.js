@@ -180,17 +180,7 @@ const walkBlock = (blockNumber) =>
 const startSync = (target) => {
   const bufferQueue = new Queue(
     parseInt(FETCH_QUEUE_CONCURRENT * 1.618),
-    Infinity,
-    {
-      onEmpty: () => {
-        if (!bufferQueue.getPendingLength() && !bufferQueue.getQueueLength()) {
-          logger.info(
-            { target },
-            'Block cache synched to init target height...'
-          )
-        }
-      },
-    }
+    Infinity
   )
 
   logger.info({ target }, 'Starting synching...')

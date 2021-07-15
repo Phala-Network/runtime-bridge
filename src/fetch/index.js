@@ -43,7 +43,10 @@ const start = () =>
         if (context.blobHeight < message[SET_BLOB_HEIGHT]) {
           context.blobHeight = message[SET_BLOB_HEIGHT]
           if (!context.hasReachedInitTarget) {
-            if (context.blobHeight >= context.initHeight) {
+            if (
+              context.initHeight > 0 &&
+              context.blobHeight >= context.initHeight
+            ) {
               context.hasReachedInitTarget = true
             }
           }

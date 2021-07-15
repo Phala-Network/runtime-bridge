@@ -292,7 +292,7 @@ export const commitBlobRange = async (ranges) => {
       RangeMeta.encode(startBlockRangeMetaPb).finish()
     )
     .write()
-  await windowDb.put(startBlockRangeMetaKey, Buffer.from([1]))
+  await windowDb.put(blobRangeCommitedMarkKey, Buffer.from([1]))
 
   logger.info({ startBlock, stopBlock }, `Commited blobRange.`)
 
