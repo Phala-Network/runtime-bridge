@@ -31,7 +31,7 @@ export const createWindow = async (windowId, data) => {
   const pb = Window.create(data)
 
   await db.put(`window:${windowId}:pb`, Window.encode(pb).finish())
-  return pbToObject(data)
+  return pbToObject(pb)
 }
 
 export const setEmptyWindow = (windowId, startBlock) => {
