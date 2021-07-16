@@ -64,7 +64,7 @@ const walkBlock = async (
       context.stopBlock = blockNumber
 
       ranges.push(
-        await lazySetDryRange(
+        lazySetDryRange(
           context.startBlock,
           context.stopBlock,
           currentBlock.setId,
