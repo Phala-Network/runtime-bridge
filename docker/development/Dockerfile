@@ -17,4 +17,4 @@ RUN apt-get install -y \
 RUN npm i -g pnpm
 
 WORKDIR /opt/app
-ENTRYPOINT [ "pnpm", "node", "--", "--experimental-json-modules", "--es-module-specifier-resolution=node", "--harmony-top-level-await", "src/index" ]
+ENTRYPOINT [ "pnpm", "start_module" ]
