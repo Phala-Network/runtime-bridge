@@ -58,7 +58,6 @@ const walkBlock = async (
     const currentBlock = await waitForBlock(blockNumber)
 
     let nextContext
-    let _currentWindow = currentWindow
 
     if (currentBlock.hasJustification) {
       context.stopBlock = blockNumber
@@ -93,24 +92,31 @@ const walkBlock = async (
         lazyCommitBlobRange(ranges, currentBlock.blockNumber)
       }
 
-      await updateWindow(currentWindow, {
-        currentBlock: currentBlock.blockNumber,
-        stopBlock: currentBlock.blockNumber,
-        isFinished: true,
-      })
+      Object.assign(
+        currentWindow,
+        await updateWindow(currentWindow, {
+          currentBlock: currentBlock.blockNumber,
+          stopBlock: currentBlock.blockNumber,
+          isFinished: true,
+        })
+      )
+
       return
     }
 
     if (currentWindow.setId === -1) {
-      _currentWindow = await updateWindow(currentWindow, {
-        setId: currentBlock.setId,
-      })
+      Object.assign(
+        currentWindow,
+        await updateWindow(currentWindow, {
+          setId: currentBlock.setId,
+        })
+      )
     }
 
-    _currentWindow.currentBlock = currentBlock.blockNumber
+    Object.assign(currentWindow, { currentBlock: currentBlock.blockNumber })
 
     return walkBlock(
-      _currentWindow,
+      currentWindow,
       lastWindow,
       blockNumber + 1,
       nextContext,
