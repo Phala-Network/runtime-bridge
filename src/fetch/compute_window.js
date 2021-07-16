@@ -20,6 +20,32 @@ export const range = (start, stop, step = 1) =>
     .fill(start)
     .map((x, y) => x + y * step)
 
+const lazySetDryRange = async (
+  startBlock,
+  stopBlock,
+  latestSetId,
+  setIdChanged,
+  currentBlock
+) => {
+  const ret = await setDryRange(
+    startBlock,
+    stopBlock,
+    latestSetId,
+    setIdChanged
+  )
+  process.send({ [SET_BLOB_HEIGHT]: currentBlock })
+  return ret
+}
+
+const lazyCommitBlobRange = async (rangePromises, currentBlock) => {
+  const rangePromises__copy = [...rangePromises]
+  rangePromises.length = 0
+  const ranges = await Promise.all(rangePromises__copy)
+  await commitBlobRange(ranges)
+  process.send({ [SET_ARCHIVED_HEIGHT]: currentBlock })
+  return true
+}
+
 const walkBlock = async (
   currentWindow,
   lastWindow,
@@ -32,19 +58,20 @@ const walkBlock = async (
     const currentBlock = await waitForBlock(blockNumber)
 
     let nextContext
+    let _currentWindow = currentWindow
 
     if (currentBlock.hasJustification) {
       context.stopBlock = blockNumber
 
       ranges.push(
-        await setDryRange(
+        await lazySetDryRange(
           context.startBlock,
           context.stopBlock,
           currentBlock.setId,
-          currentBlock.setId > lastBlock?.setId
+          currentBlock.setId > lastBlock?.setId,
+          currentBlock.blockNumber
         )
       )
-      process.send({ [SET_BLOB_HEIGHT]: currentBlock.blockNumber })
 
       nextContext = {
         startBlock: blockNumber + 1,
@@ -54,18 +81,16 @@ const walkBlock = async (
       nextContext = context
     }
 
-    let alreadyCommited = false
+    let alreadyRequestedCommit = false
 
     if (ranges.length >= BLOB_MAX_RANGE_COUNT) {
-      await commitBlobRange(ranges)
-      process.send({ [SET_ARCHIVED_HEIGHT]: currentBlock.blockNumber })
-      alreadyCommited = true
+      lazyCommitBlobRange(ranges, currentBlock.blockNumber)
+      alreadyRequestedCommit = true
     }
 
     if (currentBlock.setId > lastBlock?.setId) {
-      if (!alreadyCommited) {
-        await commitBlobRange(ranges)
-        process.send({ [SET_ARCHIVED_HEIGHT]: currentBlock.blockNumber })
+      if (!alreadyRequestedCommit) {
+        lazyCommitBlobRange(ranges, currentBlock.blockNumber)
       }
 
       await updateWindow(currentWindow, {
@@ -76,18 +101,16 @@ const walkBlock = async (
       return
     }
 
-    await updateWindow(
-      currentWindow,
-      currentWindow.setId === -1
-        ? {
-            currentBlock: currentBlock.blockNumber,
-            setId: currentBlock.setId,
-          }
-        : { currentBlock: currentBlock.blockNumber }
-    )
+    if (currentWindow.setId === -1) {
+      _currentWindow = await updateWindow(currentWindow, {
+        setId: currentBlock.setId,
+      })
+    }
+
+    _currentWindow.currentBlock = currentBlock.blockNumber
 
     return walkBlock(
-      currentWindow,
+      _currentWindow,
       lastWindow,
       blockNumber + 1,
       nextContext,

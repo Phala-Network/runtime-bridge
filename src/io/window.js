@@ -188,17 +188,16 @@ export const setDryRange = async (
     .put(drySyncHeaderReqKey, drySyncHeaderReq)
     .put(dryDispatchBlockReqKey, dryDispatchBlockReq)
 
-  await currentRange
-    .reduce(
-      (b, blockNumber) =>
-        b.put(
-          `rangeByBlock:${blockNumber}:pb`,
-          RangeMeta.encode(rangeMetaPb).finish()
-        ),
-      batch
-    )
-    .write()
-  await windowDb.put(rangeWrittenMarkKey, Buffer.from([1]))
+  currentRange.reduce(
+    (b, blockNumber) =>
+      b.put(
+        `rangeByBlock:${blockNumber}:pb`,
+        RangeMeta.encode(rangeMetaPb).finish()
+      ),
+    batch
+  )
+  batch.put(rangeWrittenMarkKey, Buffer.from([1]))
+  await batch.write()
 
   logger.info({ startBlock, stopBlock }, `Saved dryCache.`)
 
