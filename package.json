@@ -86,13 +86,12 @@
     "uglify-js": "^3.13.10"
   },
   "scripts": {
-    "watch": "babel src --ignore **/node_modules -d dist --watch",
-    "build": "babel src --ignore **/node_modules -d dist",
-    "node": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await",
-    "bridge": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
+    "proto:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && pbts -o ./src/message/proto.generated.d.ts ./src/message/proto.generated.js && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js",
+
+    "start_module": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
+
     "add_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/add_machines",
     "dump_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_machines",
-    "import_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_machines",
-    "proto:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && pbts -o ./src/message/proto.generated.d.ts ./src/message/proto.generated.js && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js"
+    "import_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_machines"
   }
 }
