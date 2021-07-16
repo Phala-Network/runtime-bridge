@@ -57,6 +57,23 @@ services:
       - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
+  inspect:
+    image: phalanetwork/poc4-prb:development
+    hostname: inspect
+    depends_on:
+      - io
+    volumes: *default-volume-config
+    environment:
+      - PHALA_MODULE=io/inspect
+      - NODE_ENV=development
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
+      - PHALA_LOGGER_LEVEL=debug
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+      - "9003:9003"
+
   io:
     << : *defaults
     image: phalanetwork/poc4-prb:testing
