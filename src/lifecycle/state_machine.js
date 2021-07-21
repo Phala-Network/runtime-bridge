@@ -1,12 +1,12 @@
 import { MINIUM_BALANCE } from '../utils/constants'
 import { initRuntime, startSyncBlob, startSyncMessage } from './pruntime'
-import { protoRoot } from '../message/proto'
+import { prb } from '../message/proto'
 import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
-const Status = protoRoot.lookupEnum('WorkerState.Status')
-const StatusEnumValues = toEnum(Object.keys(Status.values))
+const Status = prb.WorkerState.Status
+const StatusEnumValues = toEnum(Object.keys(Status))
 
 export const EVENTS = toEnum([
   'SHOULD_START',

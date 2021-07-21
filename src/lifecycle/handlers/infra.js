@@ -19,3 +19,12 @@ export const fetcherStateUpdate = async (message, context) => {
     },
   }
 }
+
+export default {
+  queryHandlers: {
+    callOnlineLifecycleManager,
+  },
+  plainHandlers: {
+    fetcherStateUpdate,
+  },
+}

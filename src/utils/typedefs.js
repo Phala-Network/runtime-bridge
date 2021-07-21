@@ -11,7 +11,7 @@ const __tempOverrides = {
   EcdsaPublicKey: '[u8; 33]',
   WorkerPublicKey: 'EcdsaPublicKey',
   ContractPublicKey: 'EcdsaPublicKey',
-  EcdhP256PublicKey: '[u8; 65]',
+  EcdhPublicKey: '[u8; 32]',
   MessageOrigin: {
     _enum: {
       Pallet: 'Vec<u8>',
@@ -21,60 +21,38 @@ const __tempOverrides = {
       MultiLocation: 'Vec<u8>',
     },
   },
-  Attestation: {
-    _enum: {
-      SgxIas: 'AttestationSgxIas',
-    },
-  },
-  AttestationSgxIas: {
-    raReport: 'Vec<u8>',
-    signature: 'Vec<u8>',
-  },
+  Attestation: { _enum: { SgxIas: 'AttestationSgxIas' } },
+  AttestationSgxIas: { raReport: 'Vec<u8>', signature: 'Vec<u8>' },
   SenderId: 'MessageOrigin',
   Path: 'Vec<u8>',
   Topic: 'Path',
-  Message: {
-    sender: 'SenderId',
-    destination: 'Topic',
-    payload: 'Vec<u8>',
-  },
-  SignedMessage: {
-    message: 'Message',
-    sequence: 'u64',
-    signature: 'Vec<u8>',
-  },
+  Message: { sender: 'SenderId', destination: 'Topic', payload: 'Vec<u8>' },
+  SignedMessage: { message: 'Message', sequence: 'u64', signature: 'Vec<u8>' },
   MachineId: '[u8; 16]',
   PRuntimeInfo: {
     version: 'u32',
     machineId: 'MachineId',
     pubkey: 'WorkerPublicKey',
-    ecdhPubkey: 'EcdhP256PublicKey',
+    ecdhPubkey: 'EcdhPublicKey',
     features: 'Vec<u32>',
     operator: 'Option<AccountId>',
   },
-  PoolState: {
-    _enum: {
-      Ready: null,
-      Mining: null,
-    },
-  },
+  PoolState: { _enum: { Ready: null, Mining: null } },
   PoolInfo: {
     pid: 'u64',
     owner: 'AccountId',
-    state: 'PoolState',
     payoutCommission: 'u16',
     ownerReward: 'Balance',
+    cap: 'Option<Balance>',
     poolAcc: 'Balance',
     totalStake: 'Balance',
-    lockedStake: 'Balance',
+    freeStake: 'Balance',
     workers: 'Vec<WorkerPublicKey>',
+    withdrawQueue: 'Vec<WithdrawInfo>',
   },
+  WithdrawInfo: { user: 'AccountId', amount: 'Balance', startTime: 'u64' },
   ProposalStatus: {
-    _enum: {
-      Initiated: null,
-      Approved: null,
-      Rejected: null,
-    },
+    _enum: { Initiated: null, Approved: null, Rejected: null },
   },
   ProposalVotes: {
     votes_for: 'Vec<AccountId>',
@@ -82,12 +60,7 @@ const __tempOverrides = {
     status: 'ProposalStatus',
     expiry: 'BlockNumber',
   },
-  Kitty: {
-    id: 'Hash',
-    dna: 'Hash',
-    price: 'Balance',
-    gen: 'u64',
-  },
+  Kitty: { id: 'Hash', dna: 'Hash', price: 'Balance', gen: 'u64' },
   WorkerStateEnum: {
     _enum: {
       Empty: null,
@@ -100,7 +73,7 @@ const __tempOverrides = {
   },
   WorkerInfo: {
     pubkey: 'WorkerPublicKey',
-    ecdhPubkey: 'EcdhP256PublicKey',
+    ecdhPubkey: 'EcdhPublicKey',
     runtimeVersion: 'u32',
     lastUpdated: 'u64',
     operator: 'Option<AccountId>',
@@ -117,10 +90,7 @@ const __tempOverrides = {
     benchmark: 'Benchmark',
     coolingDownStart: 'u64',
   },
-  Benchmark: {
-    iterations: 'u64',
-    miningStartTime: 'u64',
-  },
+  Benchmark: { iterations: 'u64', miningStartTime: 'u64' },
   MinerState: {
     _enum: {
       Ready: null,
@@ -130,60 +100,50 @@ const __tempOverrides = {
       MiningCollingDown: null,
     },
   },
-  WorkerStat: {
-    totalReward: 'Balance',
-  },
-  _deprecated_WorkerInfo: {
-    machineId: 'Vec<u8>',
-    pubkey: 'Vec<u8>',
-    lastUpdated: 'u64',
-    state: 'WorkerStateEnum',
-    score: 'Option<Score>',
-    confidenceLevel: 'u8',
-    runtimeVersion: 'u32',
-  },
-  Score: {
-    overallScore: 'u32',
-    features: 'Vec<u32>',
-  },
-  StashInfo: {
-    controller: 'AccountId',
-    payoutPrefs: 'PayoutPrefs',
-  },
-  PayoutPrefs: {
-    commission: 'u32',
-    target: 'AccountId',
-  },
-  HeartbeatChallenge: {
-    seed: 'U256',
-    onlineTarget: 'U256',
-  },
-  RoundInfo: {
-    round: 'u32',
-    startBlock: 'BlockNumber',
-  },
-  RoundStats: {
-    round: 'u32',
-    onlineWorkers: 'u32',
-    computeWorkers: 'u32',
-    fracTargetOnlineReward: 'u32',
-    totalPower: 'u32',
-    fracTargetComputeReward: 'u32',
-  },
-  StashWorkerStats: {
-    slash: 'Balance',
-    computeReceived: 'Balance',
-    onlineReceived: 'Balance',
-  },
-  MinerStatsDelta: {
-    numWorker: 'i32',
-    numPower: 'i32',
-  },
-  PayoutReason: {
+  WorkerStat: { totalReward: 'Balance' },
+  PayoutPrefs: { commission: 'u32', target: 'AccountId' },
+  HeartbeatChallenge: { seed: 'U256', onlineTarget: 'U256' },
+  GatekeeperEvent: {
     _enum: {
-      OnlineReward: null,
-      ComputeReward: null,
+      Registered: 'NewGatekeeperEvent',
+      DispatchMasterKey: 'DispatchMasterKeyEvent',
+      NewRandomNumber: 'RandomNumberEvent',
+      UpdateTokenomic: 'TokenomicParameters',
     },
+  },
+  NewGatekeeperEvent: {
+    pubkey: 'WorkerPublicKey',
+    ecdhPubkey: 'EcdhPublicKey',
+    gatekeeperCount: 'u32',
+  },
+  DispatchMasterKeyEvent: {
+    dest: 'WorkerPublicKey',
+    ecdhPubkey: 'EcdhPublicKey',
+    encryptedMasterKey: 'Vec<u8>',
+    iv: '[u8; 12]',
+  },
+  RandomNumberEvent: {
+    blockNumber: 'u32',
+    randomNumber: '[u8; 32]',
+    lastRandomNumber: '[u8; 32]',
+  },
+  TokenomicParameters: {
+    phaRate: 'U64F64Bits',
+    rho: 'U64F64Bits',
+    budgetPerSec: 'U64F64Bits',
+    vMax: 'U64F64Bits',
+    costK: 'U64F64Bits',
+    costB: 'U64F64Bits',
+    slashRate: 'U64F64Bits',
+    heartbeatWindow: 'u32',
+  },
+  TokenomicParams: 'TokenomicParameters',
+  U64F64Bits: 'u128',
+  UserStakeInfo: {
+    user: 'AccountId',
+    amount: 'Balance',
+    availableRewards: 'Balance',
+    userDebt: 'Balance',
   },
 }
 
@@ -207,46 +167,9 @@ export const bridgeTypes = {
     header: 'Header',
     justification: 'JustificationToSync',
   },
-  GenesisInfo: {
-    header: 'Header',
-    validators: 'AuthorityList',
-    proof: 'StorageProof',
-  },
-  BlockHeaderWithEvents: {
+  BlockHeaderWithChanges: {
     blockHeader: 'Header',
     storageChanges: 'StorageChanges',
-  },
-  EncodedU8StorageKey: 'Vec<u8>',
-  OnlineWorkerSnapshot: {
-    workerStateKv: 'Vec<(EncodedU8StorageKey, WorkerInfo)>',
-    stakeReceivedKv: 'Vec<(EncodedU8StorageKey, Balance)>',
-    onlineWorkersKv: '(EncodedU8StorageKey, u32)',
-    computeWorkersKv: '(EncodedU8StorageKey, u32)',
-    proof: 'StorageProof',
-  },
-  // PalletId: 'Raw',
-  // StashWorkerStats: {
-  //   slash: 'Balance',
-  //   computeReceived: 'Balance',
-  //   onlineReceived: 'Balance',
-  // },
-  SignedWorkerMessage: {
-    data: 'WorkerMessage',
-    signature: 'Vec<u8>',
-  },
-  WorkerMessage: {
-    payload: 'WorkerMessagePayload',
-    sequence: 'u64',
-  },
-  WorkerMessagePayload: {
-    _enum: {
-      Heartbeat: 'WorkerMessagePayloadHeartbeat',
-    },
-  },
-  WorkerMessagePayloadHeartbeat: {
-    blockNum: 'u32',
-    claimOnline: 'bool',
-    claimCompute: 'bool',
   },
   StorageCollection: 'Vec<(Vec<u8>, Option<Vec<u8>>)>',
   ChildStorageCollection: 'Vec<(Vec<u8>, StorageCollection)>',
@@ -258,8 +181,17 @@ export const bridgeTypes = {
     headers: 'Vec<HeaderToSync>',
     authoritySetChange: 'Option<AuthoritySetChange>',
   },
+  SyncParachainHeaderReq: {
+    headers: 'Vec<Header>',
+    proof: 'StorageProof',
+  },
   DispatchBlockReq: {
-    blocks: 'Vec<BlockHeaderWithEvents>',
+    blocks: 'Vec<BlockHeaderWithChanges>',
+  },
+  GenesisInfo: {
+    header: 'Header',
+    validators: 'AuthorityList',
+    proof: 'StorageProof',
   },
   ...__tempOverrides,
 }

@@ -1,5 +1,9 @@
 import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistance } from './db'
-import { DB_PB_TO_OBJECT_OPTIONS, pbToObject } from './db_encoding'
+import {
+  DB_ENCODING_JSON,
+  DB_PB_TO_OBJECT_OPTIONS,
+  pbToObject,
+} from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
 import levelErrors from 'level-errors'
@@ -7,16 +11,15 @@ import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../utils/wait'
 
-const { Block } = prb.db
+const { ParaBlock, ParentBlock, Genesis } = prb.db
 
 export const SCALE_TYPES__BLOCK = Object.freeze({
-  hash: 'BlockHash',
+  hash: 'ParaBlockHash',
   header: 'Header',
   syncHeaderData: 'HeaderToSync',
-  dispatchBlockData: 'BlockHeaderWithEvents',
+  dispatchBlockData: 'BlockHeaderWithChanges',
   authoritySetChange: 'Option<AuthoritySetChange>',
-  genesisState: 'Vec<KeyValue>',
-  bridgeGenesisInfo: 'GenesisInfo',
+  proof: 'StorageProof',
 })
 
 export const keys__SCALE_TYPES__BLOCK = Object.freeze(
@@ -42,24 +45,24 @@ export const encodeBlockScale = (block, shouldCopy = false) => {
   return ret
 }
 
-export const getBlockExistance = async (number) => {
+export const getParaBlockExistance = async (number) => {
   const db = await getDb(DB_BLOCK)
-  return getKeyExistance(db, `block:${number}:written`)
+  return getKeyExistance(db, `para:${number}:written`)
 }
 
-export const setBlock = async (number, block) => {
+export const setParaBlock = async (number, block) => {
   const db = await getDb(DB_BLOCK)
-  const blockPb = Block.create(block)
-  await db.put(`block:${number}:pb`, Block.encode(blockPb).finish())
-  await db.put(`block:${number}:written`, Buffer.from([1]))
+  const blockPb = ParaBlock.create(block)
+  await db.put(`para:${number}:pb`, ParaBlock.encode(blockPb).finish())
+  await db.put(`para:${number}:written`, Buffer.from([1]))
   return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
-export const getBlock = async (number) => {
+export const getParaBlock = async (number) => {
   const db = await getDb(DB_BLOCK)
   try {
-    const buffer = await db.get(`block:${number}:pb`)
-    return pbToObject(Block.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
+    const buffer = await db.get(`para:${number}:pb`)
+    return pbToObject(ParaBlock.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
   } catch (error) {
     if (error instanceof levelErrors.NotFoundError) {
       return null
@@ -68,34 +71,30 @@ export const getBlock = async (number) => {
   }
 }
 
-export const getGenesisBlock = () => getBlock(0)
-export const setGenesisBlock = (block) => setBlock(0, block)
-
-const _waitForBlock = async (blockNumber) => {
+const _waitForParaBlock = async (blockNumber) => {
   try {
-    const ret =
-      blockNumber > 0 ? await getBlock(blockNumber) : await getGenesisBlock()
+    const ret = await getParaBlock(blockNumber)
     if (!ret) {
       throw NOT_FOUND_ERROR
     }
     return ret
   } catch (error) {
     if (error === NOT_FOUND_ERROR) {
-      logger.debug({ blockNumber }, 'Waiting for block...')
+      logger.debug({ blockNumber }, 'Waiting for parachain block...')
       await wait(2000)
-      return _waitForBlock(blockNumber)
+      return _waitForParaBlock(blockNumber)
     }
     throw error
   }
 }
 
-export const waitForBlock = (blockNumber) =>
+export const waitForParaBlock = (blockNumber) =>
   promiseRetry(
     (retry, number) => {
-      return _waitForBlock(blockNumber).catch((error) => {
+      return _waitForParaBlock(blockNumber).catch((error) => {
         logger.warn(
           { blockNumber, retryTimes: number },
-          'Failed getting block, retrying...',
+          'Failed getting parachain block, retrying...',
           error
         )
         return retry(error)
@@ -107,3 +106,125 @@ export const waitForBlock = (blockNumber) =>
       maxTimeout: 12000,
     }
   )
+
+export const getParentBlockExistance = async (number) => {
+  const db = await getDb(DB_BLOCK)
+  return getKeyExistance(db, `parent:${number}:written`)
+}
+
+export const setParentBlock = async (number, block) => {
+  const db = await getDb(DB_BLOCK)
+  const blockPb = ParentBlock.create(block)
+  await db.put(`parent:${number}:pb`, ParentBlock.encode(blockPb).finish())
+  await db.put(`parent:${number}:written`, Buffer.from([1]))
+  return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
+}
+
+export const getParentBlock = async (number) => {
+  const db = await getDb(DB_BLOCK)
+  try {
+    const buffer = await db.get(`parent:${number}:pb`)
+    return pbToObject(ParentBlock.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
+  } catch (error) {
+    if (error instanceof levelErrors.NotFoundError) {
+      return null
+    }
+    throw error
+  }
+}
+
+const _waitForParentBlock = async (blockNumber) => {
+  try {
+    const ret = await getParentBlock(blockNumber)
+    if (!ret) {
+      throw NOT_FOUND_ERROR
+    }
+    return ret
+  } catch (error) {
+    if (error === NOT_FOUND_ERROR) {
+      logger.debug({ blockNumber }, 'Waiting for parent block...')
+      await wait(2000)
+      return _waitForParentBlock(blockNumber)
+    }
+    throw error
+  }
+}
+
+export const waitForParentBlock = (blockNumber) =>
+  promiseRetry(
+    (retry, number) => {
+      return _waitForParentBlock(blockNumber).catch((error) => {
+        logger.warn(
+          { blockNumber, retryTimes: number },
+          'Failed getting parent block, retrying...',
+          error
+        )
+        return retry(error)
+      })
+    },
+    {
+      retries: 5,
+      minTimeout: 1000,
+      maxTimeout: 12000,
+    }
+  )
+
+export const bindBlock = async (paraNumber, parentNumber) => {
+  const db = await getDb(DB_BLOCK)
+  await db.put(`paraToParent:${paraNumber}`, parentNumber, {
+    ...DB_ENCODING_JSON,
+  })
+  await db.put(`parentToPara:${parentNumber}`, paraNumber, {
+    ...DB_ENCODING_JSON,
+  })
+  return
+}
+
+export const getParaNumber = async (parentNumber) => {
+  const db = await getDb(DB_BLOCK)
+  try {
+    await db.get(`parentToPara:${parentNumber}`, {
+      ...DB_ENCODING_JSON,
+    })
+  } catch (error) {
+    if (error instanceof levelErrors.NotFoundError) {
+      return null
+    }
+    throw error
+  }
+}
+
+export const getParentNumber = async (paraNumber) => {
+  const db = await getDb(DB_BLOCK)
+  try {
+    await db.get(`paraToParent:${paraNumber}`, {
+      ...DB_ENCODING_JSON,
+    })
+  } catch (error) {
+    if (error instanceof levelErrors.NotFoundError) {
+      return null
+    }
+    throw error
+  }
+}
+
+export const setGenesis = async (genesis) => {
+  const db = await getDb(DB_BLOCK)
+  const pb = Genesis.create(genesis)
+  await db.put(`genesis:${genesis.paraId}:pb`, Genesis.encode(pb).finish())
+  await db.put(`genesis:${genesis.paraId}:written`, Buffer.from([1]))
+  return pbToObject(pb, DB_PB_TO_OBJECT_OPTIONS)
+}
+
+export const getGenesis = async (paraId) => {
+  const db = await getDb(DB_BLOCK)
+  try {
+    const buffer = await db.get(`genesis:${paraId}:pb`)
+    return pbToObject(Genesis.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
+  } catch (error) {
+    if (error instanceof levelErrors.NotFoundError) {
+      return null
+    }
+    throw error
+  }
+}

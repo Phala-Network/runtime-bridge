@@ -9,7 +9,7 @@ import {
   updateWindow,
 } from '../io/window'
 import { setupPhalaApi } from '../utils/api'
-import { waitForBlock } from '../io/block'
+import { waitForParaBlock } from '../io/block'
 import env from '../utils/env'
 import logger from '../utils/logger'
 
@@ -55,7 +55,7 @@ const walkBlock = async (
   lastBlock = null
 ) => {
   try {
-    const currentBlock = await waitForBlock(blockNumber)
+    const currentBlock = await waitForParaBlock(blockNumber)
 
     let nextContext
 

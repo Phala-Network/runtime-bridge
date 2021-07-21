@@ -7,7 +7,7 @@ export const ENV_LIST = [
   ['PHALA_LOGGER_LEVEL', 'loggerLevel'],
   ['PHALA_MODULE', 'moduleName'],
   ['PHALA_DB_PREFIX', 'dbPrefix'],
-  ['PHALA_MAIN_CHAIN_ENDPOINT', 'mainChainEndpoint'],
+  ['PHALA_PARENT_CHAIN_ENDPOINT', 'parentChainEndpoint'],
   ['PHALA_CHAIN_ENDPOINT', 'chainEndpoint'],
   ['PHALA_REDIS_ENDPOINT', 'redisEndpoint'],
   ['PHALA_ENABLE_HTTP_KEEPALIVE', 'httpKeepAliveEnabled'],

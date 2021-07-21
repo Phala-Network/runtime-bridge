@@ -4,4 +4,4 @@ export const Message = prb.Message
 export const MessageType = prb.MessageType
 export const MessageTarget = prb.MessageTarget
 
-export { prb, google, pbRoot }
+export { prb, google, pbRoot, pbRoot as protoRoot }
