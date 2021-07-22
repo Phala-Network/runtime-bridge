@@ -1,9 +1,7 @@
 import { DB_WINDOW, NOT_FOUND_ERROR, getDb, getKeyExistance } from './db'
-import { getBlock } from './block'
 import { pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
-import { range } from '../fetch/compute_window'
 import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
@@ -34,11 +32,13 @@ export const createWindow = async (windowId, data) => {
   return pbToObject(pb)
 }
 
-export const setEmptyWindow = (windowId, startBlock) => {
+export const setEmptyWindow = (windowId, parentStartBlock, paraStartBlock) => {
   return createWindow(windowId, {
-    startBlock,
+    parentStartBlock,
+    parentStopBlock: -1,
+    paraStartBlock,
+    paraStopBlock: -1,
     stopBlock: -1,
-    currentBlock: -1,
     windowId,
     setId: -1,
     isFinished: false,
@@ -117,183 +117,251 @@ export const waitForRange = async (blockNumber) =>
   )
 
 export const setDryRange = async (
-  startBlock,
-  stopBlock,
+  parentStartBlock,
+  paraStartBlock,
+  paraBlocks,
+  parentBlocks,
   latestSetId,
   setIdChanged
 ) => {
   const windowDb = await getDb(DB_WINDOW)
-  const currentRange = range(startBlock, stopBlock)
 
-  const rangeWrittenMarkKey = `rangeWritten:${startBlock}:${stopBlock}`
-  const drySyncHeaderReqKey = `drySyncHeader:${startBlock}:${stopBlock}`
-  const dryDispatchBlockReqKey = `dryDispatchBlock:${startBlock}:${stopBlock}`
+  const _parentStopBlock = parentBlocks[parentBlocks.length - 1]
+  const _paraStopBlock = paraBlocks.length
+    ? paraBlocks[paraBlocks.length - 1]
+    : null
+  const parentStopBlock = _parentStopBlock.number
+  const paraStopBlock = _paraStopBlock ? _paraStopBlock.number : paraStartBlock
 
+  const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
+  const rangeWrittenMarkKey = `rangeWritten:${keySuffix}`
+  const drySyncHeaderReqKey = `drySyncHeader:${keySuffix}`
+  const drySyncParaHeaderReqKey = `drySyncParaHeader:${keySuffix}`
+  const dryDispatchBlockReqKey = `dryDispatchBlock:${keySuffix}`
   const shouldSkip = await getKeyExistance(windowDb, rangeWrittenMarkKey)
 
-  if (shouldSkip) {
-    logger.info({ startBlock, stopBlock }, `Found dryCache, skipping.`)
-
-    return {
-      startBlock,
-      stopBlock,
-      range: currentRange,
-      drySyncHeaderReqKey,
-      dryDispatchBlockReqKey,
-      latestSetId,
-    }
-  }
-
-  const blockData = {}
-
-  for (const blockNumber of currentRange) {
-    blockData[blockNumber] = await getBlock(blockNumber)
-  }
-
-  const authoritySetChange = setIdChanged
-    ? blockData[stopBlock].authoritySetChange
-    : null
-  const headers = await Promise.all(
-    currentRange.map((b) => blockData[b].syncHeaderData)
-  )
-
-  const rawScaleData = [
-    phalaApi.createType('SyncHeaderReq', {
-      headers,
-      authoritySetChange,
-    }),
-    phalaApi.createType('DispatchBlockReq', {
-      blocks: await Promise.all(
-        currentRange.map((b) => blockData[b].dispatchBlockData)
-      ),
-    }),
-  ]
-
-  const drySyncHeaderReq = Buffer.from(rawScaleData[0].toU8a())
-  const dryDispatchBlockReq = Buffer.from(rawScaleData[1].toU8a())
-
   const rangeMeta = {
-    startBlock,
-    stopBlock,
-    range: currentRange,
+    parentStartBlock,
+    parentStopBlock,
+    paraStartBlock,
+    paraStopBlock,
+    parentRange: parentBlocks.map((i) => i.number),
+    paraRange: paraBlocks.map((i) => i.number),
     drySyncHeaderReqKey,
+    drySyncParaHeaderReqKey,
     dryDispatchBlockReqKey,
     latestSetId,
   }
 
+  if (shouldSkip) {
+    logger.info(
+      {
+        parentStartBlock,
+        parentStopBlock,
+        paraStartBlock,
+        paraStopBlock,
+      },
+      `Found dryCache, skipping.`
+    )
+
+    return rangeMeta
+  }
+
+  const rawScaleData = {
+    SyncHeaderReq: phalaApi.createType('SyncHeaderReq', {
+      headers: parentBlocks.map((b) => b.syncHeaderData),
+      authoritySetChange: setIdChanged
+        ? _parentStopBlock.authoritySetChange
+        : null,
+    }),
+    SyncParaHeaderReq: _paraStopBlock
+      ? phalaApi.createType('SyncParachainHeaderReq', {
+          headers: paraBlocks.map((b) => b.header),
+          proof: _paraStopBlock.proof,
+        })
+      : null,
+    DispatchBlockReq: _paraStopBlock
+      ? phalaApi.createType('DispatchBlockReq', {
+          blocks: paraBlocks.map((b) => b.dispatchBlockData),
+        })
+      : null,
+  }
+
+  const drySyncHeaderReq = Buffer.from(rawScaleData.SyncHeaderReq.toU8a())
+  const drySyncParaHeaderReq = Buffer.from(
+    rawScaleData.SyncParaHeaderReq ? rawScaleData.SyncParaHeaderReq.toU8a() : []
+  )
+  const dryDispatchBlockReq = Buffer.from(
+    rawScaleData.DispatchBlockReq ? rawScaleData.DispatchBlockReq.toU8a() : []
+  )
+
   const rangeMetaPb = RangeMeta.create(rangeMeta)
+  const rangeMetaPbBuffer = RangeMeta.encode(rangeMetaPb).finish()
 
   const batch = windowDb
     .batch()
     .put(drySyncHeaderReqKey, drySyncHeaderReq)
+    .put(drySyncParaHeaderReqKey, drySyncParaHeaderReq)
     .put(dryDispatchBlockReqKey, dryDispatchBlockReq)
 
-  currentRange.reduce(
-    (b, blockNumber) =>
-      b.put(
-        `rangeByBlock:${blockNumber}:pb`,
-        RangeMeta.encode(rangeMetaPb).finish()
-      ),
+  parentBlocks.reduce(
+    (b, { number }) =>
+      b.put(`rangeByParentBlock:${number}:pb`, rangeMetaPbBuffer),
+    batch
+  )
+  paraBlocks.reduce(
+    (b, { number }) =>
+      b.put(`rangeByParaBlock:${number}:pb`, rangeMetaPbBuffer),
     batch
   )
   batch.put(rangeWrittenMarkKey, Buffer.from([1]))
   await batch.write()
 
-  logger.info({ startBlock, stopBlock }, `Saved dryCache.`)
+  logger.info(
+    { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
+    `Saved dryCache.`
+  )
 
   rangeMeta.rawScaleData = rawScaleData
   return rangeMeta
 }
 
-export const commitBlobRange = async (ranges) => {
+export const commitBlobRange = async (ranges, paraRanges) => {
   const windowDb = await getDb(DB_WINDOW)
-  const startBlock = ranges[0].startBlock
-  const stopBlock = ranges[ranges.length - 1].stopBlock
+  const parentStartBlock = ranges[0].parentStartBlock
+  const parentStopBlock = ranges[ranges.length - 1].parentStopBlock
+  const paraStartBlock = paraRanges.length ? paraRanges[0] : -1
+  const paraStopBlock = paraRanges.length
+    ? paraRanges[paraRanges.length - 1]
+    : -1
 
-  const blobRangeCommitedMarkKey = `blobRangeCommited:${startBlock}:${stopBlock}`
-  const blobRangeKey_SyncHeaderReq = `blobRange:${startBlock}:${stopBlock}:SyncHeaderReq`
-  const blobRangeKey_DispatchBlockReq = `blobRange:${startBlock}:${stopBlock}:DispatchBlockReq`
+  const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
+
+  const blobRangeCommitedMarkKey = `blobRangeCommited:${keySuffix}`
+  const blobRangeKey_SyncHeaderReq = `blobRange:${keySuffix}:SyncHeaderReq`
+  const blobRangeKey_SyncParaHeaderReq = `blobRange:${keySuffix}:SyncParaHeaderReq`
+  const blobRangeKey_DispatchBlockReq = `blobRange:${keySuffix}:DispatchBlockReq`
 
   const shouldSkip = await getKeyExistance(windowDb, blobRangeCommitedMarkKey)
 
   if (shouldSkip) {
-    logger.info({ startBlock, stopBlock }, `Found blobRange, skipping.`)
-    ranges.length = 0
+    logger.info(
+      { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
+      `Found blobRange, skipping.`
+    )
+    ranges.length = 0 // trigger GC
     return
   }
 
-  const headers = []
+  const parent__headers = []
+  let parent__authoritySetChange
+
+  const para__headers = []
+  let para__proof
+
   const blocks = []
-  let authoritySetChange
 
   for (const [index, range] of ranges.entries()) {
     if (range.rawScaleData) {
-      for (const h of range.rawScaleData[0].headers) {
-        headers.push(h)
-      }
-      for (const b of range.rawScaleData[1].blocks) {
-        blocks.push(b)
+      for (const h of range.rawScaleData.SyncHeaderReq.headers) {
+        parent__headers.push(h)
       }
       if (index === ranges.length - 1) {
-        authoritySetChange = range.rawScaleData[0].authoritySetChange
+        parent__authoritySetChange =
+          range.rawScaleData.SyncHeaderReq.authoritySetChange
+      }
+
+      if (range.paraRange.length) {
+        for (const b of range.rawScaleData.SyncParaHeaderReq.headers) {
+          para__headers.push(b)
+        }
+        para__proof = range.rawScaleData.SyncParaHeaderReq.proof
+
+        for (const b of range.rawScaleData.DispatchBlockReq.blocks) {
+          blocks.push(b)
+        }
       }
     } else {
       const drySyncHeader = phalaApi.createType(
         'SyncHeaderReq',
-        await windowDb.get(
-          `drySyncHeader:${range.startBlock}:${range.stopBlock}`
-        )
+        await windowDb.get(range.drySyncHeaderReqKey)
       )
-      const dryDispatchBlock = phalaApi.createType(
-        'DispatchBlockReq',
-        await windowDb.get(
-          `dryDispatchBlock:${range.startBlock}:${range.stopBlock}`
-        )
-      )
-
       for (const h of drySyncHeader.headers) {
-        headers.push(h)
-      }
-      for (const b of dryDispatchBlock.blocks) {
-        blocks.push(b)
+        parent__headers.push(h)
       }
       if (index === ranges.length - 1) {
-        authoritySetChange = drySyncHeader.authoritySetChange
+        parent__authoritySetChange = drySyncHeader.authoritySetChange
+      }
+
+      if (range.paraRange.length) {
+        const drySyncParaHeader = phalaApi.createType(
+          'DispatchBlockReq',
+          await windowDb.get(range.drySyncParaHeaderReqKey)
+        )
+        const dryDispatchBlock = phalaApi.createType(
+          'DispatchBlockReq',
+          await windowDb.get(range.dryDispatchBlockReqKey)
+        )
+        for (const b of drySyncParaHeader.headers) {
+          para__headers.push(b)
+        }
+        para__proof = drySyncParaHeader.proof
+
+        for (const b of dryDispatchBlock.blocks) {
+          blocks.push(b)
+        }
       }
     }
   }
 
   const blobSyncHeaderReq = phalaApi.createType('SyncHeaderReq', {
-    headers,
-    authoritySetChange,
+    headers: parent__headers,
+    authoritySetChange: parent__authoritySetChange,
   })
-  const blobDispatchBlockReq = phalaApi.createType('DispatchBlockReq', {
-    blocks,
-  })
+  const blobSyncParaHeaderReq = para__headers
+    ? phalaApi.createType('SyncParachainHeaderReq', {
+        headers: para__headers,
+        proof: para__proof,
+      })
+    : null
+  const blobDispatchBlockReq = blocks.length
+    ? phalaApi.createType('DispatchBlockReq', {
+        blocks,
+      })
+    : null
 
-  const startBlockRangeMetaKey = `rangeByBlock:${startBlock}:pb`
+  const startBlockRangeMetaKey = `rangeByParentBlock:${parentStartBlock}:pb`
   const startBlockRangeMetaPb = RangeMeta.decode(
     await windowDb.get(startBlockRangeMetaKey)
   )
-  startBlockRangeMetaPb.blobStopBlock = stopBlock
+  startBlockRangeMetaPb.blobParentStopBlock = parentStopBlock
   startBlockRangeMetaPb.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
+  startBlockRangeMetaPb.blobSyncParaHeaderReqKey = blobRangeKey_SyncParaHeaderReq
   startBlockRangeMetaPb.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
 
-  await windowDb
-    .batch()
+  const batch = await windowDb.batch()
+
+  batch
     .put(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()))
     .put(
+      blobRangeKey_SyncParaHeaderReq,
+      Buffer.from(blobSyncParaHeaderReq ? blobSyncParaHeaderReq.toU8a() : [])
+    )
+    .put(
       blobRangeKey_DispatchBlockReq,
-      Buffer.from(blobDispatchBlockReq.toU8a())
+      Buffer.from(blobDispatchBlockReq ? blobDispatchBlockReq.toU8a() : [])
     )
     .put(
       startBlockRangeMetaKey,
       RangeMeta.encode(startBlockRangeMetaPb).finish()
     )
-    .write()
+  await batch.write()
   await windowDb.put(blobRangeCommitedMarkKey, Buffer.from([1]))
 
-  logger.info({ startBlock, stopBlock }, `Commited blobRange.`)
+  logger.info(
+    { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
+    `Commited blobRange.`
+  )
 
   ranges.length = 0
 

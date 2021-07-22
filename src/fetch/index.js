@@ -8,8 +8,11 @@ export const SET_GENESIS = 'SET_GENESIS'
 export const SET_PARA_KNOWN_HEIGHT = 'SET_PARA_KNOWN_HEIGHT'
 export const SET_PARENT_KNOWN_HEIGHT = 'SET_PARENT_KNOWN_HEIGHT'
 
-export const SET_BLOB_HEIGHT = 'SET_BLOB_HEIGHT'
-export const SET_ARCHIVED_HEIGHT = 'SET_ARCHIVED_HEIGHT'
+export const SET_PARA_BLOB_HEIGHT = 'SET_PARA_BLOB_HEIGHT'
+export const SET_PARENT_BLOB_HEIGHT = 'SET_PARENT_BLOB_HEIGHT'
+
+export const SET_PARA_ARCHIVED_HEIGHT = 'SET_PARA_ARCHIVED_HEIGHT'
+export const SET_PARENT_ARCHIVED_HEIGHT = 'SET_PARENT_ARCHIVED_HEIGHT'
 
 const start = () =>
   new Promise((resolve) => {
@@ -30,21 +33,54 @@ const start = () =>
       synched: false,
     }
 
-    const [syncBlockProcess, computeWindowProcess] = [
-      'sync_block',
-      // 'compute_window',
-    ].map((cmd) => fork(cmd, 'fetch/' + cmd))
+    const syncBlockProcess = fork('sync_block', 'fetch/' + 'sync_block')
 
     const ipcHandlers = {
       [SET_GENESIS]: ({ paraId, parentNumber }) => {
         context.paraId = paraId
         context.parentStartHeader = parentNumber
+
+        const computeWindowProcess = fork(
+          'compute_window',
+          'fetch/' + 'compute_window',
+          {
+            PHALA_IPC_PARA_ID: paraId,
+          }
+        )
+
+        computeWindowProcess.on('message', ({ type, payload }) => {
+          ipcHandlers[type](payload)
+        })
       },
       [SET_PARA_KNOWN_HEIGHT]: (number) => {
-        context.paraKnownHeight = number
+        if (number > context.paraKnownHeight) {
+          context.paraKnownHeight = number
+        }
       },
       [SET_PARENT_KNOWN_HEIGHT]: (number) => {
-        context.parentKnownHeight = number
+        if (number > context.parentKnownHeight) {
+          context.parentKnownHeight = number
+        }
+      },
+      [SET_PARA_BLOB_HEIGHT]: (number) => {
+        if (number > context.paraBlobHeight) {
+          context.paraBlobHeight = number
+        }
+      },
+      [SET_PARENT_BLOB_HEIGHT]: (number) => {
+        if (number > context.parentBlobHeight) {
+          context.parentBlobHeight = number
+        }
+      },
+      [SET_PARA_ARCHIVED_HEIGHT]: (number) => {
+        if (number > context.paraArchivedHeight) {
+          context.paraArchivedHeight = number
+        }
+      },
+      [SET_PARENT_ARCHIVED_HEIGHT]: (number) => {
+        if (number > context.parentArchivedHeight) {
+          context.parentArchivedHeight = number
+        }
       },
     }
 

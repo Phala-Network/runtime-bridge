@@ -1,13 +1,14 @@
 import cluster, { isMaster } from 'cluster'
 import logger from '../utils/logger'
 
-export const fork = (name, moduleName) => {
+export const fork = (name, moduleName, env = {}) => {
   if (!isMaster) {
     throw new Error('Not a master process.')
   }
 
   const worker = cluster.fork({
     PHALA_MODULE: moduleName,
+    ...env,
   })
 
   worker.on('online', () => {

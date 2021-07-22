@@ -24,7 +24,6 @@ import promiseRetry from 'promise-retry'
 
 const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
 
-let startLock = false
 const paraFetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
 const parentFetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
 
@@ -304,16 +303,15 @@ const processGenesis = async () => {
   const paraId = (await phalaApi.query.parachainInfo.parachainId()).toNumber()
   let genesis = await getGenesis(paraId)
   if (!genesis) {
+    logger.info('Fetching genesis...')
     genesis = await setGenesis(await _processGenesis(paraId))
+  } else {
+    logger.info('Got genesis in cache.')
   }
   return genesis
 }
 
 export default async () => {
-  if (startLock) {
-    throw new Error('Unexpected re-initialization.')
-  }
-
   await Promise.all([
     setupDb(DB_BLOCK),
     setupParentApi(env.parentChainEndpoint),
@@ -328,7 +326,6 @@ export default async () => {
   const _genesis = { paraId, paraNumber, parentNumber }
   __storageKey_keys_paras = parentApi.query.paras.heads.key(paraId)
   process.send({ type: SET_GENESIS, payload: _genesis })
-  logger.info(_genesis, 'Got genesis.')
 
   await Promise.all([
     phalaApi.rpc.chain.subscribeFinalizedHeads((header) => {
