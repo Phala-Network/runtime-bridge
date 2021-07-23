@@ -19,14 +19,15 @@ import env from '../utils/env'
 import logger from '../utils/logger'
 
 const setDryRange = async (context, latestSetId, setIdChanged) => {
-  const {
-    parentStartBlock,
-    parentStopBlock,
-    paraStartBlock,
-    paraStopBlock,
-    paraBlocks,
-    parentBlocks,
-  } = context
+  const { parentStartBlock, paraStartBlock, paraBlocks, parentBlocks } = context
+
+  const _parentStopBlock = parentBlocks[parentBlocks.length - 1]
+  const _paraStopBlock = paraBlocks.length
+    ? paraBlocks[paraBlocks.length - 1]
+    : null
+  const parentStopBlock = _parentStopBlock.number
+  const paraStopBlock = _paraStopBlock ? _paraStopBlock.number : 0
+
   const ret = await _setDryRange(
     parentStartBlock,
     paraStartBlock,
@@ -37,7 +38,7 @@ const setDryRange = async (context, latestSetId, setIdChanged) => {
   )
 
   process.send({ type: SET_PARENT_BLOB_HEIGHT, payload: parentStopBlock })
-  if (paraStopBlock > paraStartBlock) {
+  if (paraStopBlock) {
     process.send({ type: SET_PARA_BLOB_HEIGHT, payload: paraStopBlock })
   }
   return ret

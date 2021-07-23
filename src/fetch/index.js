@@ -1,3 +1,4 @@
+import { MIN_SYNCHED_DISTANCE } from '../utils/constants'
 import cluster from 'cluster'
 import fork from '../utils/fork'
 import os from 'os'
@@ -33,6 +34,26 @@ const start = () =>
       synched: false,
     }
 
+    const checkSynched = () => {
+      if (context.synched) {
+        return
+      }
+
+      const {
+        paraKnownHeight,
+        paraBlobHeight,
+        parentKnownHeight,
+        parentBlobHeight,
+      } = context
+
+      if (
+        paraKnownHeight - paraBlobHeight < MIN_SYNCHED_DISTANCE &&
+        parentKnownHeight - parentBlobHeight < MIN_SYNCHED_DISTANCE
+      ) {
+        context.synched = true
+      }
+    }
+
     const syncBlockProcess = fork('sync_block', 'fetch/' + 'sync_block')
 
     const ipcHandlers = {
@@ -65,11 +86,13 @@ const start = () =>
       [SET_PARA_BLOB_HEIGHT]: (number) => {
         if (number > context.paraBlobHeight) {
           context.paraBlobHeight = number
+          checkSynched()
         }
       },
       [SET_PARENT_BLOB_HEIGHT]: (number) => {
         if (number > context.parentBlobHeight) {
           context.parentBlobHeight = number
+          checkSynched()
         }
       },
       [SET_PARA_ARCHIVED_HEIGHT]: (number) => {

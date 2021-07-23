@@ -295,7 +295,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 
       if (range.paraRange.length) {
         const drySyncParaHeader = phalaApi.createType(
-          'DispatchBlockReq',
+          'SyncParachainHeaderReq',
           await windowDb.get(range.drySyncParaHeaderReqKey)
         )
         const dryDispatchBlock = phalaApi.createType(

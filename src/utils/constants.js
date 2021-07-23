@@ -42,3 +42,4 @@ export const MINIUM_BALANCE = BALANCE_10K_PHA
 
 export const TX_QUEUE_SIZE = 200
 export const BLOB_MAX_RANGE_COUNT = 450
+export const MIN_SYNCHED_DISTANCE = 3
