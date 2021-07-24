@@ -150,9 +150,11 @@ const walkBlock = async (
       const updated = {
         parentStopBlock:
           context.parentBlocks[context.parentBlocks.length - 1].number,
-        paraStopBlock: paraRanges__copy.length
-          ? paraRanges__copy[paraRanges__copy.length - 1]
-          : currentWindow.paraStartBlock,
+        paraStopBlock: !paraRanges__copy.length
+          ? currentWindow.paraStartBlock === currParaBlock.number
+            ? currentWindow.paraStartBlock
+            : currParaBlock.number - 1
+          : paraRanges__copy[paraRanges__copy.length - 1],
         isFinished: true,
       }
 
