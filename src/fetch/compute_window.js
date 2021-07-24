@@ -30,7 +30,7 @@ const setDryRange = async (context, latestSetId, setIdChanged) => {
 
   const ret = await _setDryRange(
     parentStartBlock,
-    paraStartBlock,
+    _paraStopBlock ? paraStartBlock : -1,
     paraBlocks,
     parentBlocks,
     latestSetId,

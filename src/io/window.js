@@ -131,7 +131,7 @@ export const setDryRange = async (
     ? paraBlocks[paraBlocks.length - 1]
     : null
   const parentStopBlock = _parentStopBlock.number
-  const paraStopBlock = _paraStopBlock ? _paraStopBlock.number : paraStartBlock
+  const paraStopBlock = _paraStopBlock ? _paraStopBlock.number : -1
 
   const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
   const rangeWrittenMarkKey = `rangeWritten:${keySuffix}`
