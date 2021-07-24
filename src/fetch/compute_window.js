@@ -112,7 +112,9 @@ const walkBlock = async (
 
       nextContext = {
         parentStartBlock: currParentBlock.number + 1,
-        paraStartBlock: currParaBlock.number + 1,
+        paraStartBlock: paraNumberMatched
+          ? currParaBlock.number + 1
+          : currParaBlock.number,
         paraBlocks: [],
         parentBlocks: [],
       }

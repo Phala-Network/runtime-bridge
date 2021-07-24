@@ -1,8 +1,8 @@
 import { base64Decode } from '@polkadot/util-crypto'
 import { getBlockBlob, getHeaderBlob } from '../io/blob'
+import { getGenesis } from '../io/block'
 import { httpKeepAliveEnabled, legacySystemMqEnabled } from '../utils/env'
 import { phalaApi } from '../utils/api'
-import { waitForBlock } from '../io/block'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
 import http from 'http'
@@ -132,10 +132,10 @@ export const initRuntime = async (
     Object.assign(initInfo, (await request('/get_runtime_info')).payload)
     logger.debug(workerBrief, 'Already initialized.')
   } else {
-    const { genesisState, bridgeGenesisInfo } = await waitForBlock(0)
+    const { genesisStateB64, bridgeGenesisInfoB64 } = await getGenesis()
     const initRequestPayload = {
-      bridge_genesis_info_b64: bridgeGenesisInfo.toString('base64'),
-      genesis_state_b64: genesisState.toString('base64'),
+      bridge_genesis_info_b64: bridgeGenesisInfoB64,
+      genesis_state_b64: genesisStateB64,
       skip_ra: skipRa,
     }
     if (skipRa) {
