@@ -88,6 +88,8 @@
   "scripts": {
     "proto:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && pbts -o ./src/message/proto.generated.d.ts ./src/message/proto.generated.js && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js",
 
+    "proto:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/pruntime_rpc.proto && pbts -o ./src/utils/prpc/proto.generated.d.ts ./src/utils/prpc/proto.generated.js && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
+
     "start_module": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
 
     "add_machines": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/add_machines",
