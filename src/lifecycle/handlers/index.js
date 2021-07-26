@@ -1,6 +1,8 @@
 import infraModule from './infra'
+import lifecycleModule from './lifecycle'
+import mgmtModule from './mgmt'
 
-const modules = [infraModule]
+const modules = [infraModule, lifecycleModule, mgmtModule]
 const types = ['queryHandlers', 'plainHandlers']
 
 const createHandlers = (context) => {
