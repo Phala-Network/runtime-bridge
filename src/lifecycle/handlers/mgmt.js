@@ -1,6 +1,3 @@
-const getAllPools = async (context) => {}
-const getAllWorkers = async (context) => {}
-
 const requestCreatePool = async (message, context) => {}
 const requestUpdatePool = async (message, context) => {}
 const requestCreateWorker = async (message, context) => {}
