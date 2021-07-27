@@ -13,7 +13,7 @@ export const keyring = new Keyring({
   ss58Format: PHALA_SS58_FORMAT,
 })
 
-export const typesBundle = {
+const typesBundle = {
   spec: {
     'phala-node': spec,
     'phale-node': spec,
