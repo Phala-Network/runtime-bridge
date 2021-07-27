@@ -1,5 +1,5 @@
+import { UWorker } from '../io/worker'
 import { createWorkerContext, destroyWorkerContext } from './worker'
-import { getAllWorker } from '../io/worker'
 import isEqual from 'lodash/isEqual'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
@@ -23,7 +23,6 @@ const applyWorker = async (worker, context, result) => {
     result.updated += 1
     await deleteWorker(workerContext, context)
     await addWorker(worker, context)
-    return
   }
 }
 
@@ -81,7 +80,7 @@ const setupWorkers = async (context) => {
     updated: 0,
     _failed: 0,
   }
-  const workers = await getAllWorker()
+  const workers = await UWorker.getAll()
   for (const w of workers) {
     await applyWorker(w, context, result).catch((e) => {
       logger.warn(e)

@@ -13,7 +13,7 @@ import wait from '../utils/wait'
 const httpAgent = new http.Agent({ keepAlive: true })
 const httpsAgent = new https.Agent({ keepAlive: true })
 const fetchAgent = (parsedUrl) =>
-  parsedUrl.protocol == 'http:' ? httpAgent : httpsAgent
+  parsedUrl.protocol === 'http:' ? httpAgent : httpsAgent
 
 const keyring = await createKeyring()
 

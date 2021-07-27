@@ -1,12 +1,20 @@
+import { UPool, UWorker } from '../../io/worker'
 import logger from '../../utils/logger'
 import os from 'os'
 
-export const callOnlineLifecycleManager = async () => {
+export const returnAllWorkers = async () => {
+  const [pools, workers] = Promise.all([UPool.getAll(), UWorker.getAll()])
   return {
     lifecycleManagerStateUpdate: {
       hostname: os.hostname(),
+      pools,
+      workers,
     },
   }
+}
+
+export const callOnlineLifecycleManager = async () => {
+  return returnAllWorkers()
 }
 
 export const fetcherStateUpdate = async (message, context) => {
