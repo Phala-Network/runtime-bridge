@@ -51,7 +51,7 @@ const getAll = async (conf) =>
 
 const validateItem = async (conf, item, onUpdate) => {
   const db = await conf.dbPromise
-  let nonexistence = conf.existanceKeys.reduce(
+  let nonexistence = conf.existenceKeys.reduce(
     (prev, key) => (prev || !item[key] ? key : prev),
     false
   )
@@ -127,17 +127,17 @@ const setItems = async (conf, items) => {
 export const createUpdatable = ({
   name,
   dbKey,
-  existanceKeys,
+  existenceKeys: existenceKeys,
   uniqueKeys,
   pbType,
 }) => {
   const dbPromise = getDb(dbKey)
-  const _existanceKeys = Object.freeze([...existanceKeys])
+  const _existenceKeys = Object.freeze([...existenceKeys])
   const _uniqueKeys = Object.freeze([...uniqueKeys])
   const _configuration = Object.freeze({
     name,
     dbPromise,
-    existanceKeys: _existanceKeys,
+    existenceKeys: _existenceKeys,
     uniqueKeys: _uniqueKeys,
     pbType,
     PREFIX_ID: `${name}:id:`,

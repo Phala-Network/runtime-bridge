@@ -8,7 +8,7 @@ import createRedisClient from '../utils/redis'
 import logger from '../utils/logger'
 
 const defaultEncode = (request) =>
-  Message.encode(Message.create(request)).finish()
+  Message.encode(Message.fromObject(request)).finish()
 const defaultDecode = (message) => Message.decode(message).toJSON()
 
 const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {

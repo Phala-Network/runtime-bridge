@@ -5,7 +5,7 @@ import { prb } from '../message/proto.generated'
 export const UPool = createUpdatable({
   name: 'pool',
   dbKey: DB_WORKER,
-  existanceKeys: ['pid', 'name', 'owner'],
+  existenceKeys: ['pid', 'name', 'owner'],
   uniqueKeys: ['pid', 'name'],
   pbType: prb.db.Pool,
 })
@@ -13,7 +13,7 @@ export const UPool = createUpdatable({
 export const UWorker = createUpdatable({
   name: 'pool',
   dbKey: DB_WORKER,
-  existanceKeys: ['pid', 'name', 'endpoint'],
+  existenceKeys: ['pid', 'name', 'endpoint'],
   uniqueKeys: ['endpoint', 'name'],
   pbType: prb.db.Worker,
 })
