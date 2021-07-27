@@ -3,21 +3,25 @@ import { keyring } from '../../utils/api'
 import { prb } from '../../message/proto.generated'
 import { returnAllWorkers } from './infra'
 
+const applyOwner = (item) => {
+  const { mnemonic, polkadotJson } = item.owner
+  let pair
+  if (mnemonic) {
+    pair = keyring.addFromMnemonic(mnemonic)
+  } else {
+    pair = keyring.addFromJson(polkadotJson)
+  }
+  item.owner = {
+    polkadotJson: pair.toJson(),
+    ss58Phala: pair.address,
+    ss58Polkadot: keyring.encodeAddress(pair.publicKey, 0),
+  }
+}
+
 const requestCreatePool = async (message) => {
   const input = message.content.requestCreatePool.pools
   for (const item of input) {
-    const { mnemonic, polkadotJson } = item.owner
-    let pair
-    if (mnemonic) {
-      pair = keyring.addFromMnemonic(mnemonic)
-    } else {
-      pair = keyring.addFromJson(polkadotJson)
-    }
-    item.owner = {
-      polkadotJson: pair.toJson(),
-      ss58Phala: pair.address,
-      ss58Polkadot: keyring.encodeAddress(pair.publicKey, 0),
-    }
+    applyOwner(item)
   }
   await UPool.createItems(input)
   return returnAllWorkers()
@@ -29,21 +33,10 @@ const requestUpdatePool = async (message) => {
       const idKey = idPb.identity
       const idValue = idPb[idKey]
 
-      const { mnemonic, polkadotJson } = item.owner
-      let pair
-      if (mnemonic) {
-        pair = keyring.addFromMnemonic(mnemonic)
-      } else {
-        pair = keyring.addFromJson(polkadotJson)
-      }
+      applyOwner(item.pool)
 
       return UPool.getBy(idKey, idValue).then(({ uuid }) => ({
         ...item.pool,
-        owner: {
-          polkadotJson: pair.toJson(),
-          ss58Phala: pair.address,
-          ss58Polkadot: keyring.encodeAddress(pair.publicKey, 0),
-        },
         uuid,
       }))
     })
