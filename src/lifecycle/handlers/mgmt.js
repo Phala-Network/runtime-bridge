@@ -12,7 +12,7 @@ const applyOwner = (item) => {
     pair = keyring.addFromJson(polkadotJson)
   }
   item.owner = {
-    polkadotJson: pair.toJson(),
+    polkadotJson: JSON.stringify(pair.toJson()),
     ss58Phala: pair.address,
     ss58Polkadot: keyring.encodeAddress(pair.publicKey, 0),
   }
@@ -35,10 +35,14 @@ const requestUpdatePool = async (message) => {
 
       applyOwner(item.pool)
 
-      return UPool.getBy(idKey, idValue).then(({ uuid }) => ({
-        ...item.pool,
-        uuid,
-      }))
+      return UPool.getBy(idKey, idValue).then((_old) => {
+        console.log(111, _old)
+        return {
+          ...item.pool,
+          uuid: _old.uuid,
+          _old,
+        }
+      })
     })
   )
   await UPool.updateItems(items)
@@ -57,9 +61,10 @@ const requestUpdateWorker = async (message) => {
       const idPb = prb.PoolOrWorkerQueryIdentity.fromObject(item.id)
       const idKey = idPb.identity
       const idValue = idPb[idKey]
-      return UWorker.getBy(idKey, idValue).then(({ uuid }) => ({
-        ...item.pool,
-        uuid,
+      return UWorker.getBy(idKey, idValue).then((_old) => ({
+        ...item.worker,
+        uuid: _old.uuid,
+        _old,
       }))
     })
   )

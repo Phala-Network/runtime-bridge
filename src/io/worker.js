@@ -11,7 +11,7 @@ export const UPool = createUpdatable({
 })
 
 export const UWorker = createUpdatable({
-  name: 'pool',
+  name: 'worker',
   dbKey: DB_WORKER,
   existenceKeys: ['pid', 'name', 'endpoint'],
   uniqueKeys: ['endpoint', 'name'],

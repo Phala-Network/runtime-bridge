@@ -23,7 +23,7 @@ const getBy = async (conf, key, value) => {
     return pbToObject(conf.pbType.decode(await db.get(storageKey)))
   } catch (e) {
     if (e instanceof levelErrors.NotFoundError) {
-      throw new NotFoundError(JSON.stringify({ type: 'worker', key, value }))
+      throw new NotFoundError(JSON.stringify({ type: conf.name, key, value }))
     }
     throw e
   }
@@ -46,13 +46,18 @@ const getAll = async (conf) =>
           stream.on('error', reject)
         })
     )
-    .then((pbs) => pbs.map((pb) => pbToObject(conf.pbType.decode(pb))))
+    .then((pbs) =>
+      pbs.map((buffer) => {
+        const pb = conf.pbType.decode(buffer)
+        return pbToObject(pb)
+      })
+    )
     .then((items) => items.filter((i) => !i.deleted))
 
 const validateItem = async (conf, item, onUpdate) => {
   const db = await conf.dbPromise
   let nonexistence = conf.existenceKeys.reduce(
-    (prev, key) => (prev || !item[key] ? key : prev),
+    (prev, key) => prev || (!item[key] ? key : prev),
     false
   )
   if (onUpdate && !item.uuid) {
@@ -69,9 +74,13 @@ const validateItem = async (conf, item, onUpdate) => {
     await Promise.all(
       conf.uniqueKeys.map(async (key) => {
         try {
-          const storageKey = db.get(`${conf.PREFIX_BY}${key}:${item[key]}`, {
-            ...DB_ENCODING_JSON,
-          })
+          const storageKey = await db.get(
+            `${conf.PREFIX_BY}${key}:${item[key]}`,
+            {
+              ...DB_ENCODING_JSON,
+            }
+          )
+
           if (!storageKey) {
             return false
           }
@@ -80,7 +89,7 @@ const validateItem = async (conf, item, onUpdate) => {
               return false
             }
           }
-          return storageKey
+          return key
         } catch (e) {
           if (e instanceof levelErrors.NotFoundError) {
             return false
@@ -89,7 +98,7 @@ const validateItem = async (conf, item, onUpdate) => {
         }
       })
     )
-  ).map((prev, curr) => prev || curr, false)
+  ).reduce((prev, curr) => prev || curr, false)
   if (duplication) {
     throw new DuplicatedItemError(
       `Duplicated key '${duplication}' in ${conf.name} item ${JSON.stringify(
@@ -104,10 +113,12 @@ const setItems = async (conf, items) => {
   const batch = db.batch()
   for (const i of items) {
     const storageKey = `${conf.PREFIX_ID}${i.uuid}`
-    if (i.deleted) {
+    if (i._old) {
       for (const k of conf.uniqueKeys) {
-        batch.del(`${conf.PREFIX_BY}${k}:${i[k]}`)
+        batch.del(`${conf.PREFIX_BY}${k}:${i._old[k]}`)
       }
+    }
+    if (i.deleted === true) {
       batch.del(storageKey)
     } else {
       for (const k of conf.uniqueKeys) {
@@ -145,9 +156,9 @@ export const createUpdatable = ({
   })
   const createItems = async (items) => {
     for (const i of items) {
+      i.uuid = uuid()
+      i.deleted = false
       await validateItem(_configuration, i, false)
-      items.uuid = uuid()
-      items.deleted = false
     }
     return setItems(_configuration, items)
   }
@@ -155,7 +166,7 @@ export const createUpdatable = ({
     for (const i of items) {
       await validateItem(_configuration, i, true)
     }
-    return setItems(_configuration, items)
+    return setItems(_configuration, items, true)
   }
   return {
     get: (uuid) => getBy(_configuration, 'uuid', uuid),

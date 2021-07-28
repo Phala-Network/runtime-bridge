@@ -3,7 +3,7 @@ import logger from '../../utils/logger'
 import os from 'os'
 
 export const returnAllWorkers = async () => {
-  const [pools, workers] = Promise.all([UPool.getAll(), UWorker.getAll()])
+  const [pools, workers] = await Promise.all([UPool.getAll(), UWorker.getAll()])
   return {
     lifecycleManagerStateUpdate: {
       hostname: os.hostname(),
