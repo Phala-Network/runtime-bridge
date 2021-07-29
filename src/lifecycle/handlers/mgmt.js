@@ -9,7 +9,7 @@ const applyOwner = (item) => {
   if (mnemonic) {
     pair = keyring.addFromMnemonic(mnemonic)
   } else {
-    pair = keyring.addFromJson(polkadotJson)
+    pair = keyring.addFromJson(JSON.parse(polkadotJson))
   }
   item.owner = {
     polkadotJson: JSON.stringify(pair.toJson()),
@@ -36,7 +36,6 @@ const requestUpdatePool = async (message) => {
       applyOwner(item.pool)
 
       return UPool.getBy(idKey, idValue).then((_old) => {
-        console.log(111, _old)
         return {
           ...item.pool,
           uuid: _old.uuid,
@@ -57,7 +56,7 @@ const requestCreateWorker = async (message) => {
 }
 const requestUpdateWorker = async (message) => {
   const items = await Promise.all(
-    message.content.requestUpdatePool.items.map((item) => {
+    message.content.requestUpdateWorker.items.map((item) => {
       const idPb = prb.PoolOrWorkerQueryIdentity.fromObject(item.id)
       const idKey = idPb.identity
       const idValue = idPb[idKey]
