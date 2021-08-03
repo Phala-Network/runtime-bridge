@@ -2,12 +2,9 @@ import { base64Decode } from '@polkadot/util-crypto'
 import { createRpcClient } from '../utils/prpc'
 import { getBlockBlob, getHeaderBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
-import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
-
-const keyring = await createKeyring()
 
 const wrapRequest = (endpoint) => async (resource, payload = {}) => {
   const url = `${endpoint}${resource}`
@@ -50,7 +47,6 @@ const wrapUpdateInfo = (runtime) => async () => {
     })
   )
   // TODO: broadcast runtime info update
-  console.log(runtimeInfo)
   return runtimeInfo
 }
 
@@ -90,7 +86,7 @@ export const initRuntime = async (
   skipRa = false
 ) => {
   const {
-    workerContext: { worker, workerBrief, _dispatchTx, pool },
+    workerContext: { workerBrief, pool },
     initInfo,
     rpcClient,
     appContext,
@@ -146,7 +142,8 @@ export const startSyncBlob = (runtime) => {
     request,
   } = runtime
   let shouldStop = false
-  let headerSynchedTo = 0
+  let parentHeaderSynchedTo = 0
+  let paraHeaderSynchedTo = 0
 
   let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
   let synchedToTargetPromiseFinished = false
@@ -155,7 +152,18 @@ export const startSyncBlob = (runtime) => {
     synchedToTargetPromiseReject = reject
   })
 
-  const headerSyncLoop = async (next) => {
+  // headernum => nextParentHeaderNumber
+  // paraHeadernum => nextParaHeaderNumber
+  // blocknum => nextParaBlockNumber
+
+  const parentHeaderSync = async (next) => {
+    if (shouldStop) {
+      return
+    }
+    console.log(info)
+  }
+
+  const paraHeaderSync = async (next) => {
     if (shouldStop) {
       return
     }
@@ -170,9 +178,9 @@ export const startSyncBlob = (runtime) => {
 
     headerSynchedTo = synchedTo
 
-    return headerSyncLoop(synchedTo + 1).catch(doReject)
+    return paraHeaderSync(synchedTo + 1).catch(doReject)
   }
-  const blockSyncLoop = async (next) => {
+  const paraBlockSync = async (next) => {
     if (shouldStop) {
       return
     }
@@ -196,11 +204,11 @@ export const startSyncBlob = (runtime) => {
         }
       }
 
-      return blockSyncLoop(dispatchedTo + 1).catch(doReject)
+      return paraBlockSync(dispatchedTo + 1).catch(doReject)
     }
 
     await wait(2000)
-    return blockSyncLoop(next).catch(doReject)
+    return paraBlockSync(next).catch(doReject)
   }
 
   runtime.stopSync = () => {
@@ -222,8 +230,9 @@ export const startSyncBlob = (runtime) => {
   }
 
   runtime.syncPromise = Promise.all([
-    headerSyncLoop().catch(doReject),
-    blockSyncLoop().catch(doReject),
+    parentHeaderSync().catch(doReject),
+    paraHeaderSync().catch(doReject),
+    paraBlockSync().catch(doReject),
   ])
 
   return () => synchedToTargetPromise

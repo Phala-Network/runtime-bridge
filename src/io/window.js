@@ -1,11 +1,9 @@
-import { DB_WINDOW, NOT_FOUND_ERROR, getDb, getKeyExistance } from './db'
+import { DB_WINDOW, getDb, getKeyExistance, waitFor } from './db'
 import { pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
 import levelErrors from 'level-errors'
 import logger from '../utils/logger'
-import promiseRetry from 'promise-retry'
-import wait from '../utils/wait'
 
 const { Window, RangeMeta } = prb.db
 
@@ -63,10 +61,10 @@ export const updateWindow = async (windowIdOrObject, data) => {
   return pbToObject(pb)
 }
 
-export const getBlobRange = async (blockNumber) => {
+export const getRangeByParentNumber = async (number) => {
   const db = await getDb(DB_WINDOW)
   try {
-    const buffer = await db.get(`rangeByBlock:${blockNumber}:pb`)
+    const buffer = await db.get(`rangeByParentBlock:${number}:pb`)
     const pb = RangeMeta.decode(buffer).finish()
     return pbToObject(pb)
   } catch (error) {
@@ -76,45 +74,24 @@ export const getBlobRange = async (blockNumber) => {
     throw error
   }
 }
+export const waitForRangeByParentNumber = (number) =>
+  waitFor(() => getRangeByParentNumber(number))
 
-const _waitForRange = async (blockNumber) => {
+export const getRangeByParaNumber = async (number) => {
+  const db = await getDb(DB_WINDOW)
   try {
-    const ret = await getBlobRange(blockNumber)
-    if (!ret) {
-      throw NOT_FOUND_ERROR
-    }
-    return ret
+    const buffer = await db.get(`rangeByParaBlock:${number}:pb`)
+    const pb = RangeMeta.decode(buffer).finish()
+    return pbToObject(pb)
   } catch (error) {
-    if (
-      error === NOT_FOUND_ERROR ||
-      error instanceof levelErrors.NotFoundError
-    ) {
-      logger.debug({ blockNumber }, 'Waiting for range meta...')
-      await wait(2000)
-      return _waitForRange(blockNumber)
+    if (error instanceof levelErrors.NotFoundError) {
+      return null
     }
     throw error
   }
 }
-
-export const waitForRange = async (blockNumber) =>
-  promiseRetry(
-    (retry, number) => {
-      return _waitForRange(blockNumber).catch((error) => {
-        logger.warn(
-          { blockNumber, retryTimes: number },
-          'Failed waitForRange, retrying...',
-          error
-        )
-        return retry(error)
-      })
-    },
-    {
-      retries: 5,
-      minTimeout: 1000,
-      maxTimeout: 12000,
-    }
-  )
+export const waitForRangeByParaNumber = (number) =>
+  waitFor(() => getRangeByParaNumber(number))
 
 export const setDryRange = async (
   parentStartBlock,
@@ -237,12 +214,12 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 
   const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
 
-  const blobRangeCommitedMarkKey = `blobRangeCommited:${keySuffix}`
+  const blobRangeCommittedMarkKey = `blobRangeCommitted:${keySuffix}`
   const blobRangeKey_SyncHeaderReq = `blobRange:${keySuffix}:SyncHeaderReq`
   const blobRangeKey_SyncParaHeaderReq = `blobRange:${keySuffix}:SyncParaHeaderReq`
   const blobRangeKey_DispatchBlockReq = `blobRange:${keySuffix}:DispatchBlockReq`
 
-  const shouldSkip = await getKeyExistance(windowDb, blobRangeCommitedMarkKey)
+  const shouldSkip = await getKeyExistance(windowDb, blobRangeCommittedMarkKey)
 
   if (shouldSkip) {
     logger.info(
@@ -334,12 +311,21 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   const startBlockRangeMetaPb = RangeMeta.decode(
     await windowDb.get(startBlockRangeMetaKey)
   )
+
+  const paraStartBlockRangeMetaKey =
+    startBlockRangeMetaPb.paraStartBlock >= 0
+      ? `rangeByParaBlock:${startBlockRangeMetaPb.paraStartBlock}:pb`
+      : null
+
   startBlockRangeMetaPb.blobParentStopBlock = parentStopBlock
   startBlockRangeMetaPb.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
   startBlockRangeMetaPb.blobSyncParaHeaderReqKey = blobRangeKey_SyncParaHeaderReq
   startBlockRangeMetaPb.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
+  const startBlockRangeMetaPbBuffer = RangeMeta.encode(
+    startBlockRangeMetaPb
+  ).finish()
 
-  const batch = await windowDb.batch()
+  const batch = windowDb.batch()
 
   batch
     .put(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()))
@@ -351,19 +337,17 @@ export const commitBlobRange = async (ranges, paraRanges) => {
       blobRangeKey_DispatchBlockReq,
       Buffer.from(blobDispatchBlockReq ? blobDispatchBlockReq.toU8a() : [])
     )
-    .put(
-      startBlockRangeMetaKey,
-      RangeMeta.encode(startBlockRangeMetaPb).finish()
-    )
+    .put(startBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
+  if (paraStartBlockRangeMetaKey) {
+    batch.put(paraStartBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
+  }
   await batch.write()
-  await windowDb.put(blobRangeCommitedMarkKey, Buffer.from([1]))
+  await windowDb.put(blobRangeCommittedMarkKey, Buffer.from([1]))
 
   logger.info(
     { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
-    `Commited blobRange.`
+    `Committed blobRange.`
   )
 
   ranges.length = 0
-
-  return
 }

@@ -1,4 +1,4 @@
-import { prpc, pruntime_rpc, default as $root } from './proto.generated'
+import { prpc, pruntime_rpc } from './proto.generated'
 import fetch from 'node-fetch'
 import logger from '../logger'
 
@@ -9,15 +9,15 @@ export const createRpcClient = (endpoint) =>
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
       logger.debug({ url, requestData }, 'Sending HTTP request...')
-      const res = await fetch(url, {
-        method: 'POST',
-        body: requestData,
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-      })
-      const buffer = await res.buffer()
       try {
+        const res = await fetch(url, {
+          method: 'POST',
+          body: requestData,
+          headers: {
+            'Content-Type': 'application/octet-stream',
+          },
+        })
+        const buffer = await res.buffer()
         if (res.status === 200) {
           callback(null, buffer)
         } else {

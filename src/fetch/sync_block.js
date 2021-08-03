@@ -243,11 +243,12 @@ const startSyncParent = (start, target) => {
 
 const _processGenesis = async (paraId) => {
   const paraNumber = 0
-  let parentNumber = (
-    await phalaApi.query.parachainSystem.validationData.at(
-      await phalaApi.rpc.chain.getBlockHash(1)
-    )
-  ).toJSON().relayParentNumber
+  let parentNumber =
+    (
+      await phalaApi.query.parachainSystem.validationData.at(
+        await phalaApi.rpc.chain.getBlockHash(1)
+      )
+    ).toJSON().relayParentNumber - 1
 
   if (!(parentNumber > 0)) {
     parentNumber = 0

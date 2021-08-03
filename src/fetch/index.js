@@ -39,17 +39,9 @@ const start = () =>
         return
       }
 
-      const {
-        paraKnownHeight,
-        paraBlobHeight,
-        parentKnownHeight,
-        parentBlobHeight,
-      } = context
+      const { paraKnownHeight, paraBlobHeight } = context
 
-      if (
-        paraKnownHeight - paraBlobHeight < MIN_SYNCHED_DISTANCE &&
-        parentKnownHeight - parentBlobHeight < MIN_SYNCHED_DISTANCE
-      ) {
+      if (paraKnownHeight - paraBlobHeight < MIN_SYNCHED_DISTANCE) {
         context.synched = true
       }
     }

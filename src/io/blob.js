@@ -1,6 +1,5 @@
 import { DB_ENCODING_BINARY } from './db_encoding'
 import { DB_WINDOW, getDb } from './db'
-import { waitForRange } from './window'
 
 export const getHeaderBlob = async (blockNumber) => {
   const windowDb = await getDb(DB_WINDOW)

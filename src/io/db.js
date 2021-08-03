@@ -2,8 +2,11 @@ import { DB_ENCODING_DEFAULT, DB_ENCODING_JSON } from './db_encoding'
 import { client as multileveldownClient } from 'multileveldown'
 import { pipeline } from 'readable-stream'
 import env from '../utils/env'
+import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 import net from 'net'
+import promiseRetry from 'promise-retry'
+import wait from '../utils/wait'
 
 const dbMap = new Map()
 
@@ -111,3 +114,32 @@ export const getKeyExistance = (db, key) =>
         }
       })
   })
+
+const _waitFor = async (waitFn) => {
+  try {
+    const ret = await waitFn()
+    if (!ret) {
+      throw NOT_FOUND_ERROR
+    }
+    return ret
+  } catch (e) {
+    if (e === NOT_FOUND_ERROR || e instanceof levelErrors.NotFoundError) {
+      await wait(2000)
+      return _waitFor(waitFn)
+    }
+    throw e
+  }
+}
+export const waitFor = (waitFn) =>
+  promiseRetry(
+    (retry, retriedTimes) =>
+      _waitFor(waitFn).catch((e) => {
+        logger.error({ retriedTimes }, e)
+        return retry(e)
+      }),
+    {
+      retries: 5,
+      minTimeout: 1000,
+      maxTimeout: 12000,
+    }
+  )
