@@ -48,9 +48,12 @@ export const bridgeTypes = {
   },
 }
 
+const localOverrides = {}
+
 export const phalaTypes = {
   ...chainTypes,
   ...bridgeTypes,
+  ...localOverrides,
 }
 
 export default phalaTypes

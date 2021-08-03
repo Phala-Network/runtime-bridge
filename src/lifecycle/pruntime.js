@@ -1,50 +1,23 @@
 import { base64Decode } from '@polkadot/util-crypto'
+import { createRpcClient } from '../utils/prpc'
 import { getBlockBlob, getHeaderBlob } from '../io/blob'
-import { getGenesis } from '../io/block'
-import { httpKeepAliveEnabled, legacySystemMqEnabled } from '../utils/env'
 import { phalaApi } from '../utils/api'
 import createKeyring from '../utils/keyring'
 import fetch from 'node-fetch'
-import http from 'http'
-import https from 'https'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
-
-const httpAgent = new http.Agent({ keepAlive: true })
-const httpsAgent = new https.Agent({ keepAlive: true })
-const fetchAgent = (parsedUrl) =>
-  parsedUrl.protocol === 'http:' ? httpAgent : httpsAgent
 
 const keyring = await createKeyring()
 
 const wrapRequest = (endpoint) => async (resource, payload = {}) => {
-  // TODO: retry
   const url = `${endpoint}${resource}`
-  const body = {
-    input: payload,
-    nonce: {
-      value: Math.round(Math.random() * 1_000_000_000),
-    },
-  }
   $logger.debug({ url }, 'Sending HTTP request...')
   const fetchOptions = {
     method: 'POST',
-  }
-
-  if (Buffer.isBuffer(payload)) {
-    fetchOptions.body = payload
-    fetchOptions.headers = {
+    body: payload,
+    headers: {
       'Content-Type': 'application/octet-stream',
-    }
-  } else {
-    fetchOptions.body = JSON.stringify(body)
-    fetchOptions.headers = {
-      'Content-Type': 'application/json',
-    }
-  }
-
-  if (httpKeepAliveEnabled) {
-    fetchOptions.agent = fetchAgent
+    },
   }
   const res = await fetch(url, fetchOptions)
   const data = await res.json()
@@ -65,24 +38,19 @@ const wrapRequest = (endpoint) => async (resource, payload = {}) => {
   }
 }
 
-const wrapPlainQuery = (request) => async (contractId, payload = {}) => {
-  const res = await request('/query', {
-    query_payload: JSON.stringify({
-      Plain: JSON.stringify({
-        contract_id: contractId,
-        nonce: Math.round(Math.random() * 1_000_000_000),
-        request: payload,
-      }),
-    }),
-  })
-  return JSON.parse(res.payload.Plain)
-}
-
 const wrapUpdateInfo = (runtime) => async () => {
-  const { runtimeInfo, request } = runtime
-  const req = await request('/get_info')
-  Object.assign(runtimeInfo, req.payload)
+  const { runtimeInfo, rpcClient } = runtime
+  const res = await rpcClient.getInfo({})
+  Object.assign(
+    runtimeInfo,
+    res.constructor.toObject(res, {
+      defaults: true,
+      enums: String,
+      longs: Number,
+    })
+  )
   // TODO: broadcast runtime info update
+  console.log(runtimeInfo)
   return runtimeInfo
 }
 
@@ -91,21 +59,22 @@ export const setupRuntime = (workerContext) => {
     return workerContext.runtime
   }
 
-  const { snapshot } = workerContext
+  const { snapshot, appContext } = workerContext
 
   const runtimeInfo = {}
   const initInfo = {}
 
-  const request = wrapRequest(snapshot.runtimeEndpoint)
-  const plainQuery = wrapPlainQuery(request)
+  const rpcClient = createRpcClient(snapshot.endpoint)
+  const request = wrapRequest(snapshot.endpoint)
 
   const runtime = {
+    appContext,
     workerContext,
     runtimeInfo,
     info: runtimeInfo,
     initInfo,
     request,
-    plainQuery,
+    rpcClient,
     stopSync: null,
   }
 
@@ -121,54 +90,46 @@ export const initRuntime = async (
   skipRa = false
 ) => {
   const {
-    workerContext: { worker, workerBrief, _dispatchTx },
+    workerContext: { worker, workerBrief, _dispatchTx, pool },
     initInfo,
-    request,
+    rpcClient,
+    appContext,
   } = runtime
   const runtimeInfo = await runtime.updateInfo()
   runtime.skipRa = skipRa
 
   if (runtimeInfo.initialized) {
-    Object.assign(initInfo, (await request('/get_runtime_info')).payload)
-    logger.debug(workerBrief, 'Already initialized.')
+    let res = await rpcClient.getRuntimeInfo({})
+    res = res.constructor.toObject(res, {
+      defaults: true,
+      enums: String,
+      longs: Number,
+    })
+    Object.assign(initInfo, res)
+    logger.debug(workerBrief, 'Already initialized.', res)
   } else {
-    const { genesisStateB64, bridgeGenesisInfoB64 } = await getGenesis()
+    const { genesisState, bridgeGenesisInfo } = appContext.genesis
     const initRequestPayload = {
-      bridge_genesis_info_b64: bridgeGenesisInfoB64,
-      genesis_state_b64: genesisStateB64,
-      skip_ra: skipRa,
+      skipRa: false,
+      genesisState,
+      genesisInfo: bridgeGenesisInfo,
+      operator: Buffer.from(pool.pair.addressRaw),
+      isParachain: true,
     }
     if (skipRa) {
-      initRequestPayload.debugSetKey = debugSetKey
+      initRequestPayload.skipRa = true
+      initRequestPayload.debugSetKey = Buffer.from(debugSetKey, 'hex')
       logger.info({ skipRa, debugSetKey }, 'Init runtime in debug mode.')
     }
+    let res = await rpcClient.initRuntime(initRequestPayload)
+    res = res.constructor.toObject(res, {
+      defaults: true,
+      enums: String,
+      longs: Number,
+    })
 
-    Object.assign(
-      initInfo,
-      (await request('/init_runtime', initRequestPayload)).payload
-    )
-    await runtime.updateInfo()
+    Object.assign(initInfo, res)
     $logger.debug(workerBrief, `Initialized pRuntime.`)
-  }
-
-  const machineId = runtimeInfo['machine_id']
-  const machineOwner = keyring.encodeAddress(
-    await phalaApi.query.phala.machineOwner(machineId)
-  )
-  if (!skipRa) {
-    if (machineOwner === worker.phalaSs58Address) {
-      logger.debug(workerBrief, 'Worker already registered, skipping.')
-    } else {
-      await _dispatchTx({
-        action: 'REGISTER_WORKER',
-        payload: {
-          encodedRuntimeInfo: initInfo['encoded_runtime_info'],
-          attestation: initInfo.attestation,
-          worker,
-        },
-      })
-      logger.debug(workerBrief, 'Registered worker.')
-    }
   }
 
   await runtime.updateInfo()
@@ -251,7 +212,7 @@ export const startSyncBlob = (runtime) => {
 
   const doReject = (error) => {
     if (synchedToTargetPromiseFinished) {
-      logger.warn('Unexcepted rejection.', error)
+      logger.warn('Unexpected rejection.', error)
       return
     }
     runtime.stopSync()
@@ -316,59 +277,6 @@ const startSyncMqEgress = async (syncContext) => {
   return startSyncMqEgress(syncContext).catch(onError)
 }
 
-const startSyncSystemEgress = async (syncContext) => {
-  if (syncContext.shouldStop) {
-    return
-  }
-  const {
-    worker,
-    workerBrief,
-    onError,
-    dispatchTx,
-    runtime: { plainQuery },
-  } = syncContext
-  const onChainSequence = await phalaApi.query.phala.workerIngress(
-    worker.phalaSs58Address
-  )
-  const {
-    GetWorkerEgress: { encoded_egress_b64: encodedEgressB64, length },
-  } = await plainQuery(0, {
-    GetWorkerEgress: {
-      start_sequence: onChainSequence.toNumber(),
-    },
-  })
-
-  if (!length) {
-    logger.debug(workerBrief, 'No worker message to sync.')
-    await wait(6000)
-    return startSyncSystemEgress(syncContext).catch(onError)
-  }
-  const messageQueue = phalaApi.createType(
-    'Vec<SignedWorkerMessage>',
-    base64Decode(encodedEgressB64)
-  )
-
-  await dispatchTx({
-    action: 'BATCH_SYNC_WORKER_MESSAGE',
-    payload: {
-      messages: messageQueue
-        .map((message) => {
-          if (message.data.sequence.lt(onChainSequence)) {
-            return undefined
-          }
-
-          return message.toHex()
-        })
-        .filter((i) => i),
-      worker,
-    },
-  })
-  logger.debug(workerBrief, 'Synched worker message(s).')
-
-  await wait(6000)
-  return startSyncSystemEgress(syncContext).catch(onError)
-}
-
 export const startSyncMessage = (runtime) => {
   const {
     workerContext: { worker, workerBrief, dispatchTx },
@@ -398,9 +306,6 @@ export const startSyncMessage = (runtime) => {
   runtime.stopSyncMessage = stopSyncMessage
 
   const enabledMqArr = [startSyncMqEgress]
-  if (legacySystemMqEnabled) {
-    enabledMqArr.push(startSyncSystemEgress)
-  }
 
   return Promise.all(enabledMqArr.map((i) => i(syncContext).catch(onError)))
 }

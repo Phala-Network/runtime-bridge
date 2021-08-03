@@ -243,12 +243,11 @@ const startSyncParent = (start, target) => {
 
 const _processGenesis = async (paraId) => {
   const paraNumber = 0
-  let parentNumber =
-    (
-      await phalaApi.query.parachainSystem.validationData.at(
-        await phalaApi.rpc.chain.getBlockHash(1)
-      )
-    ).toJSON().relayParentNumber - 1
+  let parentNumber = (
+    await phalaApi.query.parachainSystem.validationData.at(
+      await phalaApi.rpc.chain.getBlockHash(1)
+    )
+  ).toJSON().relayParentNumber
 
   if (!(parentNumber > 0)) {
     parentNumber = 0
@@ -271,7 +270,7 @@ const _processGenesis = async (paraId) => {
     )
   ).proof
 
-  const bridgeGenesisInfoB64 = Buffer.from(
+  const bridgeGenesisInfo = Buffer.from(
     parentApi
       .createType('GenesisInfo', {
         header: parentHeader,
@@ -279,23 +278,23 @@ const _processGenesis = async (paraId) => {
         proof: grandpaAuthoritiesStorageProof,
       })
       .toU8a()
-  ).toString('base64')
+  )
 
-  const genesisStateB64 = Buffer.from(
+  const genesisState = Buffer.from(
     (
       await phalaApi.rpc.state.getPairs(
         '',
         await phalaApi.rpc.chain.getBlockHash(0)
       )
     ).toU8a()
-  ).toString('base64')
+  )
 
   return {
     paraId,
     paraNumber,
     parentNumber,
-    bridgeGenesisInfoB64,
-    genesisStateB64,
+    bridgeGenesisInfo,
+    genesisState,
   }
 }
 

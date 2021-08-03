@@ -119,7 +119,7 @@ const setItems = async (conf, items) => {
       }
     }
     if (i.deleted === true) {
-      batch.del(storageKey)
+      // TODO: delayed deletion
     } else {
       for (const k of conf.uniqueKeys) {
         batch.put(`${conf.PREFIX_BY}${k}:${i[k]}`, storageKey, {
@@ -172,6 +172,7 @@ export const createUpdatable = ({
     get: (uuid) => getBy(_configuration, 'uuid', uuid),
     getBy: (key, value) => getBy(_configuration, key, value),
     getAll: () => getAll(_configuration),
+    commitDeletion: () => {}, // TODO
     createItems,
     updateItems,
     _configuration,
