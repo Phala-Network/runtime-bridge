@@ -20,9 +20,11 @@ export const getPool = async (pidStr, context, forceReload = false) => {
     ss58Phala: pool.owner.ss58Phala,
     ss58Polkadot: pool.owner.ss58Polkadot,
   })
+  const pair = keyring.addFromJson(JSON.parse(pool.owner.polkadotJson))
+  pair.decodePkcs8()
   pool = Object.freeze({
     ...poolSnapshot,
-    pair: keyring.addFromJson(JSON.parse(pool.owner.polkadotJson)),
+    pair,
     poolSnapshot,
   })
   context.pools.set(pidStr, pool)
@@ -40,7 +42,8 @@ export const getWorkerSnapshot = (worker) =>
 export const createWorkerContext = async (worker, context) => {
   const pid = worker.pid.toString() // uint64
   const pool = await getPool(pid, context, true)
-  const poolSnapshot = { pool }
+  const poolSnapshot = pool.poolSnapshot
+  const poolOwner = pool.pair
   const snapshotBrief = getWorkerSnapshot(worker)
   const snapshot = Object.freeze({
     ...snapshotBrief,
@@ -60,8 +63,10 @@ export const createWorkerContext = async (worker, context) => {
   const workerContext = {
     context,
     appContext: context,
+    pid,
     pool,
     poolSnapshot,
+    poolOwner,
     snapshot,
     snapshotBrief,
     worker: snapshot,

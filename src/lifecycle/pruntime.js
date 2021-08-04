@@ -130,6 +130,7 @@ export const initRuntime = async (
 
   await runtime.updateInfo()
   runtime.updateInfoInterval = setInterval(runtime.updateInfo, 3000)
+  return initInfo
 }
 
 export const startSyncBlob = (runtime) => {
@@ -142,8 +143,12 @@ export const startSyncBlob = (runtime) => {
     request,
   } = runtime
   let shouldStop = false
-  let parentHeaderSynchedTo = 0
-  let paraHeaderSynchedTo = 0
+
+  const syncStatus = {
+    parentHeaderSynchedTo: 0,
+    paraHeaderSynchedTo: 0,
+    paraBlockDispatchedTo: 0,
+  }
 
   let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
   let synchedToTargetPromiseFinished = false

@@ -1,4 +1,5 @@
 import { initRuntime, startSyncBlob, startSyncMessage } from './pruntime'
+import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
@@ -29,18 +30,40 @@ const onStarting = async (fromState, toState, context) => {
   const {
     runtime,
     innerTxQueue,
+    dispatchTx,
+    pid,
   } = context.stateMachine.rootStateMachine.workerContext
-  await innerTxQueue.add(async () => {
+
+  const initInfo = await innerTxQueue.add(async () => {
     if (shouldSkipRa) {
-      await initRuntime(
+      return initRuntime(
         runtime,
         '0000000000000000000000000000000000000000000000000000000000000001',
         true
       )
     } else {
-      await initRuntime(runtime, undefined, false)
+      return initRuntime(runtime, undefined, false)
     }
   })
+
+  const publicKeyHex = '0x' + initInfo.publicKey.toString('hex')
+
+  const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
+    publicKeyHex
+  )
+
+  if (currentPool.isSome) {
+    // TODO
+  } else {
+    await dispatchTx({
+      action: 'ADD_WORKER',
+      payload: {
+        pid,
+        publicKey: publicKeyHex,
+      },
+    })
+  }
+  process.exit()
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
