@@ -1,8 +1,6 @@
 import { base64Decode } from '@polkadot/util-crypto'
 import { createRpcClient } from '../utils/prpc'
-import {
-  getHeaderBlobs, getParaBlockBlob
-} from '../io/blob'
+import { getHeaderBlobs, getParaBlockBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
@@ -193,7 +191,6 @@ export const startSyncBlob = (runtime) => {
     },
     info,
     request,
-    rpcClient,
   } = runtime
   let shouldStop = false
 
@@ -218,7 +215,7 @@ export const startSyncBlob = (runtime) => {
     if (shouldStop) {
       return
     }
-    // TODO: use combined sync api
+    // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
     const blobs = await getHeaderBlobs(next)
     const [parentHeaderBlob, paraHeaderBlob] = blobs
@@ -254,14 +251,14 @@ export const startSyncBlob = (runtime) => {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)
 
+      syncStatus.paraBlockDispatchedTo = dispatchedTo
+
       if (!synchedToTargetPromiseFinished) {
         if (synched && dispatchedTo === paraBlobHeight) {
           synchedToTargetPromiseFinished = true
           synchedToTargetPromiseResolve(dispatchedTo)
         }
       }
-
-      console.log(syncStatus)
 
       return paraBlockSync(dispatchedTo + 1).catch(doReject)
     }

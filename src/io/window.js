@@ -1,8 +1,10 @@
+import { DB_ENCODING_JSON, pbToObject } from './db_encoding'
 import { DB_WINDOW, getDb, getKeyExistance, waitFor } from './db'
+import { LAST_COMMITTED_PARA_BLOCK } from '../utils/constants'
 import { getParentBlock } from './block'
-import { pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
+import { pruntime_rpc } from '../utils/prpc/proto.generated'
 import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 
@@ -115,7 +117,7 @@ export const setDryRange = async (
   const rangeWrittenMarkKey = `rangeWritten:${keySuffix}`
   const drySyncHeaderReqKey = `drySyncHeader:${keySuffix}`
   const drySyncParaHeaderReqKey = `drySyncParaHeader:${keySuffix}`
-  const dryDispatchBlockReqKey = `dryDispatchBlock:${keySuffix}`
+  // const dryDispatchBlockReqKey = `dryDispatchBlock:${keySuffix}`
   const shouldSkip = await getKeyExistance(windowDb, rangeWrittenMarkKey)
 
   const rangeMeta = {
@@ -127,7 +129,7 @@ export const setDryRange = async (
     paraRange: paraBlocks.map((i) => i.number),
     drySyncHeaderReqKey,
     drySyncParaHeaderReqKey,
-    dryDispatchBlockReqKey,
+    // dryDispatchBlockReqKey,
     latestSetId,
   }
 
@@ -158,20 +160,20 @@ export const setDryRange = async (
           proof: _parentStopBlock.paraProof,
         })
       : null,
-    DispatchBlockReq: _paraStopBlock
-      ? phalaApi.createType('DispatchBlockReq', {
-          blocks: paraBlocks.map((b) => b.dispatchBlockData),
-        })
-      : null,
+    // DispatchBlockReq: _paraStopBlock
+    //   ? phalaApi.createType('DispatchBlockReq', {
+    //       blocks: paraBlocks.map((b) => b.dispatchBlockData),
+    //     })
+    //   : null,
   }
 
   const drySyncHeaderReq = Buffer.from(rawScaleData.SyncHeaderReq.toU8a())
   const drySyncParaHeaderReq = Buffer.from(
     rawScaleData.SyncParaHeaderReq ? rawScaleData.SyncParaHeaderReq.toU8a() : []
   )
-  const dryDispatchBlockReq = Buffer.from(
-    rawScaleData.DispatchBlockReq ? rawScaleData.DispatchBlockReq.toU8a() : []
-  )
+  // const dryDispatchBlockReq = Buffer.from(
+  //   rawScaleData.DispatchBlockReq ? rawScaleData.DispatchBlockReq.toU8a() : []
+  // )
 
   const rangeMetaPb = RangeMeta.create(rangeMeta)
   const rangeMetaPbBuffer = RangeMeta.encode(rangeMetaPb).finish()
@@ -180,7 +182,7 @@ export const setDryRange = async (
     .batch()
     .put(drySyncHeaderReqKey, drySyncHeaderReq)
     .put(drySyncParaHeaderReqKey, drySyncParaHeaderReq)
-    .put(dryDispatchBlockReqKey, dryDispatchBlockReq)
+  // .put(dryDispatchBlockReqKey, dryDispatchBlockReq)
 
   parentBlocks.reduce(
     (b, { number }) =>
@@ -218,7 +220,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   const blobRangeCommittedMarkKey = `blobRangeCommitted:${keySuffix}`
   const blobRangeKey_SyncHeaderReq = `blobRange:${keySuffix}:SyncHeaderReq`
   const blobRangeKey_SyncParaHeaderReq = `blobRange:${keySuffix}:SyncParaHeaderReq`
-  const blobRangeKey_DispatchBlockReq = `blobRange:${keySuffix}:DispatchBlockReq`
+  // const blobRangeKey_DispatchBlockReq = `blobRange:${keySuffix}:DispatchBlockReq`
 
   const shouldSkip = await getKeyExistance(windowDb, blobRangeCommittedMarkKey)
 
@@ -237,7 +239,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   const para__headers = []
   const para__proof = (await getParentBlock(parentStopBlock)).paraProof
 
-  const blocks = []
+  // const blocks = []
 
   for (const [index, range] of ranges.entries()) {
     if (range.rawScaleData) {
@@ -253,11 +255,9 @@ export const commitBlobRange = async (ranges, paraRanges) => {
         for (const b of range.rawScaleData.SyncParaHeaderReq.headers) {
           para__headers.push(b)
         }
-        // para__proof = range.rawScaleData.SyncParaHeaderReq.proof
-
-        for (const b of range.rawScaleData.DispatchBlockReq.blocks) {
-          blocks.push(b)
-        }
+        // for (const b of range.rawScaleData.DispatchBlockReq.blocks) {
+        //   blocks.push(b)
+        // }
       }
     } else {
       const drySyncHeader = phalaApi.createType(
@@ -276,18 +276,16 @@ export const commitBlobRange = async (ranges, paraRanges) => {
           'SyncParachainHeaderReq',
           await windowDb.get(range.drySyncParaHeaderReqKey)
         )
-        const dryDispatchBlock = phalaApi.createType(
-          'DispatchBlockReq',
-          await windowDb.get(range.dryDispatchBlockReqKey)
-        )
+        // const dryDispatchBlock = phalaApi.createType(
+        //   'DispatchBlockReq',
+        //   await windowDb.get(range.dryDispatchBlockReqKey)
+        // )
         for (const b of drySyncParaHeader.headers) {
           para__headers.push(b)
         }
-        // para__proof = drySyncParaHeader.proof
-
-        for (const b of dryDispatchBlock.blocks) {
-          blocks.push(b)
-        }
+        // for (const b of dryDispatchBlock.blocks) {
+        //   blocks.push(b)
+        // }
       }
     }
   }
@@ -302,11 +300,11 @@ export const commitBlobRange = async (ranges, paraRanges) => {
         proof: para__proof,
       })
     : null
-  const blobDispatchBlockReq = blocks.length
-    ? phalaApi.createType('DispatchBlockReq', {
-        blocks,
-      })
-    : null
+  // const blobDispatchBlockReq = blocks.length
+  //   ? phalaApi.createType('DispatchBlockReq', {
+  //       blocks,
+  //     })
+  //   : null
 
   const startBlockRangeMetaKey = `rangeByParentBlock:${parentStartBlock}:pb`
   const startBlockRangeMetaPb = RangeMeta.decode(
@@ -322,7 +320,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   startBlockRangeMetaPb.blobParaStopBlock = paraStopBlock
   startBlockRangeMetaPb.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
   startBlockRangeMetaPb.blobSyncParaHeaderReqKey = blobRangeKey_SyncParaHeaderReq
-  startBlockRangeMetaPb.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
+  // startBlockRangeMetaPb.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq
   const startBlockRangeMetaPbBuffer = RangeMeta.encode(
     startBlockRangeMetaPb
   ).finish()
@@ -335,10 +333,10 @@ export const commitBlobRange = async (ranges, paraRanges) => {
       blobRangeKey_SyncParaHeaderReq,
       Buffer.from(blobSyncParaHeaderReq ? blobSyncParaHeaderReq.toU8a() : [])
     )
-    .put(
-      blobRangeKey_DispatchBlockReq,
-      Buffer.from(blobDispatchBlockReq ? blobDispatchBlockReq.toU8a() : [])
-    )
+    // .put(
+    //   blobRangeKey_DispatchBlockReq,
+    //   Buffer.from(blobDispatchBlockReq ? blobDispatchBlockReq.toU8a() : [])
+    // )
     .put(startBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
   if (paraStartBlockRangeMetaKey) {
     batch.put(paraStartBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
@@ -353,3 +351,96 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 
   ranges.length = 0
 }
+
+export const getLastCommittedParaBlock = async () => {
+  try {
+    const db = await getDb(DB_WINDOW)
+    return await db.get(LAST_COMMITTED_PARA_BLOCK, { ...DB_ENCODING_JSON })
+  } catch (e) {
+    if (e instanceof levelErrors.NotFoundError) {
+      return 0
+    }
+    throw e
+  }
+}
+
+export const setLastCommittedParaBlock = async (number) => {
+  const db = await getDb(DB_WINDOW)
+  return db.put(LAST_COMMITTED_PARA_BLOCK, number, { ...DB_ENCODING_JSON })
+}
+
+export const setDryParaBlockRange = async (block) => {
+  const db = await getDb(DB_WINDOW)
+  const indexKey = `rangeParaBlock:key:${block.number}`
+  const key = `dryParaBlock:${block.number}`
+  if (await getKeyExistance(db, key)) {
+    logger.info(`Found dry cache for para block #${block.number}.`)
+    return
+  }
+  const batch = db.batch()
+  batch.put(
+    key,
+    phalaApi
+      .createType('Vec<BlockHeaderWithChanges>', [block.dispatchBlockData])
+      .toU8a()
+  )
+  batch.put(
+    indexKey,
+    { firstBlockNumber: block.number, lastBlockNumber: block.number },
+    { ...DB_ENCODING_JSON }
+  )
+  await batch.write()
+  logger.info(`Saved dry cache for para block #${block.number}.`)
+}
+
+export const commitParaBlockRange = async (blocks) => {
+  const db = await getDb(DB_WINDOW)
+  const firstBlockNumber = blocks[0].number
+  const lastBlockNumber = blocks[blocks.length - 1].number
+  const indexKey = `rangeParaBlock:key:${firstBlockNumber}`
+  const bufferKey = `rangeParaBlock:buffer:${firstBlockNumber}`
+  const markKey = `rangeParaBlock:mark:${firstBlockNumber}`
+  if (await getKeyExistance(db, markKey)) {
+    logger.info(
+      `Found range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
+    )
+    return
+  }
+  const batch = db.batch()
+  batch.put(
+    bufferKey,
+    phalaApi
+      .createType(
+        'Vec<BlockHeaderWithChanges>',
+        blocks.map((b) => b.dispatchBlockData)
+      )
+      .toU8a()
+  )
+  batch.put(
+    indexKey,
+    { bufferKey, firstBlockNumber, lastBlockNumber },
+    { ...DB_ENCODING_JSON }
+  )
+  await batch.write()
+  await db.put(markKey, Buffer.from([1]))
+  await setLastCommittedParaBlock(lastBlockNumber)
+  logger.info(
+    `Found range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
+  )
+}
+
+export const getParaBlockRange = async (number) => {
+  const db = await getDb(DB_WINDOW)
+  const indexKey = `rangeParaBlock:key:${number}`
+  try {
+    return await db.get(indexKey, { ...DB_ENCODING_JSON })
+  } catch (e) {
+    if (e instanceof levelErrors.NotFoundError) {
+      return null
+    }
+    throw e
+  }
+}
+
+export const waitForParaBlockRange = (number) =>
+  waitFor(() => getParaBlockRange(number))

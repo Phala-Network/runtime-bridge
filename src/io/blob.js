@@ -1,6 +1,10 @@
 import { DB_ENCODING_BINARY } from './db_encoding'
 import { DB_WINDOW, getDb } from './db'
-import { waitForRangeByParaNumber, waitForRangeByParentNumber } from './window'
+import {
+  waitForParaBlockRange,
+  waitForRangeByParaNumber,
+  waitForRangeByParentNumber,
+} from './window'
 
 export const getHeaderBlobs = async (blockNumber) => {
   const windowDb = await getDb(DB_WINDOW)
@@ -29,17 +33,16 @@ export const getHeaderBlobs = async (blockNumber) => {
 
 export const getParaBlockBlob = async (blockNumber, headerSynchedTo) => {
   const windowDb = await getDb(DB_WINDOW)
-  const meta = await waitForRangeByParaNumber(blockNumber)
-
+  const meta = await waitForParaBlockRange(blockNumber)
+  const dryKey = `dryParaBlock:${blockNumber}`
   const ret = await windowDb.get(
-    blockNumber === meta.paraStartBlock &&
-      headerSynchedTo >= meta.blobParaStopBlock
-      ? meta.blobDispatchBlockReqKey || meta.dryDispatchBlockReqKey
-      : meta.dryDispatchBlockReqKey,
+    meta.bufferKey && headerSynchedTo >= meta.lastBlockNumber
+      ? meta.bufferKey || dryKey
+      : dryKey,
     {
       ...DB_ENCODING_BINARY,
     }
   )
   ret.meta = meta
-  return meta
+  return ret
 }

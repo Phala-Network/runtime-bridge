@@ -1,4 +1,7 @@
-import { BLOB_MAX_RANGE_COUNT } from '../utils/constants'
+import {
+  BLOB_MAX_PARA_BLOCK_RANGE_COUNT,
+  BLOB_MAX_RANGE_COUNT,
+} from '../utils/constants'
 import { DB_BLOCK, DB_WINDOW, setupDb } from '../io/db'
 import {
   SET_PARA_ARCHIVED_HEIGHT,
@@ -9,11 +12,18 @@ import {
 import {
   setDryRange as _setDryRange,
   commitBlobRange,
+  commitParaBlockRange,
+  getLastCommittedParaBlock,
   getWindow,
+  setDryParaBlockRange,
   setEmptyWindow,
   updateWindow,
 } from '../io/window'
-import { getGenesis, waitForParaBlock, waitForParentBlock } from '../io/block'
+import {
+  getGenesis,
+  waitForParaBlock,
+  waitForParentBlock,
+} from '../io/block'
 import { setupParentApi, setupPhalaApi } from '../utils/api'
 import env from '../utils/env'
 import logger from '../utils/logger'
@@ -26,7 +36,6 @@ const setDryRange = async (context, latestSetId, setIdChanged) => {
     ? paraBlocks[paraBlocks.length - 1]
     : null
   const parentStopBlock = _parentStopBlock.number
-  const paraStopBlock = _paraStopBlock ? _paraStopBlock.number : 0
 
   const ret = await _setDryRange(
     parentStartBlock,
@@ -38,17 +47,13 @@ const setDryRange = async (context, latestSetId, setIdChanged) => {
   )
 
   process.send({ type: SET_PARENT_BLOB_HEIGHT, payload: parentStopBlock })
-  if (paraStopBlock) {
-    process.send({ type: SET_PARA_BLOB_HEIGHT, payload: paraStopBlock })
-  }
   return ret
 }
 
 const lazyCommitBlobRange = async (
   rangePromises,
   paraRanges,
-  currParentBlockNumber,
-  currParaBlockNumber
+  currParentBlockNumber
 ) => {
   const rangePromises__copy = [...rangePromises]
   const paraRanges__copy = [...paraRanges]
@@ -61,12 +66,6 @@ const lazyCommitBlobRange = async (
     type: SET_PARENT_ARCHIVED_HEIGHT,
     payload: currParentBlockNumber,
   })
-  if (paraRanges__copy.length) {
-    process.send({
-      type: SET_PARA_ARCHIVED_HEIGHT,
-      payload: currParaBlockNumber,
-    })
-  }
   return true
 }
 
@@ -248,11 +247,31 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
   return walkWindow(windowId + 1, currentWindow)
 }
 
+const walkParaBlock = async (number, blocks) => {
+  if (blocks.length > BLOB_MAX_PARA_BLOCK_RANGE_COUNT) {
+    await commitParaBlockRange(blocks)
+    process.send({
+      type: SET_PARA_ARCHIVED_HEIGHT,
+      payload: number - 1,
+    })
+    blocks.length = 0
+  }
+  const block = await waitForParaBlock(number)
+  blocks.push(block)
+  await setDryParaBlockRange(block)
+  process.send({ type: SET_PARA_BLOB_HEIGHT, payload: number })
+
+  return walkParaBlock(number + 1, blocks)
+}
+
 export default async () => {
   await Promise.all([
     setupDb(DB_WINDOW, DB_BLOCK),
     setupParentApi(env.parentChainEndpoint),
     setupPhalaApi(env.chainEndpoint),
   ])
-  await walkWindow()
+  await Promise.all([
+    walkWindow(),
+    walkParaBlock((await getLastCommittedParaBlock()) + 1, []),
+  ])
 }
