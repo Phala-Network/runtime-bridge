@@ -6,7 +6,7 @@ const getWorkerStates = (ids, context) =>
       status: w.stateMachineState,
       initialized: info.initialized,
       parentHeaderSynchedTo: syncStatus?.parentHeaderSynchedTo,
-      paraHeaderSynchedTo: syncStatus?.paraHeaderSynchedTo - 1,
+      paraHeaderSynchedTo: syncStatus?.paraHeaderSynchedTo,
       paraBlockDispatchedTo: syncStatus?.paraBlockDispatchedTo,
       worker: w.snapshotBrief,
       publicKey: runtimeInfo.publicKey,

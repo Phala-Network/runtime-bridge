@@ -71,13 +71,11 @@ const onSynching = async (fromState, toState, context) => {
 const onSynched = async (fromState, toState, context) => {
   const {
     runtime,
-    dispatchTx,
-    worker,
+    workerBrief,
   } = context.stateMachine.rootStateMachine.workerContext
-  await startSyncMessage(runtime)
-
-  // wait for mq draining
-
+  const waitUntilMqSynched = await startSyncMessage(runtime)
+  await waitUntilMqSynched()
+  logger.info(workerBrief, 'waitUntilSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
 }
 
@@ -93,10 +91,7 @@ const onPreMining = async (fromState, toState, context) => {
 
 const onMining = async (fromState, toState, context) => {
   const { runtime } = context.stateMachine.rootStateMachine.workerContext
-  await startSyncMessage(runtime)
-  if (!runtime.skipRa) {
-    // start mining
-  }
+  // Gracefully do nothing.
 }
 
 const onError = async (fromState, toState, context) => {

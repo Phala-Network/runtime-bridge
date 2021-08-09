@@ -1,6 +1,6 @@
 import { base64Decode } from '@polkadot/util-crypto'
 import { createRpcClient } from '../utils/prpc'
-import { getHeaderBlobs, getParaBlockBlob } from '../io/blob'
+import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
@@ -218,17 +218,13 @@ export const startSyncBlob = (runtime) => {
     }
     // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
-    const blobs = await getHeaderBlobs(next)
-    const [parentHeaderBlob, paraHeaderBlob] = blobs
+    const blobs = await getHeaderBlob(next)
     const {
-      payload: { synced_to: parentSynchedTo },
-    } = await request('/bin_api/sync_header', parentHeaderBlob)
-    let paraSynchedTo = -1
-    if (paraHeaderBlob?.length) {
-      ;({
-        payload: { synced_to: paraSynchedTo },
-      } = await request('/bin_api/sync_para_header', paraHeaderBlob))
-    }
+      payload: {
+        relaychain_synced_to: parentSynchedTo,
+        parachain_synced_to: paraSynchedTo,
+      },
+    } = await request('/bin_api/sync_combined_headers', blobs[0])
     syncStatus.parentHeaderSynchedTo = parentSynchedTo
     if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
       syncStatus.paraHeaderSynchedTo = paraSynchedTo
@@ -246,7 +242,7 @@ export const startSyncBlob = (runtime) => {
     const { paraBlobHeight, synched } = fetchStatus
     const { paraHeaderSynchedTo } = syncStatus
 
-    if (paraHeaderSynchedTo > next) {
+    if (paraHeaderSynchedTo >= next) {
       const data = await getParaBlockBlob(next, paraHeaderSynchedTo)
       const {
         payload: { dispatched_to: dispatchedTo },

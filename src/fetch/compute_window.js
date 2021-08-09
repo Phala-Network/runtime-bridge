@@ -19,11 +19,7 @@ import {
   setEmptyWindow,
   updateWindow,
 } from '../io/window'
-import {
-  getGenesis,
-  waitForParaBlock,
-  waitForParentBlock,
-} from '../io/block'
+import { getGenesis, waitForParaBlock, waitForParentBlock } from '../io/block'
 import { setupParentApi, setupPhalaApi } from '../utils/api'
 import env from '../utils/env'
 import logger from '../utils/logger'

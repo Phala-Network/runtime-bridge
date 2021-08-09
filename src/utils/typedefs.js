@@ -46,6 +46,12 @@ export const bridgeTypes = {
     validators: 'AuthorityList',
     proof: 'StorageProof',
   },
+  SyncCombinedHeadersReq: {
+    relaychainHeaders: 'Vec<HeaderToSync>',
+    authoritySetChange: 'Option<AuthoritySetChange>',
+    parachainHeaders: 'Vec<Header>',
+    proof: 'StorageProof',
+  },
 }
 
 const localOverrides = {}
