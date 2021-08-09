@@ -199,6 +199,7 @@ export const startSyncBlob = (runtime) => {
     paraHeaderSynchedTo: -1,
     paraBlockDispatchedTo: -1,
   }
+  runtime.syncStatus = syncStatus
 
   let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
   let synchedToTargetPromiseFinished = false
