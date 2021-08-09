@@ -2,7 +2,6 @@ import { DB_BLOCK, setupDb } from '../io/db'
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import { SET_GENESIS, SET_PARA_KNOWN_HEIGHT, SET_PARENT_KNOWN_HEIGHT } from '.'
 import {
-  bindBlock,
   encodeBlockScale,
   getGenesis,
   getParaBlock,
@@ -27,6 +26,7 @@ const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
 const paraFetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
 const parentFetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
 
+let __paraId
 let __storageKey_keys_paras
 
 const processParaBlock = (number) =>
@@ -46,32 +46,11 @@ const processParaBlock = (number) =>
       storageChanges,
     })
 
-    let parentNumber = -1
-    let proof = null
-
-    if (number > 0) {
-      const parentHash = await parentApi.rpc.chain.getBlockHash(number)
-
-      const validationData = (
-        await phalaApi.query.parachainSystem.validationData.at(hash)
-      ).toJSON()
-
-      parentNumber = validationData.relayParentNumber
-      proof = (
-        await parentApi.rpc.state.getReadProof(
-          [__storageKey_keys_paras],
-          parentHash
-        )
-      ).proof
-    }
-
     return {
       number,
       hash,
       header,
-      parentNumber,
       dispatchBlockData,
-      proof,
     }
   })().catch((e) => {
     $logger.error({ paraBlockNumber: number }, e)
@@ -89,7 +68,7 @@ const _walkParaBlock = async (paraBlockNumber) => {
     )
     logger.debug({ paraBlockNumber }, 'Fetched parachain block.')
   }
-  await bindBlock(paraBlockNumber, paraBlock.parentNumber)
+  return paraBlock
 }
 
 const walkParaBlock = (paraBlockNumber) =>
@@ -170,6 +149,17 @@ const processParentBlock = (number) =>
       )
     }
 
+    const paraProof = (
+      await parentApi.rpc.state.getReadProof([__storageKey_keys_paras], hash)
+    ).proof
+
+    const paraNumber = phalaApi
+      .createType(
+        'Header',
+        (await parentApi.query.paras.heads.at(hash, __paraId)).unwrapOrDefault()
+      )
+      .number.toJSON()
+
     return {
       number,
       hash,
@@ -178,6 +168,8 @@ const processParentBlock = (number) =>
       hasJustification,
       syncHeaderData,
       authoritySetChange,
+      paraNumber,
+      paraProof,
     }
   })().catch((e) => {
     $logger.error({ paraBlockNumber: number }, e)
@@ -226,7 +218,7 @@ const startSyncPara = (target) => {
 
   logger.info({ target }, 'Starting synching parachain...')
 
-  for (let number = 1; number < target; number++) {
+  for (let number = 0; number < target; number++) {
     bufferQueue.add(() => walkParaBlock(number))
   }
 }
@@ -246,7 +238,7 @@ const _processGenesis = async (paraId) => {
   let parentNumber =
     (
       await phalaApi.query.parachainSystem.validationData.at(
-        await phalaApi.rpc.chain.getBlockHash(1)
+        await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
       )
     ).toJSON().relayParentNumber - 1
 
@@ -285,7 +277,7 @@ const _processGenesis = async (paraId) => {
     (
       await phalaApi.rpc.state.getPairs(
         '',
-        await phalaApi.rpc.chain.getBlockHash(0)
+        await phalaApi.rpc.chain.getBlockHash(paraNumber)
       )
     ).toU8a()
   )
@@ -324,6 +316,7 @@ export default async () => {
   const genesis = await processGenesis()
   const { paraId, paraNumber, parentNumber } = genesis
   const _genesis = { paraId, paraNumber, parentNumber }
+  __paraId = paraId
   __storageKey_keys_paras = parentApi.query.paras.heads.key(paraId)
   process.send({ type: SET_GENESIS, payload: _genesis })
 

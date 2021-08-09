@@ -1,6 +1,8 @@
 import { base64Decode } from '@polkadot/util-crypto'
 import { createRpcClient } from '../utils/prpc'
-import { getBlockBlob, getHeaderBlob } from '../io/blob'
+import {
+  getHeaderBlobs, getParaBlockBlob
+} from '../io/blob'
 import { phalaApi } from '../utils/api'
 import fetch from 'node-fetch'
 import logger from '../utils/logger'
@@ -107,8 +109,8 @@ export const initRuntime = async (
     const { genesisState, bridgeGenesisInfo } = appContext.genesis
     const initRequestPayload = {
       skipRa: false,
-      genesisState,
-      genesisInfo: bridgeGenesisInfo,
+      encodedGenesisState: genesisState,
+      encodedGenesisInfo: bridgeGenesisInfo,
       operator: Buffer.from(pool.pair.addressRaw),
       isParachain: true,
     }
@@ -133,6 +135,56 @@ export const initRuntime = async (
   return initInfo
 }
 
+export const registerWorker = async (
+  pid,
+  initInfo,
+  dispatchTx,
+  forceRegister = false
+) => {
+  const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
+    new Uint8Array(initInfo.publicKey)
+  )
+
+  if (currentPool.isSome && currentPool.toString() !== pid) {
+    throw new Error('Worker is assigned to other pool!')
+  }
+
+  if (forceRegister || !initInfo.registered) {
+    await dispatchTx({
+      action: 'REGISTER_WORKER',
+      payload: {
+        pid,
+        runtimeInfo: '0x' + initInfo.runtimeInfo.toString('hex'),
+        attestation: phalaApi
+          .createType('Attestation', {
+            SgxIas: {
+              raReport:
+                '0x' +
+                Buffer.from(
+                  initInfo.attestation.payload.report,
+                  'utf8'
+                ).toString('hex'),
+              signature:
+                '0x' + initInfo.attestation.payload.signature.toString('hex'),
+              rawSigningCert:
+                '0x' + initInfo.attestation.payload.signingCert.toString('hex'),
+            },
+          })
+          .toHex(),
+      },
+    })
+  }
+  if (!currentPool.isSome) {
+    await dispatchTx({
+      action: 'ADD_WORKER',
+      payload: {
+        pid,
+        publicKey: '0x' + initInfo.publicKey.toString('hex'),
+      },
+    })
+  }
+}
+
 export const startSyncBlob = (runtime) => {
   const {
     workerContext: {
@@ -141,13 +193,14 @@ export const startSyncBlob = (runtime) => {
     },
     info,
     request,
+    rpcClient,
   } = runtime
   let shouldStop = false
 
   const syncStatus = {
-    parentHeaderSynchedTo: 0,
-    paraHeaderSynchedTo: 0,
-    paraBlockDispatchedTo: 0,
+    parentHeaderSynchedTo: -1,
+    paraHeaderSynchedTo: -1,
+    paraBlockDispatchedTo: -1,
   }
 
   let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
@@ -161,53 +214,54 @@ export const startSyncBlob = (runtime) => {
   // paraHeadernum => nextParaHeaderNumber
   // blocknum => nextParaBlockNumber
 
-  const parentHeaderSync = async (next) => {
+  const headerSync = async (_next) => {
     if (shouldStop) {
       return
     }
-    console.log(info)
-  }
-
-  const paraHeaderSync = async (next) => {
-    if (shouldStop) {
-      return
-    }
-    let { headernum } = info
-    if (typeof next === 'number') {
-      headernum = next
-    }
-    const data = await getHeaderBlob(headernum)
+    // TODO: use combined sync api
+    const next = typeof _next === 'number' ? _next : info.headernum
+    const blobs = await getHeaderBlobs(next)
+    const [parentHeaderBlob, paraHeaderBlob] = blobs
     const {
-      payload: { synced_to: synchedTo },
-    } = await request('/bin_api/sync_header', data)
+      payload: { synced_to: parentSynchedTo },
+    } = await request('/bin_api/sync_header', parentHeaderBlob)
+    let paraSynchedTo = -1
+    if (paraHeaderBlob?.length) {
+      ;({
+        payload: { synced_to: paraSynchedTo },
+      } = await request('/bin_api/sync_para_header', paraHeaderBlob))
+    }
+    syncStatus.parentHeaderSynchedTo = parentSynchedTo
+    if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
+      syncStatus.paraHeaderSynchedTo = paraSynchedTo
+    }
 
-    headerSynchedTo = synchedTo
-
-    return paraHeaderSync(synchedTo + 1).catch(doReject)
+    return headerSync(parentSynchedTo + 1).catch(doReject)
   }
-  const paraBlockSync = async (next) => {
+
+  const paraBlockSync = async (_next) => {
     if (shouldStop) {
       return
     }
-    let { blocknum } = info
-    if (typeof next === 'number') {
-      blocknum = next
-    }
+    const next = typeof _next === 'number' ? _next : info.blocknum
 
-    const { blobHeight, hasReachedInitTarget } = fetchStatus
+    const { paraBlobHeight, synched } = fetchStatus
+    const { paraHeaderSynchedTo } = syncStatus
 
-    if (headerSynchedTo >= blocknum) {
-      const data = await getBlockBlob(blocknum, headerSynchedTo)
+    if (paraHeaderSynchedTo > next) {
+      const data = await getParaBlockBlob(next, paraHeaderSynchedTo)
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)
 
       if (!synchedToTargetPromiseFinished) {
-        if (hasReachedInitTarget && dispatchedTo === blobHeight) {
+        if (synched && dispatchedTo === paraBlobHeight) {
           synchedToTargetPromiseFinished = true
           synchedToTargetPromiseResolve(dispatchedTo)
         }
       }
+
+      console.log(syncStatus)
 
       return paraBlockSync(dispatchedTo + 1).catch(doReject)
     }
@@ -235,8 +289,7 @@ export const startSyncBlob = (runtime) => {
   }
 
   runtime.syncPromise = Promise.all([
-    parentHeaderSync().catch(doReject),
-    paraHeaderSync().catch(doReject),
+    headerSync().catch(doReject),
     paraBlockSync().catch(doReject),
   ])
 

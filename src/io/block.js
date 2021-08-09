@@ -19,7 +19,7 @@ export const SCALE_TYPES__BLOCK = Object.freeze({
   syncHeaderData: 'HeaderToSync',
   dispatchBlockData: 'BlockHeaderWithChanges',
   authoritySetChange: 'Option<AuthoritySetChange>',
-  proof: 'StorageProof',
+  paraProof: 'StorageProof',
 })
 
 export const keys__SCALE_TYPES__BLOCK = Object.freeze(
@@ -177,7 +177,6 @@ export const bindBlock = async (paraNumber, parentNumber) => {
   await db.put(`parentToPara:${parentNumber}`, paraNumber, {
     ...DB_ENCODING_JSON,
   })
-  return
 }
 
 export const getParaNumber = async (parentNumber) => {

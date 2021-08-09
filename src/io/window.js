@@ -1,4 +1,5 @@
 import { DB_WINDOW, getDb, getKeyExistance, waitFor } from './db'
+import { getParentBlock } from './block'
 import { pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
@@ -65,7 +66,7 @@ export const getRangeByParentNumber = async (number) => {
   const db = await getDb(DB_WINDOW)
   try {
     const buffer = await db.get(`rangeByParentBlock:${number}:pb`)
-    const pb = RangeMeta.decode(buffer).finish()
+    const pb = RangeMeta.decode(buffer)
     return pbToObject(pb)
   } catch (error) {
     if (error instanceof levelErrors.NotFoundError) {
@@ -81,7 +82,7 @@ export const getRangeByParaNumber = async (number) => {
   const db = await getDb(DB_WINDOW)
   try {
     const buffer = await db.get(`rangeByParaBlock:${number}:pb`)
-    const pb = RangeMeta.decode(buffer).finish()
+    const pb = RangeMeta.decode(buffer)
     return pbToObject(pb)
   } catch (error) {
     if (error instanceof levelErrors.NotFoundError) {
@@ -154,7 +155,7 @@ export const setDryRange = async (
     SyncParaHeaderReq: _paraStopBlock
       ? phalaApi.createType('SyncParachainHeaderReq', {
           headers: paraBlocks.map((b) => b.header),
-          proof: _paraStopBlock.proof,
+          proof: _parentStopBlock.paraProof,
         })
       : null,
     DispatchBlockReq: _paraStopBlock
@@ -234,7 +235,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   let parent__authoritySetChange
 
   const para__headers = []
-  let para__proof
+  const para__proof = (await getParentBlock(parentStopBlock)).paraProof
 
   const blocks = []
 
@@ -252,7 +253,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
         for (const b of range.rawScaleData.SyncParaHeaderReq.headers) {
           para__headers.push(b)
         }
-        para__proof = range.rawScaleData.SyncParaHeaderReq.proof
+        // para__proof = range.rawScaleData.SyncParaHeaderReq.proof
 
         for (const b of range.rawScaleData.DispatchBlockReq.blocks) {
           blocks.push(b)
@@ -282,7 +283,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
         for (const b of drySyncParaHeader.headers) {
           para__headers.push(b)
         }
-        para__proof = drySyncParaHeader.proof
+        // para__proof = drySyncParaHeader.proof
 
         for (const b of dryDispatchBlock.blocks) {
           blocks.push(b)
@@ -318,6 +319,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
       : null
 
   startBlockRangeMetaPb.blobParentStopBlock = parentStopBlock
+  startBlockRangeMetaPb.blobParaStopBlock = paraStopBlock
   startBlockRangeMetaPb.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
   startBlockRangeMetaPb.blobSyncParaHeaderReqKey = blobRangeKey_SyncParaHeaderReq
   startBlockRangeMetaPb.blobDispatchBlockReqKey = blobRangeKey_DispatchBlockReq

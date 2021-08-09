@@ -92,7 +92,7 @@ const walkBlock = async (
 
     context.parentBlocks.push(currParentBlock)
 
-    if (currParaBlock.parentNumber === currParentBlock.number) {
+    if (currParaBlock.number === currParentBlock.paraNumber) {
       context.paraBlocks.push(currParaBlock)
       paraRanges.push(currParaBlock.number)
       paraNumberMatched = true
@@ -205,7 +205,6 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
       const paraId = process.env.PHALA_IPC_PARA_ID
       const genesis = await getGenesis(paraId)
       const { paraNumber: gParaNumber, parentNumber: gParentNumber } = genesis
-
       parentStartBlock = gParentNumber + 1
       paraStartBlock = gParaNumber + 1
     } else {

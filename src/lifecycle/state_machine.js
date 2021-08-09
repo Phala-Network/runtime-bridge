@@ -1,4 +1,4 @@
-import { initRuntime, startSyncBlob, startSyncMessage } from './pruntime'
+import { initRuntime, registerWorker, startSyncBlob, startSyncMessage } from './pruntime'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { shouldSkipRa } from '../utils/env'
@@ -12,6 +12,7 @@ export const EVENTS = toEnum([
   'SHOULD_START',
   'SHOULD_MARK_SYNCHING',
   'SHOULD_MARK_SYNCHED',
+  'SHOULD_MARK_PRE_MINING',
   'SHOULD_MARK_MINING',
   'SHOULD_KICK',
   'ERROR',
@@ -28,10 +29,9 @@ const wrapEventAction = (fn) => (fromState, toState, context) =>
 
 const onStarting = async (fromState, toState, context) => {
   const {
+    pid,
     runtime,
     innerTxQueue,
-    dispatchTx,
-    pid,
   } = context.stateMachine.rootStateMachine.workerContext
 
   const initInfo = await innerTxQueue.add(async () => {
@@ -46,24 +46,12 @@ const onStarting = async (fromState, toState, context) => {
     }
   })
 
-  const publicKeyHex = '0x' + initInfo.publicKey.toString('hex')
-
   const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
-    publicKeyHex
+    new Uint8Array(initInfo.publicKey)
   )
-
-  if (currentPool.isSome) {
-    // TODO
-  } else {
-    await dispatchTx({
-      action: 'ADD_WORKER',
-      payload: {
-        pid,
-        publicKey: publicKeyHex,
-      },
-    })
+  if (currentPool.isSome && currentPool.toString() !== pid) {
+    throw new Error('Worker is assigned to other pool!')
   }
-  process.exit()
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
@@ -86,13 +74,19 @@ const onSynched = async (fromState, toState, context) => {
     dispatchTx,
     worker,
   } = context.stateMachine.rootStateMachine.workerContext
+  await startSyncMessage(runtime)
+
+  // wait for mq draining
+
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
+}
+
+const onPreMining = async (fromState, toState, context) => {
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+
+  // wait for benchmark and register worker
   if (!runtime.skipRa) {
-    await dispatchTx({
-      action: 'START_MINING_INTENTION',
-      payload: {
-        worker,
-      },
-    })
+    // start mining
   }
   context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
 }
@@ -100,7 +94,11 @@ const onSynched = async (fromState, toState, context) => {
 const onMining = async (fromState, toState, context) => {
   const { runtime } = context.stateMachine.rootStateMachine.workerContext
   await startSyncMessage(runtime)
+  if (!runtime.skipRa) {
+    // start mining
+  }
 }
+
 const onError = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.errorMessage =
     context.eventPayload
@@ -227,6 +225,13 @@ wrapStateMachineState(
 wrapStateMachineState(
   stateMachine,
   StatusEnumValues.S_SYNCHED,
+  EVENTS.SHOULD_MARK_PRE_MINING,
+  StatusEnumValues.S_PRE_MINING,
+  onPreMining
+)
+wrapStateMachineState(
+  stateMachine,
+  StatusEnumValues.S_PRE_MINING,
   EVENTS.SHOULD_MARK_MINING,
   StatusEnumValues.S_MINING,
   onMining
