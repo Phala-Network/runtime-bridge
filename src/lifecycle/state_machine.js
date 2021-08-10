@@ -1,4 +1,9 @@
-import { initRuntime, registerWorker, startSyncBlob, startSyncMessage } from './pruntime'
+import {
+  initRuntime,
+  registerWorker,
+  startSyncBlob,
+  startSyncMessage,
+} from './pruntime'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { shouldSkipRa } from '../utils/env'
@@ -106,7 +111,12 @@ const onError = async (fromState, toState, context) => {
     worker,
     onChainState: { workerState },
     dispatchTx,
+    runtime,
   } = context.stateMachine.rootStateMachine.workerContext
+
+  runtime?.stopSync?.()
+  runtime?.stopSyncMessage?.()
+
   logger.error(
     {
       fromState,
