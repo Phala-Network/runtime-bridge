@@ -1,4 +1,3 @@
-import { base64Decode } from '@polkadot/util-crypto'
 import { createRpcClient } from '../utils/prpc'
 import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
@@ -135,12 +134,15 @@ export const initRuntime = async (
 
 export const registerWorker = async (
   pid,
+  info,
   initInfo,
   dispatchTx,
   forceRegister = false
 ) => {
+  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+
   const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
-    new Uint8Array(initInfo.publicKey)
+    publicKey
   )
 
   if (currentPool.isSome && currentPool.toString() !== pid) {
@@ -152,7 +154,7 @@ export const registerWorker = async (
       action: 'REGISTER_WORKER',
       payload: {
         pid,
-        runtimeInfo: '0x' + initInfo.runtimeInfo.toString('hex'),
+        runtimeInfo: '0x' + initInfo.encodedRuntimeInfo.toString('hex'),
         attestation: phalaApi
           .createType('Attestation', {
             SgxIas: {
@@ -173,11 +175,25 @@ export const registerWorker = async (
     })
   }
   if (!currentPool.isSome) {
+    const waitUntilWorkerHasInitialScore = async () => {
+      const onChainWorkerInfo = (
+        await phalaApi.query.phalaRegistry.workers(publicKey)
+      ).unwrapOrDefault()
+      if (onChainWorkerInfo.initialScore.toJSON() > 0) {
+        return
+      }
+      await wait(24000)
+      return await waitUntilWorkerHasInitialScore() // using `return await` for node 14's bad behavior
+    }
+    logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore')
+    await waitUntilWorkerHasInitialScore()
+    logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore done.')
+
     await dispatchTx({
       action: 'ADD_WORKER',
       payload: {
         pid,
-        publicKey: '0x' + initInfo.publicKey.toString('hex'),
+        publicKey,
       },
     })
   }
@@ -290,83 +306,87 @@ export const startSyncBlob = (runtime) => {
   return () => synchedToTargetPromise
 }
 
-const startSyncMqEgress = async (syncContext) => {
-  if (syncContext.shouldStop) {
-    return
-  }
-  const {
-    worker,
-    workerBrief,
-    onError,
-    dispatchTx,
-    runtime: { request },
-  } = syncContext
-
-  const messages = phalaApi.createType(
-    'Vec<(MessageOrigin, Vec<SignedMessage>)>',
-    base64Decode((await request('/get_egress_messages')).payload.messages)
-  )
-
-  const ret = []
-  for (const m of messages) {
-    const origin = m[0]
-    const onChainSequence = (
-      await phalaApi.query.phalaMq.offchainIngress(origin)
-    ).unwrapOrDefault()
-    const innerMessages = m[1]
-    for (const _m of innerMessages) {
-      if (_m.sequence.lt(onChainSequence)) {
-        logger.debug(`${_m.sequence.toJSON()} has been submitted. Skipping...`)
-      } else {
-        ret.push(_m.toHex())
-      }
-    }
-  }
-
-  if (ret.length) {
-    await dispatchTx({
-      action: 'BATCH_SYNC_MQ_MESSAGE',
-      payload: {
-        messages: ret,
-        worker,
-      },
-    })
-    logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)
-  }
-
-  await wait(6000)
-  return startSyncMqEgress(syncContext).catch(onError)
-}
-
 export const startSyncMessage = (runtime) => {
   const {
     workerContext: { worker, workerBrief, dispatchTx },
-    plainQuery,
+    rpcClient,
   } = runtime
 
+  let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
+  let synchedToTargetPromiseFinished = false
+  let shouldStop = false
+  const synchedToTargetPromise = new Promise((resolve, reject) => {
+    synchedToTargetPromiseResolve = resolve
+    synchedToTargetPromiseReject = reject
+  })
+
   const stopSyncMessage = () => {
-    syncContext.shouldStop = true
+    shouldStop = true
     runtime.stopSyncMessage = null
-  }
-  const onError = (error) => {
-    stopSyncMessage()
-    throw error
+    synchedToTargetPromiseFinished = true
+    synchedToTargetPromiseReject(null)
   }
 
-  const syncContext = {
-    runtime,
-    shouldStop: false,
-    worker,
-    workerBrief,
-    dispatchTx,
-    stopSyncMessage,
-    plainQuery,
+  const doReject = (error) => {
+    if (synchedToTargetPromiseFinished) {
+      logger.warn('Unexpected rejection.', error)
+      return
+    }
+    runtime.stopSyncMessage()
+    clearInterval(runtime.updateInfoInterval)
+    synchedToTargetPromiseReject(error)
+    synchedToTargetPromiseFinished = true
   }
 
-  runtime.mqSyncContext = syncContext
   runtime.stopSyncMessage = stopSyncMessage
 
-  const enabledMqArr = [startSyncMqEgress]
+  const startSyncMqEgress = async () => {
+    if (shouldStop) {
+      return
+    }
 
-  return Promise.all(enabledMqArr.map((i) => i(syncContext).catch(onError)))
+    const messages = phalaApi.createType(
+      'EgressMessages',
+      (await rpcClient.getEgressMessages({})).encodedMessages
+    )
+
+    const ret = []
+    for (const m of messages) {
+      const origin = m[0]
+      const onChainSequence = (
+        await phalaApi.query.phalaMq.offchainIngress(origin)
+      ).unwrapOrDefault()
+      const innerMessages = m[1]
+      for (const _m of innerMessages) {
+        if (_m.sequence.lt(onChainSequence)) {
+          logger.debug(
+            `${_m.sequence.toJSON()} has been submitted. Skipping...`
+          )
+        } else {
+          ret.push(_m.toHex())
+        }
+      }
+    }
+
+    if (ret.length) {
+      await dispatchTx({
+        action: 'BATCH_SYNC_MQ_MESSAGE',
+        payload: {
+          messages: ret,
+          worker,
+        },
+      })
+      logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)
+    } else {
+      synchedToTargetPromiseFinished = true
+      synchedToTargetPromiseResolve()
+    }
+
+    await wait(12000)
+    return startSyncMqEgress().catch(doReject)
+  }
+
+  startSyncMqEgress().catch(doReject)
+
+  return () => synchedToTargetPromise
 }

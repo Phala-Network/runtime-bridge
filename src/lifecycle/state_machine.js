@@ -6,6 +6,7 @@ import {
 } from './pruntime'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
+import { serializeError } from 'serialize-error'
 import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
 import logger from '../utils/logger'
@@ -80,28 +81,42 @@ const onSynched = async (fromState, toState, context) => {
   } = context.stateMachine.rootStateMachine.workerContext
   const waitUntilMqSynched = await startSyncMessage(runtime)
   await waitUntilMqSynched()
-  logger.info(workerBrief, 'waitUntilSynched done.')
+  logger.info(workerBrief, 'waitUntilMqSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  const {
+    runtime,
+    pid,
+    dispatchTx,
+  } = context.stateMachine.rootStateMachine.workerContext
+  const { initInfo, rpcClient, info } = runtime
+  let res = await rpcClient.getRuntimeInfo({})
+  res = res.constructor.toObject(res, {
+    defaults: true,
+    enums: String,
+    longs: Number,
+  })
+  Object.assign(initInfo, res)
 
-  // wait for benchmark and register worker
+  await registerWorker(pid, info, initInfo, dispatchTx, true)
   if (!runtime.skipRa) {
     // start mining
   }
   context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
 }
 
-const onMining = async (fromState, toState, context) => {
-  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+const onMining = async () => {
   // Gracefully do nothing.
 }
 
 const onError = async (fromState, toState, context) => {
-  context.stateMachine.rootStateMachine.workerContext.errorMessage =
-    context.eventPayload
+  context.stateMachine.rootStateMachine.workerContext.errorMessage = JSON.stringify(
+    context.eventPayload instanceof Error
+      ? serializeError(context.eventPayload)
+      : context.eventPayload?.message || context.eventPayload
+  )
 
   if (fromState === toState) {
     return
@@ -109,13 +124,12 @@ const onError = async (fromState, toState, context) => {
 
   const {
     worker,
-    onChainState: { workerState },
-    dispatchTx,
     runtime,
   } = context.stateMachine.rootStateMachine.workerContext
 
   runtime?.stopSync?.()
   runtime?.stopSyncMessage?.()
+  clearInterval(runtime.updateInfoInterval)
 
   logger.error(
     {
@@ -149,12 +163,12 @@ const onKicked = async (fromState, toState, context) => {
   if (fromState === toState) {
     return
   }
-  const {
-    worker,
-    onChainState: { workerState },
-    dispatchTx,
-    runtime,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+
+  runtime?.stopSync?.()
+  runtime?.stopSyncMessage?.()
+  clearInterval(runtime.updateInfoInterval)
+
   // if (workerState === 'Mining' || workerState === 'MiningPending') {
   //   await dispatchTx({
   //     action: 'STOP_MINING_INTENTION',

@@ -52,9 +52,21 @@ export const bridgeTypes = {
     parachainHeaders: 'Vec<Header>',
     proof: 'StorageProof',
   },
+  EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
 }
 
-const localOverrides = {}
+const localOverrides = {
+  WorkerInfo: {
+    pubkey: 'WorkerPublicKey',
+    ecdhPubkey: 'EcdhPublicKey',
+    runtimeVersion: 'u32',
+    lastUpdated: 'u64',
+    operator: 'Option<AccountId>',
+    confidenceLevel: 'u8',
+    initialScore: 'Option<u32>',
+    features: 'Vec<u32>',
+  },
+}
 
 export const phalaTypes = {
   ...chainTypes,
