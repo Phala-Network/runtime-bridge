@@ -84,12 +84,8 @@ export const initRuntime = async (
   debugSetKey = undefined,
   skipRa = false
 ) => {
-  const {
-    workerContext: { workerBrief, pool },
-    initInfo,
-    rpcClient,
-    appContext,
-  } = runtime
+  const { initInfo, rpcClient, appContext, workerContext } = runtime
+  const { workerBrief, pool } = workerContext
   const runtimeInfo = await runtime.updateInfo()
   runtime.skipRa = skipRa
 
@@ -101,6 +97,7 @@ export const initRuntime = async (
       longs: Number,
     })
     Object.assign(initInfo, res)
+    workerContext.errorMessage = 'Runtime already initialized.'
     logger.debug(workerBrief, 'Already initialized.', res)
   } else {
     const { genesisState, bridgeGenesisInfo } = appContext.genesis
@@ -108,7 +105,7 @@ export const initRuntime = async (
       skipRa: false,
       encodedGenesisState: genesisState,
       encodedGenesisInfo: bridgeGenesisInfo,
-      operator: Buffer.from(pool.pair.addressRaw),
+      encodedOperator: Buffer.from(pool.pair.addressRaw),
       isParachain: true,
     }
     if (skipRa) {
@@ -124,6 +121,7 @@ export const initRuntime = async (
     })
 
     Object.assign(initInfo, res)
+    workerContext.errorMessage = 'Runtime initialized.'
     $logger.debug(workerBrief, `Initialized pRuntime.`)
   }
 
@@ -132,13 +130,10 @@ export const initRuntime = async (
   return initInfo
 }
 
-export const registerWorker = async (
-  pid,
-  info,
-  initInfo,
-  dispatchTx,
-  forceRegister = false
-) => {
+export const registerWorker = async (runtime, forceRegister = false) => {
+  const { initInfo, workerContext } = runtime
+  const { pid, dispatchTx } = workerContext
+
   const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
 
   const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
@@ -185,8 +180,10 @@ export const registerWorker = async (
       await wait(24000)
       return await waitUntilWorkerHasInitialScore() // using `return await` for node 14's bad behavior
     }
+    workerContext.errorMessage = 'waitUntilWorkerHasInitialScore'
     logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore')
     await waitUntilWorkerHasInitialScore()
+    workerContext.errorMessage = 'waitUntilWorkerHasInitialScore done.'
     logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore done.')
 
     await dispatchTx({
@@ -308,7 +305,7 @@ export const startSyncBlob = (runtime) => {
 
 export const startSyncMessage = (runtime) => {
   const {
-    workerContext: { worker, workerBrief, dispatchTx },
+    workerContext: { pid, workerBrief, dispatchTx },
     rpcClient,
   } = runtime
 
@@ -372,8 +369,8 @@ export const startSyncMessage = (runtime) => {
       await dispatchTx({
         action: 'BATCH_SYNC_MQ_MESSAGE',
         payload: {
+          pid,
           messages: ret,
-          worker,
         },
       })
       logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)

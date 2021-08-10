@@ -11,6 +11,7 @@ import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
+import { startMining } from './worker'
 const Status = prb.WorkerState.Status
 const StatusEnumValues = toEnum(Object.keys(Status))
 
@@ -70,6 +71,8 @@ const onSynching = async (fromState, toState, context) => {
 
   const waitUntilSynched = await startSyncBlob(runtime)
   await waitUntilSynched()
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'waitUntilSynched done.'
   logger.info(workerBrief, 'waitUntilSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHED)
 }
@@ -81,17 +84,17 @@ const onSynched = async (fromState, toState, context) => {
   } = context.stateMachine.rootStateMachine.workerContext
   const waitUntilMqSynched = await startSyncMessage(runtime)
   await waitUntilMqSynched()
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'waitUntilMqSynched done.'
   logger.info(workerBrief, 'waitUntilMqSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const {
-    runtime,
-    pid,
-    dispatchTx,
-  } = context.stateMachine.rootStateMachine.workerContext
-  const { initInfo, rpcClient, info } = runtime
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  const { initInfo, rpcClient } = runtime
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'Ensuring registration on chain...'
   let res = await rpcClient.getRuntimeInfo({})
   res = res.constructor.toObject(res, {
     defaults: true,
@@ -100,14 +103,18 @@ const onPreMining = async (fromState, toState, context) => {
   })
   Object.assign(initInfo, res)
 
-  await registerWorker(pid, info, initInfo, dispatchTx, true)
+  await registerWorker(runtime, true)
   if (!runtime.skipRa) {
-    // start mining
+    context.stateMachine.rootStateMachine.workerContext.errorMessage =
+      'Starting mining on chain...'
+    await startMining(context.stateMachine.rootStateMachine.workerContext)
   }
   context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
 }
 
-const onMining = async () => {
+const onMining = async (fromState, toState, context) => {
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'Now the worker should be mining.'
   // Gracefully do nothing.
 }
 
@@ -173,12 +180,11 @@ const onKicked = async (fromState, toState, context) => {
   //   await dispatchTx({
   //     action: 'STOP_MINING_INTENTION',
   //     payload: {
-  //       worker,
+  //       worker,ti
   //     },
   //   })
   // }
   await runtime.request('/kick')
-  // todo: send /kick to pruntime
 }
 
 const onStateTransition = async (fromState, toState, context) => {

@@ -6,7 +6,7 @@ const batchSyncMqMessage = async ({ messages }, { operator }) =>
     phalaApi.tx.utility.batch(
       messages.map((msg) =>
         phalaApi.tx.phalaMq.syncOffchainMessage(
-          phalaApi.createType('Vec<u8>', msg)
+          phalaApi.createType('SignedMessage', msg)
         )
       )
     ),

@@ -125,3 +125,6 @@ export const destroyWorkerContext = async (workerContext) => {
     }
   }
 }
+
+export const startMining = async (workerContext) => {}
+export const stopMining = async (workerContext) => {}
