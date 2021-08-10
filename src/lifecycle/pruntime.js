@@ -378,8 +378,10 @@ export const startSyncMessage = (runtime) => {
       })
       logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)
     } else {
-      synchedToTargetPromiseFinished = true
-      synchedToTargetPromiseResolve()
+      if (!synchedToTargetPromiseFinished) {
+        synchedToTargetPromiseFinished = true
+        synchedToTargetPromiseResolve()
+      }
     }
 
     await wait(12000)
