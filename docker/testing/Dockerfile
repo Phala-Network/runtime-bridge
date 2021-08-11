@@ -26,5 +26,6 @@ RUN pnpm install
 COPY . .
 
 RUN pnpm proto:build
+RUN pnpm proto:build_prpc
 
 ENTRYPOINT [ "pnpm", "start_module" ]
