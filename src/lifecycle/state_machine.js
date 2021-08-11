@@ -8,7 +8,7 @@ import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { serializeError } from 'serialize-error'
 import { shouldSkipRa } from '../utils/env'
-import { startMining } from './worker'
+import { startMining, stopMining } from './worker'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
@@ -147,24 +147,13 @@ const onError = async (fromState, toState, context) => {
     },
     context.eventPayload
   )
-  // if (workerState === 'Mining' || workerState === 'MiningPending') {
-  //   dispatchTx({
-  //     action: 'STOP_MINING_INTENTION',
-  //     payload: {
-  //       worker,
-  //     },
-  //   }).catch((e) => {
-  //     logger.warn(
-  //       {
-  //         fromState,
-  //         toState,
-  //         workerId: worker.id,
-  //         phalaSs58Address: worker.phalaSs58Address,
-  //       },
-  //       e
-  //     )
-  //   })
-  // }
+  await stopMining(context.stateMachine.rootStateMachine.workerContext)
+
+  context.stateMachine.rootStateMachine.workerContext.errorMessage = JSON.stringify(
+    context.eventPayload instanceof Error
+      ? serializeError(context.eventPayload)
+      : context.eventPayload?.message || context.eventPayload
+  )
 }
 const onKicked = async (fromState, toState, context) => {
   if (fromState === toState) {
@@ -176,14 +165,7 @@ const onKicked = async (fromState, toState, context) => {
   runtime?.stopSyncMessage?.()
   clearInterval(runtime.updateInfoInterval)
 
-  // if (workerState === 'Mining' || workerState === 'MiningPending') {
-  //   await dispatchTx({
-  //     action: 'STOP_MINING_INTENTION',
-  //     payload: {
-  //       worker,ti
-  //     },
-  //   })
-  // }
+  await stopMining(context.stateMachine.rootStateMachine.workerContext)
   await runtime.request('/kick')
 }
 
