@@ -25,6 +25,9 @@ If applicable, add screenshots to help explain your problem.
  - Docker version:
  - Docker Compose version:
 
+**Docker Compose configuration**
+Provide your working `docker-compose.yml` if related to deployment.
+
 **Containers (please complete the following information):**
  - `poc4-prb` image hash:
  - `phala-dev-node` image hash:
