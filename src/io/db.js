@@ -1,20 +1,23 @@
-import { DB_ENCODING_DEFAULT } from './db_encoding'
+import { DB_ENCODING_DEFAULT, DB_ENCODING_JSON } from './db_encoding'
 import { client as multileveldownClient } from 'multileveldown'
 import { pipeline } from 'readable-stream'
 import env from '../utils/env'
+import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 import net from 'net'
+import promiseRetry from 'promise-retry'
+import wait from '../utils/wait'
 
 const dbMap = new Map()
 
 export const DB_TOUCHED_AT = 'DB_TOUCHED_AT'
 
 export const DB_BLOCK = 0
-export const DB_WINDOW = 1
-export const DB_BLOB = 2
-export const DB_WORKER = 3
+export const DB_WINDOW = 0
+export const DB_BLOB = 1
+export const DB_WORKER = 1
 
-export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WINDOW, DB_WORKER])
+export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WORKER])
 
 export const getPort = (dbNum) => (parseInt(env.dbPortBase) || 9000) + dbNum
 
@@ -22,13 +25,16 @@ const checkDb = async (db) => {
   let touchedAt
 
   try {
-    touchedAt = await db.get('DB_TOUCHED_AT')
+    touchedAt = await db.get('DB_TOUCHED_AT', { ...DB_ENCODING_JSON })
   } catch (error) {
     logger.error(error)
   }
 
   if (typeof touchedAt !== 'number') {
-    console.log(111, typeof touchedAt, touchedAt)
+    logger.debug({
+      'typeof touchedAt': typeof touchedAt,
+      touchedAt,
+    })
     throw new Error('DB not initialized, did IO service start correctly?')
   }
   return db
@@ -81,3 +87,59 @@ export const getDb = async (dbNum) => {
 }
 
 export const NOT_FOUND_ERROR = new Error('Not found.')
+
+export const getKeyExistance = (db, key) =>
+  new Promise((resolve, reject) => {
+    let resolved = false
+    db.createKeyStream({
+      limit: 1,
+      gte: key,
+      lte: key,
+    })
+      .on('data', () => {
+        resolved = true
+        resolve(true)
+      })
+      .on('error', reject)
+      .on('end', () => {
+        if (!resolved) {
+          resolve(false)
+          resolved = true
+        }
+      })
+      .on('close', () => {
+        if (!resolved) {
+          resolve(false)
+          resolved = true
+        }
+      })
+  })
+
+const _waitFor = async (waitFn) => {
+  try {
+    const ret = await waitFn()
+    if (!ret) {
+      throw NOT_FOUND_ERROR
+    }
+    return ret
+  } catch (e) {
+    if (e === NOT_FOUND_ERROR || e instanceof levelErrors.NotFoundError) {
+      await wait(2000)
+      return _waitFor(waitFn)
+    }
+    throw e
+  }
+}
+export const waitFor = (waitFn) =>
+  promiseRetry(
+    (retry, retriedTimes) =>
+      _waitFor(waitFn).catch((e) => {
+        logger.error({ retriedTimes }, e)
+        return retry(e)
+      }),
+    {
+      retries: 5,
+      minTimeout: 1000,
+      maxTimeout: 12000,
+    }
+  )

@@ -1,60 +1,106 @@
+import { MIN_SYNCHED_DISTANCE } from '../utils/constants'
 import cluster from 'cluster'
 import fork from '../utils/fork'
 import os from 'os'
 import setupRpc from './rpc'
 
-export const SET_INIT_HEIGHT = 'SET_INIT_HEIGHT'
-export const SET_KNOWN_HEIGHT = 'SET_KNOWN_HEIGHT'
-export const SET_BLOB_HEIGHT = 'SET_BLOB_HEIGHT'
-export const SET_ARCHIVED_HEIGHT = 'SET_ARCHIVED_HEIGHT'
+export const SET_GENESIS = 'SET_GENESIS'
+
+export const SET_PARA_KNOWN_HEIGHT = 'SET_PARA_KNOWN_HEIGHT'
+export const SET_PARENT_KNOWN_HEIGHT = 'SET_PARENT_KNOWN_HEIGHT'
+
+export const SET_PARA_BLOB_HEIGHT = 'SET_PARA_BLOB_HEIGHT'
+export const SET_PARENT_BLOB_HEIGHT = 'SET_PARENT_BLOB_HEIGHT'
+
+export const SET_PARA_ARCHIVED_HEIGHT = 'SET_PARA_ARCHIVED_HEIGHT'
+export const SET_PARENT_ARCHIVED_HEIGHT = 'SET_PARENT_ARCHIVED_HEIGHT'
 
 const start = () =>
   new Promise((resolve) => {
     const context = {
       hostname: os.hostname(),
-      knownHeight: -1,
-      initHeight: -1,
-      blobHeight: -1,
-      archivedHeight: -1,
-      hasReachedInitTarget: false,
+      paraId: -1,
+
+      parentStartHeader: -1,
+
+      parentKnownHeight: -1,
+      parentBlobHeight: -1,
+      parentArchivedHeight: -1,
+
+      paraKnownHeight: -1,
+      paraBlobHeight: -1,
+      paraArchivedHeight: -1,
+
+      synched: false,
     }
 
-    const [syncBlockProcess, computeWindowProcess] = [
-      'sync_block',
-      'compute_window',
-    ].map((cmd) => fork(cmd, 'fetch/' + cmd))
-
-    syncBlockProcess.on('message', (message) => {
-      if (typeof message[SET_INIT_HEIGHT] === 'number') {
-        if (context.initHeight === -1) {
-          context.initHeight = message[SET_INIT_HEIGHT]
-        }
+    const checkSynched = () => {
+      if (context.synched) {
+        return
       }
 
-      if (typeof message[SET_KNOWN_HEIGHT] === 'number') {
-        if (context.knownHeight < message[SET_KNOWN_HEIGHT]) {
-          context.knownHeight = message[SET_KNOWN_HEIGHT]
-        }
-      }
-    })
+      const { paraKnownHeight, paraBlobHeight } = context
 
-    computeWindowProcess.on('message', (message) => {
-      if (typeof message[SET_BLOB_HEIGHT] === 'number') {
-        if (context.blobHeight < message[SET_BLOB_HEIGHT]) {
-          context.blobHeight = message[SET_BLOB_HEIGHT]
-          if (!context.hasReachedInitTarget) {
-            if (context.blobHeight >= context.initHeight) {
-              context.hasReachedInitTarget = true
-            }
+      if (paraKnownHeight - paraBlobHeight < MIN_SYNCHED_DISTANCE) {
+        context.synched = true
+      }
+    }
+
+    const syncBlockProcess = fork('sync_block', 'fetch/' + 'sync_block')
+
+    const ipcHandlers = {
+      [SET_GENESIS]: ({ paraId, parentNumber }) => {
+        context.paraId = paraId
+        context.parentStartHeader = parentNumber
+
+        const computeWindowProcess = fork(
+          'compute_window',
+          'fetch/' + 'compute_window',
+          {
+            PHALA_IPC_PARA_ID: paraId,
           }
-        }
-      }
+        )
 
-      if (typeof message[SET_ARCHIVED_HEIGHT] === 'number') {
-        if (context.archivedHeight < message[SET_ARCHIVED_HEIGHT]) {
-          context.archivedHeight = message[SET_ARCHIVED_HEIGHT]
+        computeWindowProcess.on('message', ({ type, payload }) => {
+          ipcHandlers[type](payload)
+        })
+      },
+      [SET_PARA_KNOWN_HEIGHT]: (number) => {
+        if (number > context.paraKnownHeight) {
+          context.paraKnownHeight = number
         }
-      }
+      },
+      [SET_PARENT_KNOWN_HEIGHT]: (number) => {
+        if (number > context.parentKnownHeight) {
+          context.parentKnownHeight = number
+        }
+      },
+      [SET_PARA_BLOB_HEIGHT]: (number) => {
+        if (number > context.paraBlobHeight) {
+          context.paraBlobHeight = number
+          checkSynched()
+        }
+      },
+      [SET_PARENT_BLOB_HEIGHT]: (number) => {
+        if (number > context.parentBlobHeight) {
+          context.parentBlobHeight = number
+          checkSynched()
+        }
+      },
+      [SET_PARA_ARCHIVED_HEIGHT]: (number) => {
+        if (number > context.paraArchivedHeight) {
+          context.paraArchivedHeight = number
+        }
+      },
+      [SET_PARENT_ARCHIVED_HEIGHT]: (number) => {
+        if (number > context.parentArchivedHeight) {
+          context.parentArchivedHeight = number
+        }
+      },
+    }
+
+    syncBlockProcess.on('message', ({ type, payload }) => {
+      ipcHandlers[type](payload)
     })
 
     setupRpc(context)

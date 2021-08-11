@@ -1,23 +1,68 @@
-import { phalaApi } from '../utils/api'
+import { BN_1PHA } from '../utils/constants'
+import { UPool } from '../io/worker'
+import { keyring } from '../utils/api'
 import { setupRuntime } from './pruntime'
+import BN from 'bn.js'
 import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../utils/logger'
 
-export const createWorkerContext = async (worker, context) => {
-  const snapshot = Object.freeze(Object.assign({}, worker))
-  const onChainState = await subscribeOnChainState(snapshot)
-  const stateMachine = await _stateMachine.start()
+export const getPool = async (pidStr, context, forceReload = false) => {
+  let pool
+  if (!forceReload) {
+    pool = context.pools.get(pidStr)
+    if (pool) {
+      return pool
+    }
+  }
+  pool = await UPool.getBy('pid', pidStr)
+  const poolSnapshot = Object.freeze({
+    uuid: pool.uuid,
+    pid: pidStr,
+    ss58Phala: pool.owner.ss58Phala,
+    ss58Polkadot: pool.owner.ss58Polkadot,
+  })
+  const pair = keyring.addFromJson(JSON.parse(pool.owner.polkadotJson))
+  pair.decodePkcs8()
+  pool = Object.freeze({
+    ...poolSnapshot,
+    pair,
+    poolSnapshot,
+  })
+  context.pools.set(pidStr, pool)
+  return pool
+}
 
-  const { id, nickname, phalaSs58Address, runtimeEndpoint } = snapshot
-  const snapshotBrief = {
-    id,
-    nickname,
-    phalaSs58Address,
-    runtimeEndpoint,
+export const getWorkerSnapshot = (worker) =>
+  Object.freeze({
+    uuid: worker.uuid,
+    name: worker.name,
+    endpoint: worker.endpoint,
+    pid: worker.pid.toString(),
+    stake: worker.stake || '0',
+  })
+
+export const createWorkerContext = async (worker, context) => {
+  const stakeBn = new BN(worker.stake)
+
+  if (stakeBn.lt(BN_1PHA)) {
+    throw new Error('Stake amount should be at least > 1PHA!')
   }
 
-  let errorMessage = ''
+  const pid = worker.pid.toString() // uint64
+  const pool = await getPool(pid, context, true)
+  const poolSnapshot = pool.poolSnapshot
+  const poolOwner = pool.pair
+  const snapshotBrief = getWorkerSnapshot(worker)
+  const snapshot = Object.freeze({
+    ...snapshotBrief,
+    ...poolSnapshot,
+  })
+  const onChainState = await subscribeOnChainState(snapshot)
+  const stateMachine = await _stateMachine.start()
+  logger.info('Starting worker context...', snapshotBrief)
+
+  const messages = []
   let stateMachineState = 'S_INIT'
 
   const innerTxQueue = new PQueue({
@@ -27,8 +72,13 @@ export const createWorkerContext = async (worker, context) => {
   const workerContext = {
     context,
     appContext: context,
+    pid,
+    pool,
+    poolSnapshot,
+    poolOwner,
     snapshot,
     snapshotBrief,
+    stakeBn,
     worker: snapshot,
     workerBrief: snapshotBrief,
     onChainState,
@@ -47,10 +97,14 @@ export const createWorkerContext = async (worker, context) => {
       )
     },
     get errorMessage() {
-      return errorMessage
+      if (!messages.length) {
+        return ''
+      }
+      const m = messages[messages.length - 1]
+      return `${m.timestamp} - ${m.message}`
     },
     set errorMessage(message) {
-      errorMessage = message
+      messages.push({ message, timestamp: Date.now() })
     },
 
     dispatchTx: (...args) =>
@@ -67,62 +121,10 @@ export const createWorkerContext = async (worker, context) => {
 }
 
 const subscribeOnChainState = async (worker) => {
-  const queryAccount = await phalaApi.query.system.account(
-    worker.phalaSs58Address
-  )
-  const queryStash = await phalaApi.query.phala.stashState(
-    worker.phalaSs58Address
-  )
-
-  let balance = queryAccount.data.free
-  let controllerAddress = queryStash.controller.toString()
-  let payoutAddress = queryStash.payoutPrefs.target.toString()
-  let workerState = 'Empty'
-
-  const unsubBalancePromise = phalaApi.query.system.account(
-    worker.phalaSs58Address,
-    ({ data: { free: currentFree } }) => {
-      balance = currentFree.toString()
-    }
-  )
-  const unsubStashStatePromise = phalaApi.query.phala.stashState(
-    worker.phalaSs58Address,
-    ({ controller, payoutPrefs: { target } }) => {
-      controllerAddress = controller.toString()
-      payoutAddress = target.toString()
-    }
-  )
-  const unsubWorkerStatePromise = phalaApi.query.phala.workerState(
-    worker.phalaSs58Address,
-    ({ state: _workerState }) => {
-      workerState = Object.keys(_workerState.toJSON())[0]
-    }
-  )
-
+  // TODO
   return {
-    get balance() {
-      return balance
-    },
-    get controllerAddress() {
-      return controllerAddress
-    },
-    get payoutAddress() {
-      return payoutAddress
-    },
-    get workerState() {
-      return workerState
-    },
     worker,
-    unsubscribe: async () =>
-      Promise.all(
-        (
-          await Promise.all([
-            unsubBalancePromise,
-            unsubStashStatePromise,
-            unsubWorkerStatePromise,
-          ])
-        ).map((fn) => fn())
-      ),
+    unsubscribe: async () => {},
   }
 }
 
@@ -136,4 +138,33 @@ export const destroyWorkerContext = async (workerContext) => {
       workerContext.runtime.stopSync()
     }
   }
+}
+
+export const startMining = async (workerContext) => {
+  const { pid, dispatchTx, snapshotBrief, runtime } = workerContext
+  const { stake } = snapshotBrief
+  const { initInfo } = runtime
+  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  workerContext.message = 'Starting mining on chain...'
+  await dispatchTx({
+    action: 'START_MINING',
+    payload: {
+      pid,
+      publicKey,
+      stake,
+    },
+  })
+}
+export const stopMining = async (workerContext) => {
+  const { pid, dispatchTx, runtime } = workerContext
+  const { initInfo } = runtime
+  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  workerContext.message = 'Stopping mining on chain...'
+  await dispatchTx({
+    action: 'STOP_MINING',
+    payload: {
+      pid,
+      publicKey,
+    },
+  })
 }

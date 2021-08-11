@@ -1,3 +1,6 @@
 [submodule "src/vendor/proto"]
 	path = src/vendor/proto
 	url = ../runtime-bridge-proto.git
+[submodule "src/vendor/prpc-proto"]
+	path = src/vendor/prpc-proto
+	url = ../prpc-protos.git

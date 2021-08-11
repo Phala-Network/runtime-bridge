@@ -1,41 +1,41 @@
+import { DB_WORKER, setupDb } from '../io/db'
 import { TX_QUEUE_SIZE } from '../utils/constants'
 import { setupPhalaApi } from '../utils/api'
-import createKeyring from '../utils/keyring'
 import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
 import env from '../utils/env'
 import logger from '../utils/logger'
 import * as actions from './actions'
 
 const start = async () => {
+  await setupDb(DB_WORKER)
   await setupPhalaApi(env.chainEndpoint)
-  const keyring = await createKeyring()
   const txQueue = createTradeQueue(env.redisEndpoint)
   const subQueues = new Map()
+  const pools = new Map()
 
   await txQueue.ready()
 
   const context = {
-    keyring,
     txQueue,
     subQueues,
+    pools,
   }
 
   txQueue.process(TX_QUEUE_SIZE, async (job) => {
     $logger.info(job.data, `Processing job #${job.id}...`)
 
-    const { worker } = job.data.payload
+    const { pid } = job.data.payload
 
-    let subQueue = subQueues.get(worker.id)
+    let subQueue = subQueues.get(pid)
     if (!subQueue) {
       subQueue = createSubQueue({
         redisUrl: env.redisEndpoint,
-        worker,
+        pid,
         actions,
         txQueue,
-        keyring,
         context,
       })
-      subQueues.set(worker.id, subQueue)
+      subQueues.set(pid, subQueue)
     }
 
     try {

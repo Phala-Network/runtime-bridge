@@ -1,5 +1,9 @@
-import { createWorkerContext, destroyWorkerContext } from './worker'
-import { getAllWorker } from '../io/worker'
+import { UWorker } from '../io/worker'
+import {
+  createWorkerContext,
+  destroyWorkerContext,
+  getWorkerSnapshot,
+} from './worker'
 import isEqual from 'lodash/isEqual'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
@@ -8,45 +12,41 @@ const WORKER_ALTER = 'WORKER_ALTER'
 
 const applyWorker = async (worker, context, result) => {
   const { workerContexts } = context
-  const workerContext = workerContexts.get(worker.id)
+  const workerContext = workerContexts.get(worker.uuid)
   if (!workerContext) {
-    result.added += 1
-    await addWorker(worker, context)
+    if (!worker.deleted && worker.enabled) {
+      result.added += 1
+      await addWorker(worker, context)
+    }
+    if (worker.deleted) {
+      result.deleted += 1
+      await deleteWorker(workerContext, context)
+      return
+    }
     return
   }
-  if (worker.deleted) {
+  if (worker.deleted || !worker.enabled) {
     result.deleted += 1
     await deleteWorker(workerContext, context)
     return
   }
-  if (!isEqual(worker, workerContext.snapshot)) {
+  if (!isEqual(getWorkerSnapshot(worker), workerContext.snapshotBrief)) {
     result.updated += 1
     await deleteWorker(workerContext, context)
     await addWorker(worker, context)
-    return
   }
 }
 
 const addWorker = async (worker, context) => {
-  const { id, nickname, phalaSs58Address, runtimeEndpoint } = worker
-  logger.debug(
-    {
-      id,
-      nickname,
-      phalaSs58Address,
-      runtimeEndpoint,
-    },
-    'Starting worker lifecycle.'
-  )
   const ret = await createWorkerContext(worker, context)
-  context.workerContexts.set(worker.id, ret)
+  context.workerContexts.set(worker.uuid, ret)
 
   return ret
 }
 
 const deleteWorker = async (worker, context) => {
   await destroyWorkerContext(worker, context)
-  context.workerContexts.delete(worker.id)
+  context.workerContexts.delete(worker.uuid)
   const { id, nickname, phalaSs58Address, runtimeEndpoint } = worker
   logger.debug(
     {
@@ -73,7 +73,6 @@ const waitUntilWorkerChanges = async (context) => {
 }
 
 const setupWorkers = async (context) => {
-  // TODO: wait for db write queue being empty
   await wait(3000)
   const result = {
     added: 0,
@@ -81,7 +80,7 @@ const setupWorkers = async (context) => {
     updated: 0,
     _failed: 0,
   }
-  const workers = await getAllWorker()
+  const workers = await UWorker.getAll()
   for (const w of workers) {
     await applyWorker(w, context, result).catch((e) => {
       logger.warn(e)

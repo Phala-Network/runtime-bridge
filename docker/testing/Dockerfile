@@ -25,4 +25,6 @@ RUN pnpm install
 
 COPY . .
 
-ENTRYPOINT [ "pnpm", "node", "--", "--experimental-json-modules", "--es-module-specifier-resolution=node", "--harmony-top-level-await", "src/index" ]
+RUN pnpm proto:build
+
+ENTRYPOINT [ "pnpm", "start_module" ]

@@ -1,6 +1,7 @@
 import { DB_BLOCK, DB_WINDOW, DB_WORKER, setupDb } from '../io/db'
 import { EventEmitter } from 'events'
 import { MessageTarget } from '../message/proto'
+import { getGenesis } from '../io/block'
 import { setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
 import createTradeQueue from '../utils/trade_queue'
@@ -9,7 +10,7 @@ import setupRpc from './rpc'
 
 const updateFetcherState = async (query, state) => {
   const { content: fetcherStateUpdate } = await query({
-    to: MessageTarget.values.MTG_FETCHER,
+    to: MessageTarget.MTG_FETCHER,
     callOnlineFetcher: {},
   })
   Object.assign(state, fetcherStateUpdate.fetcherStateUpdate)
@@ -25,6 +26,8 @@ const start = async () => {
 
   const context = {
     workerContexts: new Map(),
+    pools: new Map(),
+    genesis: null,
     fetchStatus: {},
     eventEmitter: new EventEmitter(),
     dispatcher: null,
@@ -37,13 +40,14 @@ const start = async () => {
   await setupRpc(context)
 
   await updateFetcherState(context.query, context.fetchStatus)
+  context.genesis = await getGenesis(context.fetchStatus.paraId)
+
   setInterval(
     () => updateFetcherState(context.query, context.fetchStatus),
     1000
   )
 
   await watchWorkers(context)
-  return
 }
 
 export default start

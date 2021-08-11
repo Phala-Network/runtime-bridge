@@ -1,6 +1,6 @@
 import { typesChain } from '@phala/typedefs'
 
-export const chainTypes = typesChain['Phala Development']
+export const chainTypes = typesChain['Khala Testnet']
 export const bridgeTypes = {
   StorageProof: 'Vec<Vec<u8>>',
   VersionedAuthorityList: {
@@ -20,46 +20,9 @@ export const bridgeTypes = {
     header: 'Header',
     justification: 'JustificationToSync',
   },
-  GenesisInfo: {
-    header: 'Header',
-    validators: 'AuthorityList',
-    proof: 'StorageProof',
-  },
-  BlockHeaderWithEvents: {
+  BlockHeaderWithChanges: {
     blockHeader: 'Header',
     storageChanges: 'StorageChanges',
-  },
-  EncodedU8StorageKey: 'Vec<u8>',
-  OnlineWorkerSnapshot: {
-    workerStateKv: 'Vec<(EncodedU8StorageKey, WorkerInfo)>',
-    stakeReceivedKv: 'Vec<(EncodedU8StorageKey, Balance)>',
-    onlineWorkersKv: '(EncodedU8StorageKey, u32)',
-    computeWorkersKv: '(EncodedU8StorageKey, u32)',
-    proof: 'StorageProof',
-  },
-  // PalletId: 'Raw',
-  // StashWorkerStats: {
-  //   slash: 'Balance',
-  //   computeReceived: 'Balance',
-  //   onlineReceived: 'Balance',
-  // },
-  SignedWorkerMessage: {
-    data: 'WorkerMessage',
-    signature: 'Vec<u8>',
-  },
-  WorkerMessage: {
-    payload: 'WorkerMessagePayload',
-    sequence: 'u64',
-  },
-  WorkerMessagePayload: {
-    _enum: {
-      Heartbeat: 'WorkerMessagePayloadHeartbeat',
-    },
-  },
-  WorkerMessagePayloadHeartbeat: {
-    blockNum: 'u32',
-    claimOnline: 'bool',
-    claimCompute: 'bool',
   },
   StorageCollection: 'Vec<(Vec<u8>, Option<Vec<u8>>)>',
   ChildStorageCollection: 'Vec<(Vec<u8>, StorageCollection)>',
@@ -71,14 +34,44 @@ export const bridgeTypes = {
     headers: 'Vec<HeaderToSync>',
     authoritySetChange: 'Option<AuthoritySetChange>',
   },
+  SyncParachainHeaderReq: {
+    headers: 'Vec<Header>',
+    proof: 'StorageProof',
+  },
   DispatchBlockReq: {
-    blocks: 'Vec<BlockHeaderWithEvents>',
+    blocks: 'Vec<BlockHeaderWithChanges>',
+  },
+  GenesisInfo: {
+    header: 'Header',
+    validators: 'AuthorityList',
+    proof: 'StorageProof',
+  },
+  SyncCombinedHeadersReq: {
+    relaychainHeaders: 'Vec<HeaderToSync>',
+    authoritySetChange: 'Option<AuthoritySetChange>',
+    parachainHeaders: 'Vec<Header>',
+    proof: 'StorageProof',
+  },
+  EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
+}
+
+const localOverrides = {
+  WorkerInfo: {
+    pubkey: 'WorkerPublicKey',
+    ecdhPubkey: 'EcdhPublicKey',
+    runtimeVersion: 'u32',
+    lastUpdated: 'u64',
+    operator: 'Option<AccountId>',
+    confidenceLevel: 'u8',
+    initialScore: 'Option<u32>',
+    features: 'Vec<u32>',
   },
 }
 
 export const phalaTypes = {
   ...chainTypes,
   ...bridgeTypes,
+  ...localOverrides,
 }
 
 export default phalaTypes

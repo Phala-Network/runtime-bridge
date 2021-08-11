@@ -1,16 +1,9 @@
 import { APP_MESSAGE_QUEUE_NAME } from './constants'
-import { phalaApi } from './api'
+import { getPool } from '../lifecycle/worker'
 import BeeQueue from 'bee-queue'
 
-const createSubQueue = ({
-  redisUrl,
-  worker,
-  actions,
-  txQueue,
-  keyring,
-  context,
-}) => {
-  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${worker.id}`
+const createSubQueue = ({ redisUrl, pid, actions, txQueue, context }) => {
+  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${pid}`
   const ret = new BeeQueue(queueName, {
     redis: {
       url: redisUrl,
@@ -22,16 +15,17 @@ const createSubQueue = ({
     return waitForJob(queueName, job)
   }
 
-  console.log(worker)
   ret.process(1, async (job) => {
-    $logger.info(job.data, `${worker.id}: Processing job #${job.id}...`)
+    $logger.info(job.data, `Pool #${pid}: Processing job #${job.id}...`)
+
+    const pool = await getPool(pid, context, true)
 
     const actionFn = actions[job.data.action]
 
     return actionFn(job.data.payload, {
       txQueue,
-      keyring,
-      api: phalaApi,
+      pool,
+      operator: pool.pair,
       context,
     })
   })

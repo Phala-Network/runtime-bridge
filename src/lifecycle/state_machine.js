@@ -1,42 +1,29 @@
-import { MINIUM_BALANCE } from '../utils/constants'
-import { initRuntime, startSyncBlob, startSyncMessage } from './pruntime'
-import { protoRoot } from '../message/proto'
+import {
+  initRuntime,
+  registerWorker,
+  startSyncBlob,
+  startSyncMessage,
+} from './pruntime'
+import { phalaApi } from '../utils/api'
+import { prb } from '../message/proto'
+import { serializeError } from 'serialize-error'
 import { shouldSkipRa } from '../utils/env'
+import { startMining, stopMining } from './worker'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
-const Status = protoRoot.lookupEnum('WorkerState.Status')
-const StatusEnumValues = toEnum(Object.keys(Status.values))
+const Status = prb.WorkerState.Status
+const StatusEnumValues = toEnum(Object.keys(Status))
 
 export const EVENTS = toEnum([
   'SHOULD_START',
-  'SHOULD_MARK_PENDING_SYNCHING',
   'SHOULD_MARK_SYNCHING',
-  'SHOULD_MARK_ONLINE',
+  'SHOULD_MARK_SYNCHED',
+  'SHOULD_MARK_PRE_MINING',
+  'SHOULD_MARK_MINING',
   'SHOULD_KICK',
   'ERROR',
 ])
-
-const setAccount = async (dispatchTx, worker, state) => {
-  if (state.controllerAddress !== worker.phalaSs58Address) {
-    await dispatchTx({
-      action: 'SET_STASH',
-      payload: {
-        address: worker.phalaSs58Address,
-        worker,
-      },
-    })
-  }
-  if (state.payoutAddress !== worker.payoutAddress) {
-    await dispatchTx({
-      action: 'SET_PAYOUT_PREFS',
-      payload: {
-        target: worker.payoutAddress,
-        worker,
-      },
-    })
-  }
-}
 
 const wrapEventAction = (fn) => (fromState, toState, context) =>
   fn(fromState, toState, context).catch((error) => {
@@ -49,70 +36,94 @@ const wrapEventAction = (fn) => (fromState, toState, context) =>
 
 const onStarting = async (fromState, toState, context) => {
   const {
-    dispatchTx,
-    onChainState,
-    worker,
-  } = context.stateMachine.rootStateMachine.workerContext
-  const { balance } = onChainState
-
-  if (!balance.gte(MINIUM_BALANCE)) {
-    context.stateMachine.handle(
-      EVENTS.ERROR,
-      'Balance must be greater than 10000 PHA!'
-    )
-    return
-  }
-  await setAccount(dispatchTx, worker, onChainState)
-  context.stateMachine.handle(EVENTS.SHOULD_MARK_PENDING_SYNCHING)
-}
-const onPendingSynching = async (fromState, toState, context) => {
-  const {
+    pid,
     runtime,
     innerTxQueue,
   } = context.stateMachine.rootStateMachine.workerContext
-  await innerTxQueue.add(async () => {
+
+  const initInfo = await innerTxQueue.add(async () => {
     if (shouldSkipRa) {
-      await initRuntime(
+      return initRuntime(
         runtime,
         '0000000000000000000000000000000000000000000000000000000000000001',
         true
       )
     } else {
-      await initRuntime(runtime, undefined, false)
+      return initRuntime(runtime, undefined, false)
     }
   })
 
+  const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
+    new Uint8Array(initInfo.publicKey)
+  )
+  if (currentPool.isSome && currentPool.toString() !== pid) {
+    throw new Error('Worker is assigned to other pool!')
+  }
+
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
+
 const onSynching = async (fromState, toState, context) => {
   const {
     runtime,
-    dispatchTx,
-    worker,
     workerBrief,
   } = context.stateMachine.rootStateMachine.workerContext
 
   const waitUntilSynched = await startSyncBlob(runtime)
   await waitUntilSynched()
-  logger.info(workerBrief, 'waitUntilSynched done.')
-  if (!runtime.skipRa) {
-    await dispatchTx({
-      action: 'START_MINING_INTENTION',
-      payload: {
-        worker,
-      },
-    })
-  }
-
-  context.stateMachine.handle(EVENTS.SHOULD_MARK_ONLINE)
-}
-const onOnline = async (fromState, toState, context) => {
-  const { runtime } = context.stateMachine.rootStateMachine.workerContext
-  await startSyncMessage(runtime)
-}
-const onError = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.errorMessage =
-    context.eventPayload
+    'waitUntilSynched done.'
+  logger.info(workerBrief, 'waitUntilSynched done.')
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHED)
+}
+
+const onSynched = async (fromState, toState, context) => {
+  const {
+    runtime,
+    workerBrief,
+  } = context.stateMachine.rootStateMachine.workerContext
+  const waitUntilMqSynched = await startSyncMessage(runtime)
+  await waitUntilMqSynched()
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'waitUntilMqSynched done.'
+  logger.info(workerBrief, 'waitUntilMqSynched done.')
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
+}
+
+const onPreMining = async (fromState, toState, context) => {
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  const { initInfo, rpcClient } = runtime
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'Ensuring registration on chain...'
+  let res = await rpcClient.getRuntimeInfo({})
+  res = res.constructor.toObject(res, {
+    defaults: true,
+    enums: String,
+    longs: Number,
+  })
+  Object.assign(initInfo, res)
+
+  await registerWorker(runtime, true)
+  if (!runtime.skipRa) {
+    context.stateMachine.rootStateMachine.workerContext.errorMessage =
+      'Starting mining on chain...'
+    await startMining(context.stateMachine.rootStateMachine.workerContext)
+  }
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+}
+
+const onMining = async (fromState, toState, context) => {
+  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    'Now the worker should be mining.'
+  // Gracefully do nothing.
+}
+
+const onError = async (fromState, toState, context) => {
+  context.stateMachine.rootStateMachine.workerContext.errorMessage = JSON.stringify(
+    context.eventPayload instanceof Error
+      ? serializeError(context.eventPayload)
+      : context.eventPayload?.message || context.eventPayload
+  )
 
   if (fromState === toState) {
     return
@@ -120,9 +131,13 @@ const onError = async (fromState, toState, context) => {
 
   const {
     worker,
-    onChainState: { workerState },
-    dispatchTx,
+    runtime,
   } = context.stateMachine.rootStateMachine.workerContext
+
+  runtime?.stopSync?.()
+  runtime?.stopSyncMessage?.()
+  clearInterval(runtime.updateInfoInterval)
+
   logger.error(
     {
       fromState,
@@ -132,49 +147,31 @@ const onError = async (fromState, toState, context) => {
     },
     context.eventPayload
   )
-  if (workerState === 'Mining' || workerState === 'MiningPending') {
-    dispatchTx({
-      action: 'STOP_MINING_INTENTION',
-      payload: {
-        worker,
-      },
-    }).catch((e) => {
-      logger.warn(
-        {
-          fromState,
-          toState,
-          workerId: worker.id,
-          phalaSs58Address: worker.phalaSs58Address,
-        },
-        e
-      )
-    })
-  }
+  await stopMining(context.stateMachine.rootStateMachine.workerContext)
+
+  context.stateMachine.rootStateMachine.workerContext.errorMessage = JSON.stringify(
+    context.eventPayload instanceof Error
+      ? serializeError(context.eventPayload)
+      : context.eventPayload?.message || context.eventPayload
+  )
 }
 const onKicked = async (fromState, toState, context) => {
   if (fromState === toState) {
     return
   }
-  const {
-    worker,
-    onChainState: { workerState },
-    dispatchTx,
-    runtime,
-  } = context.stateMachine.rootStateMachine.workerContext
-  if (workerState === 'Mining' || workerState === 'MiningPending') {
-    await dispatchTx({
-      action: 'STOP_MINING_INTENTION',
-      payload: {
-        worker,
-      },
-    })
-  }
+  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+
+  runtime?.stopSync?.()
+  runtime?.stopSyncMessage?.()
+  clearInterval(runtime.updateInfoInterval)
+
+  await stopMining(context.stateMachine.rootStateMachine.workerContext)
   await runtime.request('/kick')
-  // todo: send /kick to pruntime
 }
 
 const onStateTransition = async (fromState, toState, context) => {
   const { workerBrief } = context.stateMachine.rootStateMachine.workerContext
+  context.stateMachine.rootStateMachine.workerContext.errorMessage = `State changed from ${fromState} to ${toState}`
   logger.debug(workerBrief, 'State changed.')
   context.stateMachine.rootStateMachine.workerContext.stateMachineState = toState
 }
@@ -222,13 +219,6 @@ wrapStateMachineState(
 wrapStateMachineState(
   stateMachine,
   StatusEnumValues.S_STARTING,
-  EVENTS.SHOULD_MARK_PENDING_SYNCHING,
-  StatusEnumValues.S_PENDING_SYNCHING,
-  onPendingSynching
-)
-wrapStateMachineState(
-  stateMachine,
-  StatusEnumValues.S_PENDING_SYNCHING,
   EVENTS.SHOULD_MARK_SYNCHING,
   StatusEnumValues.S_SYNCHING,
   onSynching
@@ -236,18 +226,26 @@ wrapStateMachineState(
 wrapStateMachineState(
   stateMachine,
   StatusEnumValues.S_SYNCHING,
-  EVENTS.SHOULD_MARK_ONLINE,
-  StatusEnumValues.S_ONLINE,
-  onOnline
+  EVENTS.SHOULD_MARK_SYNCHED,
+  StatusEnumValues.S_SYNCHED,
+  onSynched
 )
 wrapStateMachineState(
   stateMachine,
-  StatusEnumValues.S_SYNCHING,
-  EVENTS.SHOULD_MARK_ONLINE,
-  StatusEnumValues.S_ONLINE,
-  onOnline
+  StatusEnumValues.S_SYNCHED,
+  EVENTS.SHOULD_MARK_PRE_MINING,
+  StatusEnumValues.S_PRE_MINING,
+  onPreMining
 )
-wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_ONLINE))
+wrapStateMachineState(
+  stateMachine,
+  StatusEnumValues.S_PRE_MINING,
+  EVENTS.SHOULD_MARK_MINING,
+  StatusEnumValues.S_MINING,
+  onMining
+)
+
+wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_MINING))
 wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_KICKED))
 wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_ERROR))
 
