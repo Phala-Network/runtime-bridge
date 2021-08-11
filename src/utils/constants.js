@@ -1,3 +1,4 @@
+import BN from 'bn.js'
 
 export const FETCH_PROCESSED_BLOB = 'FETCH_PROCESSED_BLOB'
 export const LAST_COMMITTED_PARA_BLOCK = 'LAST_COMMITTED_PARA_BLOCK'
@@ -23,3 +24,5 @@ export const BLOB_MAX_RANGE_COUNT = 800
 export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 200
 
 export const MIN_SYNCHED_DISTANCE = 3
+
+export const BN_1PHA = new BN('1000000000000')

@@ -1,6 +1,8 @@
+import { BN_1PHA } from '../utils/constants'
 import { UPool } from '../io/worker'
 import { keyring } from '../utils/api'
 import { setupRuntime } from './pruntime'
+import BN from 'bn.js'
 import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../utils/logger'
@@ -37,9 +39,16 @@ export const getWorkerSnapshot = (worker) =>
     name: worker.name,
     endpoint: worker.endpoint,
     pid: worker.pid.toString(),
+    stake: worker.stake || '0',
   })
 
 export const createWorkerContext = async (worker, context) => {
+  const stakeBn = new BN(worker.stake)
+
+  if (stakeBn.lt(BN_1PHA)) {
+    throw new Error('Stake amount should be at least > 1PHA!')
+  }
+
   const pid = worker.pid.toString() // uint64
   const pool = await getPool(pid, context, true)
   const poolSnapshot = pool.poolSnapshot
@@ -53,7 +62,7 @@ export const createWorkerContext = async (worker, context) => {
   const stateMachine = await _stateMachine.start()
   logger.info('Starting worker context...', snapshotBrief)
 
-  let errorMessage = ''
+  const messages = []
   let stateMachineState = 'S_INIT'
 
   const innerTxQueue = new PQueue({
@@ -69,6 +78,7 @@ export const createWorkerContext = async (worker, context) => {
     poolOwner,
     snapshot,
     snapshotBrief,
+    stakeBn,
     worker: snapshot,
     workerBrief: snapshotBrief,
     onChainState,
@@ -87,10 +97,14 @@ export const createWorkerContext = async (worker, context) => {
       )
     },
     get errorMessage() {
-      return errorMessage
+      if (!messages.length) {
+        return ''
+      }
+      const m = messages[messages.length - 1]
+      return `${m.timestamp} - ${m.message}`
     },
     set errorMessage(message) {
-      errorMessage = message
+      messages.push({ message, timestamp: Date.now() })
     },
 
     dispatchTx: (...args) =>
@@ -126,5 +140,31 @@ export const destroyWorkerContext = async (workerContext) => {
   }
 }
 
-export const startMining = async (workerContext) => {}
-export const stopMining = async (workerContext) => {}
+export const startMining = async (workerContext) => {
+  const { pid, dispatchTx, snapshotBrief, runtime } = workerContext
+  const { stake } = snapshotBrief
+  const { initInfo } = runtime
+  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  workerContext.message = 'Starting mining on chain...'
+  await dispatchTx({
+    action: 'START_MINING',
+    payload: {
+      pid,
+      publicKey,
+      stake,
+    },
+  })
+}
+export const stopMining = async (workerContext) => {
+  const { pid, dispatchTx, runtime } = workerContext
+  const { initInfo } = runtime
+  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  workerContext.message = 'Stopping mining on chain...'
+  await dispatchTx({
+    action: 'STOP_MINING',
+    payload: {
+      pid,
+      publicKey,
+    },
+  })
+}

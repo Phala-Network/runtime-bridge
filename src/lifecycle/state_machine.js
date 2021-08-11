@@ -8,10 +8,10 @@ import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { serializeError } from 'serialize-error'
 import { shouldSkipRa } from '../utils/env'
+import { startMining } from './worker'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
-import { startMining } from './worker'
 const Status = prb.WorkerState.Status
 const StatusEnumValues = toEnum(Object.keys(Status))
 
@@ -189,6 +189,7 @@ const onKicked = async (fromState, toState, context) => {
 
 const onStateTransition = async (fromState, toState, context) => {
   const { workerBrief } = context.stateMachine.rootStateMachine.workerContext
+  context.stateMachine.rootStateMachine.workerContext.errorMessage = `State changed from ${fromState} to ${toState}`
   logger.debug(workerBrief, 'State changed.')
   context.stateMachine.rootStateMachine.workerContext.stateMachineState = toState
 }
