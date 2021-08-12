@@ -131,10 +131,7 @@ const onPreMining = async (fromState, toState, context) => {
     context.stateMachine.rootStateMachine.workerContext.message =
       'Waiting until worker ready...'
     const waitUntilWorkerReady = async () => {
-      if (
-        onChainState.minerInfo.state.isReady &&
-        onChainState.minerInfo.benchmark.pInstant.toNumber() > 0
-      ) {
+      if (onChainState.minerInfo.state.isReady) {
         return
       }
       await wait(12000)
