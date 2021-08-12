@@ -106,6 +106,7 @@ const onPreMining = async (fromState, toState, context) => {
     onChainState.minerInfo.state.isMiningUnresponsive
   ) {
     context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+    return
   }
 
   context.stateMachine.rootStateMachine.workerContext.message =
