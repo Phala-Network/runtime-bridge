@@ -41,11 +41,8 @@ const wrapEventAction = (fn) => (fromState, toState, context) =>
   })
 
 const onStarting = async (fromState, toState, context) => {
-  const {
-    pid,
-    runtime,
-    innerTxQueue,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { pid, runtime, innerTxQueue } =
+    context.stateMachine.rootStateMachine.workerContext
 
   const initInfo = await innerTxQueue.add(async () => {
     if (shouldSkipRa) {
@@ -66,18 +63,17 @@ const onStarting = async (fromState, toState, context) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
-  context.stateMachine.rootStateMachine.workerContext.onChainState = await subscribeOnChainState(
-    context.stateMachine.rootStateMachine.workerContext
-  )
+  context.stateMachine.rootStateMachine.workerContext.onChainState =
+    await subscribeOnChainState(
+      context.stateMachine.rootStateMachine.workerContext
+    )
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
 
 const onSynching = async (fromState, toState, context) => {
-  const {
-    runtime,
-    workerBrief,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { runtime, workerBrief } =
+    context.stateMachine.rootStateMachine.workerContext
 
   const waitUntilSynched = await startSyncBlob(runtime)
   await waitUntilSynched()
@@ -88,10 +84,8 @@ const onSynching = async (fromState, toState, context) => {
 }
 
 const onSynched = async (fromState, toState, context) => {
-  const {
-    runtime,
-    workerBrief,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { runtime, workerBrief } =
+    context.stateMachine.rootStateMachine.workerContext
   const waitUntilMqSynched = await startSyncMessage(runtime)
   await waitUntilMqSynched()
   context.stateMachine.rootStateMachine.workerContext.message =
@@ -101,10 +95,8 @@ const onSynched = async (fromState, toState, context) => {
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const {
-    runtime,
-    onChainState,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { runtime, onChainState } =
+    context.stateMachine.rootStateMachine.workerContext
   const { initInfo, rpcClient } = runtime
 
   await wait(12000) // wait for onChainState to be synched
@@ -183,10 +175,8 @@ const onKicked = async (fromState, toState, context) => {
   if (fromState === toState) {
     return
   }
-  const {
-    runtime,
-    snapshotBrief,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { runtime, snapshotBrief } =
+    context.stateMachine.rootStateMachine.workerContext
 
   await destroyWorkerContext(
     context.stateMachine.rootStateMachine.workerContext,
@@ -205,7 +195,8 @@ const onStateTransition = async (fromState, toState, context) => {
   const { workerBrief } = context.stateMachine.rootStateMachine.workerContext
   context.stateMachine.rootStateMachine.workerContext.message = `State changed from ${fromState} to ${toState}`
   logger.debug(workerBrief, 'State changed.')
-  context.stateMachine.rootStateMachine.workerContext.stateMachineState = toState
+  context.stateMachine.rootStateMachine.workerContext.stateMachineState =
+    toState
 }
 
 const wrapStateMachineStateError = (state) =>
