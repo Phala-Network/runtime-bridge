@@ -1,4 +1,10 @@
 import {
+  destroyWorkerContext,
+  startMining,
+  stopMining,
+  subscribeOnChainState,
+} from './worker'
+import {
   initRuntime,
   registerWorker,
   startSyncBlob,
@@ -8,7 +14,6 @@ import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { serializeError } from 'serialize-error'
 import { shouldSkipRa } from '../utils/env'
-import { startMining, stopMining } from './worker'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
@@ -60,6 +65,10 @@ const onStarting = async (fromState, toState, context) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
+  context.stateMachine.rootStateMachine.workerContext.onChainState = await subscribeOnChainState(
+    context.stateMachine.rootStateMachine.workerContext
+  )
+
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHING)
 }
 
@@ -71,7 +80,7 @@ const onSynching = async (fromState, toState, context) => {
 
   const waitUntilSynched = await startSyncBlob(runtime)
   await waitUntilSynched()
-  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+  context.stateMachine.rootStateMachine.workerContext.message =
     'waitUntilSynched done.'
   logger.info(workerBrief, 'waitUntilSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHED)
@@ -84,7 +93,7 @@ const onSynched = async (fromState, toState, context) => {
   } = context.stateMachine.rootStateMachine.workerContext
   const waitUntilMqSynched = await startSyncMessage(runtime)
   await waitUntilMqSynched()
-  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+  context.stateMachine.rootStateMachine.workerContext.message =
     'waitUntilMqSynched done.'
   logger.info(workerBrief, 'waitUntilMqSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
@@ -93,7 +102,7 @@ const onSynched = async (fromState, toState, context) => {
 const onPreMining = async (fromState, toState, context) => {
   const { runtime } = context.stateMachine.rootStateMachine.workerContext
   const { initInfo, rpcClient } = runtime
-  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+  context.stateMachine.rootStateMachine.workerContext.message =
     'Ensuring registration on chain...'
   let res = await rpcClient.getRuntimeInfo({})
   res = res.constructor.toObject(res, {
@@ -105,7 +114,7 @@ const onPreMining = async (fromState, toState, context) => {
 
   await registerWorker(runtime, true)
   if (!runtime.skipRa) {
-    context.stateMachine.rootStateMachine.workerContext.errorMessage =
+    context.stateMachine.rootStateMachine.workerContext.message =
       'Starting mining on chain...'
     await startMining(context.stateMachine.rootStateMachine.workerContext)
   }
@@ -113,13 +122,13 @@ const onPreMining = async (fromState, toState, context) => {
 }
 
 const onMining = async (fromState, toState, context) => {
-  context.stateMachine.rootStateMachine.workerContext.errorMessage =
+  context.stateMachine.rootStateMachine.workerContext.message =
     'Now the worker should be mining.'
   // Gracefully do nothing.
 }
 
 const onError = async (fromState, toState, context) => {
-  context.stateMachine.rootStateMachine.workerContext.errorMessage = JSON.stringify(
+  context.stateMachine.rootStateMachine.workerContext.message = JSON.stringify(
     context.eventPayload instanceof Error
       ? serializeError(context.eventPayload)
       : context.eventPayload?.message || context.eventPayload
@@ -129,27 +138,18 @@ const onError = async (fromState, toState, context) => {
     return
   }
 
-  const {
-    worker,
-    runtime,
-  } = context.stateMachine.rootStateMachine.workerContext
+  const { snapshotBrief } = context.stateMachine.rootStateMachine.workerContext
 
-  runtime?.stopSync?.()
-  runtime?.stopSyncMessage?.()
-  clearInterval(runtime.updateInfoInterval)
-
-  logger.error(
-    {
-      fromState,
-      toState,
-      workerId: worker.id,
-      phalaSs58Address: worker.phalaSs58Address,
-    },
-    context.eventPayload
+  await destroyWorkerContext(
+    context.stateMachine.rootStateMachine.workerContext,
+    false
   )
-  await stopMining(context.stateMachine.rootStateMachine.workerContext)
 
-  context.stateMachine.rootStateMachine.workerContext.errorMessage = JSON.stringify(
+  logger.error(snapshotBrief, context.eventPayload)
+  stopMining(context.stateMachine.rootStateMachine.workerContext).catch((e) => {
+    logger.warn(snapshotBrief, e)
+  })
+  context.stateMachine.rootStateMachine.workerContext.message = JSON.stringify(
     context.eventPayload instanceof Error
       ? serializeError(context.eventPayload)
       : context.eventPayload?.message || context.eventPayload
@@ -159,19 +159,27 @@ const onKicked = async (fromState, toState, context) => {
   if (fromState === toState) {
     return
   }
-  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  const {
+    runtime,
+    snapshotBrief,
+  } = context.stateMachine.rootStateMachine.workerContext
 
-  runtime?.stopSync?.()
-  runtime?.stopSyncMessage?.()
-  clearInterval(runtime.updateInfoInterval)
+  await destroyWorkerContext(
+    context.stateMachine.rootStateMachine.workerContext,
+    false
+  )
 
-  await stopMining(context.stateMachine.rootStateMachine.workerContext)
-  await runtime.request('/kick')
+  stopMining(context.stateMachine.rootStateMachine.workerContext).catch((e) => {
+    logger.warn(snapshotBrief, e)
+  })
+  runtime.request('/kick').catch((e) => {
+    logger.info(snapshotBrief, 'Worker kicked!', e)
+  })
 }
 
 const onStateTransition = async (fromState, toState, context) => {
   const { workerBrief } = context.stateMachine.rootStateMachine.workerContext
-  context.stateMachine.rootStateMachine.workerContext.errorMessage = `State changed from ${fromState} to ${toState}`
+  context.stateMachine.rootStateMachine.workerContext.message = `State changed from ${fromState} to ${toState}`
   logger.debug(workerBrief, 'State changed.')
   context.stateMachine.rootStateMachine.workerContext.stateMachineState = toState
 }

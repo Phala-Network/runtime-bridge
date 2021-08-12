@@ -97,7 +97,7 @@ export const initRuntime = async (
       longs: Number,
     })
     Object.assign(initInfo, res)
-    workerContext.errorMessage = 'Runtime already initialized.'
+    workerContext.message = 'Runtime already initialized.'
     logger.debug(workerBrief, 'Already initialized.', res)
   } else {
     const { genesisState, bridgeGenesisInfo } = appContext.genesis
@@ -121,7 +121,7 @@ export const initRuntime = async (
     })
 
     Object.assign(initInfo, res)
-    workerContext.errorMessage = 'Runtime initialized.'
+    workerContext.message = 'Runtime initialized.'
     $logger.debug(workerBrief, `Initialized pRuntime.`)
   }
 
@@ -180,10 +180,10 @@ export const registerWorker = async (runtime, forceRegister = false) => {
       await wait(24000)
       return await waitUntilWorkerHasInitialScore() // using `return await` for node 14's bad behavior
     }
-    workerContext.errorMessage = 'waitUntilWorkerHasInitialScore'
+    workerContext.message = 'waitUntilWorkerHasInitialScore'
     logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore')
     await waitUntilWorkerHasInitialScore()
-    workerContext.errorMessage = 'waitUntilWorkerHasInitialScore done.'
+    workerContext.message = 'waitUntilWorkerHasInitialScore done.'
     logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore done.')
 
     await dispatchTx({

@@ -10,7 +10,9 @@ const getWorkerStates = (ids, context) =>
       paraBlockDispatchedTo: syncStatus?.paraBlockDispatchedTo,
       worker: w.snapshotBrief,
       publicKey: runtimeInfo.publicKey,
-      lastErrorMessage: w.errorMessage,
+      lastMessage: w.message,
+      minerAccountId: w.onChainState?.accountId?.toString(),
+      minerInfoJson: JSON.stringify(w.onChainState?.minerInfo || {}),
     }
   })
 

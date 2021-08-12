@@ -1,6 +1,6 @@
 import { BN_1PHA } from '../utils/constants'
 import { UPool } from '../io/worker'
-import { keyring } from '../utils/api'
+import { keyring, phalaApi } from '../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'
 import PQueue from 'p-queue'
@@ -58,7 +58,6 @@ export const createWorkerContext = async (worker, context) => {
     ...snapshotBrief,
     ...poolSnapshot,
   })
-  const onChainState = await subscribeOnChainState(snapshot)
   const stateMachine = await _stateMachine.start()
   logger.info('Starting worker context...', snapshotBrief)
 
@@ -81,7 +80,7 @@ export const createWorkerContext = async (worker, context) => {
     stakeBn,
     worker: snapshot,
     workerBrief: snapshotBrief,
-    onChainState,
+    onChainState: null,
     stateMachine,
     runtime: null,
     innerTxQueue,
@@ -96,14 +95,14 @@ export const createWorkerContext = async (worker, context) => {
         'Worker stateMachineState changed.'
       )
     },
-    get errorMessage() {
+    get message() {
       if (!messages.length) {
         return ''
       }
       const m = messages[messages.length - 1]
       return `${m.timestamp} - ${m.message}`
     },
-    set errorMessage(message) {
+    set message(message) {
       messages.push({ message, timestamp: Date.now() })
     },
 
@@ -120,23 +119,71 @@ export const createWorkerContext = async (worker, context) => {
   return workerContext
 }
 
-const subscribeOnChainState = async (worker) => {
-  // TODO
-  return {
-    worker,
-    unsubscribe: async () => {},
+export const subscribeOnChainState = async (workerContext) => {
+  let shouldStop = false
+
+  const { runtime } = workerContext
+  const { initInfo } = runtime
+  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+
+  const ret = {
+    publicKey,
+    accountId: '',
+    minerInfo: null,
+    _unsubscribeMinerInfo: null,
+    unsubscribe: () => Promise.all(unFns.map((i) => i())),
   }
+
+  const unFns = [
+    () => {
+      shouldStop = true
+      ret._unsubscribeMinerInfo?.()
+    },
+  ]
+  unFns.push(
+    await phalaApi.query.phalaMining.workerBindings(
+      publicKey,
+      async (account) => {
+        if (shouldStop) {
+          return
+        }
+        ret.accountId = account.unwrapOrDefault().toString()
+        if (account.isSome) {
+          ret._unsubscribeMinerInfo?.()
+          ret._unsubscribeMinerInfo = await phalaApi.query.phalaMining.miners(
+            ret.accountId,
+            (minerInfo) => {
+              if (shouldStop) {
+                ret._unsubscribeMinerInfo?.()
+                return
+              }
+              ret.minerInfo = minerInfo.unwrapOrDefault()
+            }
+          )
+        } else {
+          ret.minerInfo = (
+            await phalaApi.query.phalaMining.miners(ret.accountId)
+          ).unwrapOrDefault()
+        }
+      }
+    )
+  )
+  return ret
 }
 
-export const destroyWorkerContext = async (workerContext) => {
+export const destroyWorkerContext = async (
+  workerContext,
+  shouldKick = false
+) => {
   workerContext.innerTxQueue.clear()
-  await workerContext.stateMachine.handle(EVENTS.SHOULD_KICK)
-  await workerContext.onChainState.unsubscribe()
+  if (shouldKick) {
+    await workerContext.stateMachine.handle(EVENTS.SHOULD_KICK)
+  }
+  await workerContext.onChainState?.unsubscribe?.()
   if (workerContext.runtime) {
     clearInterval(workerContext.runtime.updateInfoInterval)
-    if (workerContext.runtime.stopSync) {
-      workerContext.runtime.stopSync()
-    }
+    workerContext.runtime.stopSync?.()
+    workerContext.runtime.stopSyncMessage?.()
   }
 }
 

@@ -45,15 +45,13 @@ const addWorker = async (worker, context) => {
 }
 
 const deleteWorker = async (worker, context) => {
-  await destroyWorkerContext(worker, context)
+  await destroyWorkerContext(context.workerContexts[worker.uuid], true)
   context.workerContexts.delete(worker.uuid)
-  const { id, nickname, phalaSs58Address, runtimeEndpoint } = worker
+  const { id, nickname } = worker
   logger.debug(
     {
       id,
       nickname,
-      phalaSs58Address,
-      runtimeEndpoint,
     },
     'Stopped worker lifecycle.'
   )
