@@ -4,6 +4,7 @@ import { keyring, phalaApi } from '../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'
 import PQueue from 'p-queue'
+import stateMachine from './state_machine'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../utils/logger'
 
@@ -158,6 +159,9 @@ export const subscribeOnChainState = async (workerContext) => {
                 return
               }
               ret.minerInfo = minerInfo.unwrapOrDefault()
+              if (ret.minerInfo.state.isMiningUnresponsive) {
+                workerContext.message = 'Notice: worker unresponsive!'
+              }
             }
           )
         } else {

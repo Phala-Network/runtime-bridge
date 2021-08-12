@@ -17,6 +17,7 @@ import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
+import wait from '../utils/wait'
 const Status = prb.WorkerState.Status
 const StatusEnumValues = toEnum(Object.keys(Status))
 
@@ -100,8 +101,21 @@ const onSynched = async (fromState, toState, context) => {
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const { runtime } = context.stateMachine.rootStateMachine.workerContext
+  const {
+    runtime,
+    onChainState,
+  } = context.stateMachine.rootStateMachine.workerContext
   const { initInfo, rpcClient } = runtime
+
+  await wait(12000) // wait for onChainState to be synched
+  if (
+    onChainState.minerInfo.state.isMiningIdle ||
+    onChainState.minerInfo.state.isMiningActive ||
+    onChainState.minerInfo.state.isMiningUnresponsive
+  ) {
+    context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+  }
+
   context.stateMachine.rootStateMachine.workerContext.message =
     'Ensuring registration on chain...'
   let res = await rpcClient.getRuntimeInfo({})
@@ -114,6 +128,19 @@ const onPreMining = async (fromState, toState, context) => {
 
   await registerWorker(runtime, true)
   if (!runtime.skipRa) {
+    context.stateMachine.rootStateMachine.workerContext.message =
+      'Waiting until worker ready...'
+    const waitUntilWorkerReady = async () => {
+      if (
+        onChainState.minerInfo.state.isReady &&
+        onChainState.minerInfo.benchmark.pInstant.toNumber() > 0
+      ) {
+        return
+      }
+      await wait(12000)
+      return await waitUntilWorkerReady()
+    }
+    await waitUntilWorkerReady()
     context.stateMachine.rootStateMachine.workerContext.message =
       'Starting mining on chain...'
     await startMining(context.stateMachine.rootStateMachine.workerContext)
