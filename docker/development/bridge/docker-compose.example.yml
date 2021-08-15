@@ -19,7 +19,7 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_MAIN_CHAIN_ENDPOINT=
+      - PHALA_MAIN_CHAIN_ENDPOINT=ws://path.to.parent.node
       - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
@@ -36,7 +36,7 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_MAIN_CHAIN_ENDPOINT=
+      - PHALA_MAIN_CHAIN_ENDPOINT=ws://path.to.parent.node
       - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
@@ -53,7 +53,7 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_MAIN_CHAIN_ENDPOINT=
+      - PHALA_MAIN_CHAIN_ENDPOINT=ws://path.to.parent.node
       - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
