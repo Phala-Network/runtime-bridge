@@ -1,7 +1,7 @@
 import { DB_WORKER, setupDb } from '../io/db'
 import { TX_QUEUE_SIZE } from '../utils/constants'
 import { setupPhalaApi } from '../utils/api'
-import createTradeQueue, { createSubQueue } from '../utils/trade_queue'
+import createTradeQueue, { createSubQueue } from './trade_queue'
 import env from '../utils/env'
 import logger from '../utils/logger'
 import * as actions from './actions'
@@ -22,7 +22,7 @@ const start = async () => {
   }
 
   txQueue.process(TX_QUEUE_SIZE, async (job) => {
-    $logger.info(job.data, `Processing job #${job.id}...`)
+    $logger.info({ action: job.data.action }, `Processing job #${job.id}...`)
 
     const { pid } = job.data.payload
 
@@ -48,8 +48,6 @@ const start = async () => {
     }
   })
   logger.info('Now accepting incoming transaction requests...')
-
-  return
 }
 
 export default start

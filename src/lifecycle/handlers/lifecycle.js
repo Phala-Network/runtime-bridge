@@ -1,18 +1,18 @@
 const getWorkerStates = (ids, context) =>
   ids.map((id) => {
     const w = context.workerContexts.get(id)
-    const { runtimeInfo, info, syncStatus } = w.runtime
+    const { runtimeInfo, info, syncStatus } = w?.runtime || {}
     return {
-      status: w.stateMachineState,
-      initialized: info.initialized,
+      status: w?.stateMachineState,
+      initialized: info?.initialized,
       parentHeaderSynchedTo: syncStatus?.parentHeaderSynchedTo,
       paraHeaderSynchedTo: syncStatus?.paraHeaderSynchedTo,
       paraBlockDispatchedTo: syncStatus?.paraBlockDispatchedTo,
-      worker: w.snapshotBrief,
-      publicKey: runtimeInfo.publicKey,
-      lastMessage: w.message,
-      minerAccountId: w.onChainState?.accountId?.toString(),
-      minerInfoJson: JSON.stringify(w.onChainState?.minerInfo || {}),
+      worker: w?.snapshotBrief,
+      publicKey: runtimeInfo?.publicKey,
+      lastMessage: w?.message,
+      minerAccountId: w?.onChainState?.accountId?.toString(),
+      minerInfoJson: JSON.stringify(w?.onChainState?.minerInfo || {}),
     }
   })
 

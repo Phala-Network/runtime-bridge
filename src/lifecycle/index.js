@@ -4,7 +4,7 @@ import { MessageTarget } from '../message/proto'
 import { getGenesis } from '../io/block'
 import { setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
-import createTradeQueue from '../utils/trade_queue'
+import createTradeQueue from '../trade/trade_queue'
 import env from '../utils/env'
 import setupRpc from './rpc'
 

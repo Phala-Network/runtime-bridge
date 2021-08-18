@@ -163,9 +163,6 @@ const onError = async (fromState, toState, context) => {
   )
 
   logger.error(snapshotBrief, context.eventPayload)
-  stopMining(context.stateMachine.rootStateMachine.workerContext).catch((e) => {
-    logger.warn(snapshotBrief, e)
-  })
   context.stateMachine.rootStateMachine.workerContext.message = JSON.stringify(
     context.eventPayload instanceof Error
       ? serializeError(context.eventPayload)
@@ -184,9 +181,6 @@ const onKicked = async (fromState, toState, context) => {
     false
   )
 
-  stopMining(context.stateMachine.rootStateMachine.workerContext).catch((e) => {
-    logger.warn(snapshotBrief, e)
-  })
   runtime.request('/kick').catch((e) => {
     logger.info(snapshotBrief, 'Worker kicked!', e)
   })

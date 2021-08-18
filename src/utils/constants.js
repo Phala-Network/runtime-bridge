@@ -20,6 +20,8 @@ export const APP_MESSAGE_TUNNEL_QUERY_TIMEOUT = 15000
 export const FRNK = '0x46524e4b'
 
 export const TX_QUEUE_SIZE = 200
+export const TX_SUB_QUEUE_SIZE = 200
+
 export const BLOB_MAX_RANGE_COUNT = 800
 export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 200
 
