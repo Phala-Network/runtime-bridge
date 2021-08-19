@@ -112,51 +112,73 @@ const waitForJob = (queueName, job) =>
 
 const sendBatchedTransactions = async (currentJobs, nextNonce) => {
   const operator = currentJobs[0].options.operator
+
   let nonce =
     nextNonce ||
     (
-      await phalaApi.query.system.account(currentJobs[0].options.pool.ss58Phala)
-    ).nonce.toNumber()
+      await phalaApi.rpc.system.accountNextIndex(
+        currentJobs[0].options.pool.ss58Phala
+      )
+    ).toNumber()
+  logger.info('sendBatchedTransactions: accountNextIndex = ' + nonce)
 
   for (const { makeTx, resolve, reject } of currentJobs) {
     try {
-      await makeTx()
-        .signAndSend(operator, { nonce }, (result) => {
-          const { status, dispatchError } = result
-          try {
-            if (status.isUsurped || status.isDropped || status.isInvalid) {
-              return reject(`${status}`)
-            }
-            if (status.isInBlock) {
-              if (dispatchError) {
-                if (dispatchError.isModule) {
-                  const decoded = phalaApi.registry.findMetaError(
-                    dispatchError.asModule
-                  )
-                  const { documentation, name, section } = decoded
-
-                  return reject(
-                    new Error(`${section}.${name}: ${documentation?.join(' ')}`)
-                  )
-                } else {
-                  return reject(new Error(dispatchError.toString()))
-                }
-              } else {
-                return resolve(`${status}`)
-              }
-            }
-          } catch (e) {
-            reject(e)
-          }
-        })
-        .catch(reject)
-      nonce += 1
+      const txs = makeTx()
+      const promises = []
+      for (const tx of txs) {
+        promises.push(sendTx(tx, operator, { nonce }))
+        nonce += 1
+      }
+      Promise.all(promises).then(resolve).catch(reject)
     } catch (e) {
       reject(e)
     }
   }
   return nonce
 }
+
+const sendTx = (tx, sender, options) =>
+  new Promise((resolve, reject) => {
+    logger.debug(
+      { nonce: options.nonce, hash: tx.hash.toHex() },
+      'Start sending tx...'
+    )
+    tx.signAndSend(sender, options, (result) => {
+      const { status, dispatchError } = result
+      logger.debug(
+        { nonce: options.nonce },
+        'Tx status changed.',
+        status.toString()
+      )
+
+      try {
+        if (status.isUsurped || status.isDropped || status.isInvalid) {
+          return reject(`${status}`)
+        }
+        if (status.isInBlock) {
+          if (dispatchError) {
+            if (dispatchError.isModule) {
+              const decoded = phalaApi.registry.findMetaError(
+                dispatchError.asModule
+              )
+              const { documentation, name, section } = decoded
+
+              return reject(
+                new Error(`${section}.${name}: ${documentation?.join(' ')}`)
+              )
+            } else {
+              return reject(new Error(dispatchError.toString()))
+            }
+          } else {
+            return resolve(`${status}`)
+          }
+        }
+      } catch (e) {
+        reject(e)
+      }
+    }).catch(reject)
+  })
 
 export default createTradeQueue
 export { waitForJob, createSubQueue, createTradeQueue }
