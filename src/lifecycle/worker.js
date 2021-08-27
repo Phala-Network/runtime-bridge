@@ -184,7 +184,7 @@ export const destroyWorkerContext = async (
   }
   await workerContext.onChainState?.unsubscribe?.()
   if (workerContext.runtime) {
-    clearInterval(workerContext.runtime.updateInfoInterval)
+    workerContext.runtime.shouldStopUpdateInfo = true
     workerContext.runtime.stopSync?.()
     workerContext.runtime.stopSyncMessage?.()
   }

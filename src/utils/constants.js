@@ -19,8 +19,8 @@ export const APP_MESSAGE_TUNNEL_QUERY_TIMEOUT = 15000
 
 export const FRNK = '0x46524e4b'
 
-export const TX_QUEUE_SIZE = 200
-export const TX_SUB_QUEUE_SIZE = 200
+export const TX_QUEUE_SIZE = 1000
+export const TX_SUB_QUEUE_SIZE = 2000
 
 export const BLOB_MAX_RANGE_COUNT = 800
 export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 200
@@ -28,3 +28,5 @@ export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 200
 export const MIN_SYNCHED_DISTANCE = 3
 
 export const BN_1PHA = new BN('1000000000000')
+
+export const PRPC_QUEUE_SIZE = 2000

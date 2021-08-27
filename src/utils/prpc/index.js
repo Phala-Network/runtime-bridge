@@ -1,22 +1,43 @@
+import { PRPC_QUEUE_SIZE } from '../constants'
 import { prpc, pruntime_rpc } from './proto.generated'
+import Queue from 'promise-queue'
 import fetch from 'node-fetch'
 import logger from '../logger'
+import promiseRetry from 'promise-retry'
+
+const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
 
 export const PhactoryAPI = pruntime_rpc.PhactoryAPI
 
-export const createRpcClient = (endpoint) =>
-  PhactoryAPI.create(
+export const createRpcClient = (endpoint) => {
+  return PhactoryAPI.create(
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
       logger.debug({ url, requestData }, 'Sending HTTP request...')
       try {
-        const res = await fetch(url, {
-          method: 'POST',
-          body: requestData,
-          headers: {
-            'Content-Type': 'application/octet-stream',
-          },
-        })
+        const res = await promiseRetry(
+          (retry) =>
+            requestQueue
+              .add(() =>
+                fetch(url, {
+                  method: 'POST',
+                  body: requestData,
+                  headers: {
+                    'Content-Type': 'application/octet-stream',
+                  },
+                })
+              )
+              .catch((...args) => {
+                logger.warn(...args)
+                return retry(...args)
+              }),
+          {
+            retries: 3,
+            minTimeout: 1000,
+            maxTimeout: 30000,
+          }
+        )
+
         const buffer = await res.buffer()
         if (res.status === 200) {
           callback(null, buffer)
@@ -32,3 +53,4 @@ export const createRpcClient = (endpoint) =>
     false,
     false
   )
+}

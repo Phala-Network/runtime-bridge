@@ -1,3 +1,4 @@
+import { EVENTS } from './state_machine'
 import { createRpcClient } from '../utils/prpc'
 import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
@@ -5,34 +6,36 @@ import fetch from 'node-fetch'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
 
-const wrapRequest = (endpoint) => async (resource, payload = {}) => {
-  const url = `${endpoint}${resource}`
-  $logger.debug({ url }, 'Sending HTTP request...')
-  const fetchOptions = {
-    method: 'POST',
-    body: payload,
-    headers: {
-      'Content-Type': 'application/octet-stream',
-    },
-  }
-  const res = await fetch(url, fetchOptions)
-  const data = await res.json()
+const wrapRequest =
+  (endpoint) =>
+  async (resource, payload = {}) => {
+    const url = `${endpoint}${resource}`
+    $logger.debug({ url }, 'Sending HTTP request...')
+    const fetchOptions = {
+      method: 'POST',
+      body: payload,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+    const res = await fetch(url, fetchOptions)
+    const data = await res.json()
 
-  if (data.status === 'ok') {
-    $logger.debug({ url }, 'Receiving...')
-    return {
+    if (data.status === 'ok') {
+      $logger.debug({ url }, 'Receiving...')
+      return {
+        ...data,
+        payload: JSON.parse(data.payload),
+      }
+    }
+
+    $logger.warn({ url, data }, 'Receiving with error...')
+    throw {
       ...data,
       payload: JSON.parse(data.payload),
+      isRuntimeReturnedError: true,
     }
   }
-
-  $logger.warn({ url, data }, 'Receiving with error...')
-  throw {
-    ...data,
-    payload: JSON.parse(data.payload),
-    isRuntimeReturnedError: true,
-  }
-}
 
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, rpcClient } = runtime
@@ -71,6 +74,7 @@ export const setupRuntime = (workerContext) => {
     request,
     rpcClient,
     stopSync: null,
+    shouldStopUpdateInfo: false,
   }
 
   runtime.updateInfo = wrapUpdateInfo(runtime)
@@ -126,7 +130,20 @@ export const initRuntime = async (
   }
 
   await runtime.updateInfo()
-  runtime.updateInfoInterval = setInterval(runtime.updateInfo, 3000)
+
+  const updateInfoLoop = async () => {
+    await runtime.updateInfo()
+    if (runtime.shouldStopUpdateInfo) {
+      return
+    }
+    await wait(3000)
+    return updateInfoLoop()
+  }
+  updateInfoLoop().catch((e) => {
+    logger.error(workerBrief, `Failed to update runtime information!`, e)
+    workerContext.message = 'Failed to update runtime information!'
+    workerContext.stateMachine.handle(EVENTS.ERROR, e)
+  })
   return initInfo
 }
 
@@ -289,8 +306,8 @@ export const startSyncBlob = (runtime) => {
       logger.warn('Unexpected rejection.', error)
       return
     }
+    runtime.shouldStopUpdateInfo = true
     runtime.stopSync()
-    clearInterval(runtime.updateInfoInterval)
     synchedToTargetPromiseFinished = true
     synchedToTargetPromiseReject(error)
   }
@@ -320,6 +337,8 @@ export const startSyncMessage = (runtime) => {
   const stopSyncMessage = () => {
     shouldStop = true
     runtime.stopSyncMessage = null
+    runtime.shouldStopUpdateInfo = true
+
     synchedToTargetPromiseFinished = true
     synchedToTargetPromiseReject(null)
   }
@@ -329,8 +348,8 @@ export const startSyncMessage = (runtime) => {
       logger.warn('Unexpected rejection.', error)
       return
     }
+    runtime.shouldStopUpdateInfo = true
     runtime.stopSyncMessage()
-    clearInterval(runtime.updateInfoInterval)
     synchedToTargetPromiseReject(error)
     synchedToTargetPromiseFinished = true
   }
