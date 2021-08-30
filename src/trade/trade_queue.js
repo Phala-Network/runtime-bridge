@@ -1,4 +1,8 @@
-import { APP_MESSAGE_QUEUE_NAME, TX_SUB_QUEUE_SIZE } from '../utils/constants'
+import {
+  APP_MESSAGE_QUEUE_NAME,
+  TX_SEND_QUEUE_SIZE,
+  TX_SUB_QUEUE_SIZE,
+} from '../utils/constants'
 import { getPool } from '../lifecycle/worker'
 import { phalaApi } from '../utils/api'
 import BeeQueue from 'bee-queue'
@@ -52,7 +56,7 @@ const createSubQueue = ({ redisUrl, pid, actions, txQueue, context }) => {
     let whileCount = 0
     while (
       whileCount < sendQueue.length &&
-      currentJobs.length < TX_SUB_QUEUE_SIZE
+      currentJobs.length < TX_SEND_QUEUE_SIZE
     ) {
       currentJobs.push(sendQueue.shift())
       whileCount += 1
