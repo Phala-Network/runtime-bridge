@@ -79,7 +79,7 @@ const onSynching = async (fromState, toState, context) => {
   await waitUntilSynched()
   context.stateMachine.rootStateMachine.workerContext.message =
     'waitUntilSynched done.'
-  logger.info(workerBrief, 'waitUntilSynched done.')
+  logger.debug(workerBrief, 'waitUntilSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHED)
 }
 
@@ -90,7 +90,7 @@ const onSynched = async (fromState, toState, context) => {
   await waitUntilMqSynched()
   context.stateMachine.rootStateMachine.workerContext.message =
     'waitUntilMqSynched done.'
-  logger.info(workerBrief, 'waitUntilMqSynched done.')
+  logger.debug(workerBrief, 'waitUntilMqSynched done.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
 }
 

@@ -10,7 +10,7 @@ const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
 export const PhactoryAPI = pruntime_rpc.PhactoryAPI
 
 export const createRpcClient = (endpoint) => {
-  const clientQueue = new Queue(1, Infinity)
+  const clientQueue = new Queue(5, Infinity)
   return PhactoryAPI.create(
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`

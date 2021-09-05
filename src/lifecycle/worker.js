@@ -59,7 +59,7 @@ export const createWorkerContext = async (worker, context) => {
     ...poolSnapshot,
   })
   const stateMachine = await _stateMachine.start()
-  logger.info('Starting worker context...', snapshotBrief)
+  logger.debug('Starting worker context...', snapshotBrief)
 
   const messages = []
   let stateMachineState = 'S_INIT'
