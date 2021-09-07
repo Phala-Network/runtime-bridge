@@ -6,12 +6,12 @@
   "type": "module",
   "dependencies": {
     "@pcan/leveldb-viewer": "^0.1.3",
-    "@phala/typedefs": "^0.2.20",
-    "@polkadot/api": "^5.7.1",
+    "@phala/typedefs": "^0.2.23",
+    "@polkadot/api": "^5.8.3",
     "@polkadot/apps-config": "^0.95.1",
     "@polkadot/keyring": "^7.3.1",
     "@polkadot/networks": "^7.3.1",
-    "@polkadot/types": "^5.7.1",
+    "@polkadot/types": "^5.8.3",
     "@polkadot/util": "^7.3.1",
     "@polkadot/util-crypto": "^7.3.1",
     "bee-queue": "^1.4.0",
@@ -35,7 +35,7 @@
     "levelup": "^5.0.1",
     "lodash": "^4.17.21",
     "multileveldown": "github:Level/multileveldown",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.2",
     "p-queue": "^7.1.0",
     "promise-queue": "^2.2.5",
     "promise-retry": "^2.0.1",
@@ -76,7 +76,7 @@
     "prettier": "2.3.2",
     "semver": "^7.3.5",
     "tmp": "^0.2.1",
-    "uglify-js": "^3.14.1"
+    "uglify-js": "^3.14.2"
   },
   "scripts": {
     "proto:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js",

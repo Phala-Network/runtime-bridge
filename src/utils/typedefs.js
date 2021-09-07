@@ -1,6 +1,6 @@
-import { typesChain } from '@phala/typedefs'
+import { khalaDev } from '@phala/typedefs'
 
-export const chainTypes = typesChain['Khala Testnet']
+export const chainTypes = khalaDev
 export const bridgeTypes = {
   StorageProof: 'Vec<Vec<u8>>',
   VersionedAuthorityList: {

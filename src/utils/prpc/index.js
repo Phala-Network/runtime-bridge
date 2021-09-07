@@ -27,6 +27,7 @@ export const createRpcClient = (endpoint) => {
                     headers: {
                       'Content-Type': 'application/octet-stream',
                     },
+                    timeout: 10000,
                   })
                 )
                 .catch((...args) => {
