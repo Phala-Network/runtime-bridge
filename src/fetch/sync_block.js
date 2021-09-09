@@ -262,7 +262,7 @@ const _processGenesis = async (paraId, _parentNumber = 0) => {
       .map((i) => i.event.index.toJSON())
       .indexOf(EVENT_INDEX_NEW_SESSION) > -1
   ) {
-    return _processGenesis(paraId, parentNumber + 1)
+    return _processGenesis(paraId, parentNumber - 1)
   }
 
   const parentHeader = parentBlock.block.header
