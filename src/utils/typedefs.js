@@ -43,7 +43,7 @@ export const bridgeTypes = {
   },
   GenesisInfo: {
     header: 'Header',
-    validators: 'AuthorityList',
+    authoritySet: 'AuthoritySet',
     proof: 'StorageProof',
   },
   SyncCombinedHeadersReq: {

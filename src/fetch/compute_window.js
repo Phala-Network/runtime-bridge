@@ -191,6 +191,7 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
   }
 
   let parentStartBlock, paraStartBlock
+  let lastParentBlockData = null
 
   if (currentWindow) {
     parentStartBlock = currentWindow.parentStartBlock
@@ -202,6 +203,7 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
       const { paraNumber: gParaNumber, parentNumber: gParentNumber } = genesis
       parentStartBlock = gParentNumber + 1
       paraStartBlock = gParaNumber + 1
+      lastParentBlockData = await waitForParentBlock(gParentNumber)
     } else {
       parentStartBlock = lastWindow.parentStopBlock + 1
 
@@ -237,7 +239,8 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
     paraStartBlock,
     context,
     ranges,
-    paraRanges
+    paraRanges,
+    lastParentBlockData
   )
   logger.info(currentWindow, `Processed window.`)
   return walkWindow(windowId + 1, currentWindow)
