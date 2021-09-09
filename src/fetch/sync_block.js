@@ -1,5 +1,9 @@
 import { DB_BLOCK, setupDb } from '../io/db'
-import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
+import {
+  EVENT_INDEX_NEW_SESSION,
+  FRNK,
+  GRANDPA_AUTHORITIES_KEY,
+} from '../utils/constants'
 import { SET_GENESIS, SET_PARA_KNOWN_HEIGHT, SET_PARENT_KNOWN_HEIGHT } from '.'
 import {
   encodeBlockScale,
@@ -233,24 +237,35 @@ const startSyncParent = (start, target) => {
   }
 }
 
-const _processGenesis = async (paraId) => {
+const _processGenesis = async (paraId, _parentNumber = 0) => {
   const paraNumber = 0
-  let parentNumber =
-    (
-      await phalaApi.query.parachainSystem.validationData.at(
-        await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
-      )
-    ).toJSON().relayParentNumber - 1
-
-  if (!(parentNumber > 0)) {
-    parentNumber = 0
+  let parentNumber = _parentNumber
+  if (!parentNumber) {
+    parentNumber =
+      (
+        await phalaApi.query.parachainSystem.validationData.at(
+          await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
+        )
+      ).toJSON().relayParentNumber - 1
   }
 
   const parentHash = await parentApi.rpc.chain.getBlockHash(parentNumber)
   const parentBlock = await parentApi.rpc.chain.getBlock(parentHash)
 
-  const parentHeader = parentBlock.block.header
+  const nextParentHash = await parentApi.rpc.chain.getBlockHash(
+    parentNumber + 1
+  )
+  const nextEvents = await parentApi.query.system.events.at(nextParentHash)
 
+  if (
+    nextEvents
+      .map((i) => i.event.index.toJSON())
+      .indexOf(EVENT_INDEX_NEW_SESSION) > -1
+  ) {
+    return _processGenesis(paraId, parentNumber + 1)
+  }
+
+  const parentHeader = parentBlock.block.header
   const grandpaAuthorities = parentApi.createType(
     'VersionedAuthorityList',
     (await parentApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, parentHash))

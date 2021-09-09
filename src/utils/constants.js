@@ -9,6 +9,7 @@ export const PHALA_ZERO_ACCOUNT =
 
 export const EVENTS_STORAGE_KEY = 'EVENTS_STORAGE_KEY'
 export const GRANDPA_AUTHORITIES_KEY = ':grandpa_authorities'
+export const EVENT_INDEX_NEW_SESSION = '0x0900'
 
 export const PHALA_SS58_FORMAT = 30
 export const ROCOCO_SS58_FORMAT = 42
@@ -23,8 +24,8 @@ export const TX_QUEUE_SIZE = 1000
 export const TX_SUB_QUEUE_SIZE = 50
 export const TX_SEND_QUEUE_SIZE = 30
 
-export const BLOB_MAX_RANGE_COUNT = 800
-export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 200
+export const BLOB_MAX_RANGE_COUNT = 900
+export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 300
 
 export const MIN_SYNCHED_DISTANCE = 3
 
