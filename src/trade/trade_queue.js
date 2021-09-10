@@ -9,8 +9,8 @@ import BeeQueue from 'bee-queue'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
 
-const createSubQueue = ({ redisUrl, pid, actions, txQueue, context }) => {
-  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${pid}`
+const createSubQueue = ({ redisUrl, sender, actions, txQueue, context }) => {
+  const queueName = `${APP_MESSAGE_QUEUE_NAME}__${sender}`
   const ret = new BeeQueue(queueName, {
     redis: {
       url: redisUrl,
@@ -27,10 +27,9 @@ const createSubQueue = ({ redisUrl, pid, actions, txQueue, context }) => {
   const sendQueue = []
 
   ret.process(TX_SUB_QUEUE_SIZE, async (job) => {
-    $logger.info(`Pool #${pid}: Processing job #${job.id}...`)
+    $logger.info(`${sender}: Processing job #${job.id}...`)
 
-    const pool = await getPool(pid, context, true)
-
+    const pool = await getPool(job.data.payload.pid, context, true)
     const actionFn = actions[job.data.action]
 
     return await actionFn(job.data.payload, {
@@ -126,12 +125,22 @@ const sendBatchedTransactions = async (currentJobs, nextNonce) => {
     ).toNumber()
   logger.info('sendBatchedTransactions: accountNextIndex = ' + nonce)
 
-  for (const { makeTx, resolve, reject } of currentJobs) {
+  for (const { makeTx, resolve, reject, options, shouldProxy } of currentJobs) {
     try {
       const txs = makeTx()
       const promises = []
       for (const tx of txs) {
-        promises.push(sendTx(tx, operator, { nonce }))
+        promises.push(
+          sendTx(
+            shouldProxy && options.pool.isProxy
+              ? phalaApi.tx.proxy.proxy(options.pool.realPhalaSs58, null, tx)
+              : tx,
+            operator,
+            {
+              nonce,
+            }
+          )
+        )
         nonce += 1
       }
       Promise.all(promises).then(resolve).catch(reject)

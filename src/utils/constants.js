@@ -31,4 +31,4 @@ export const MIN_SYNCHED_DISTANCE = 3
 
 export const BN_1PHA = new BN('1000000000000')
 
-export const PRPC_QUEUE_SIZE = 65535
+export const PRPC_QUEUE_SIZE = 8192

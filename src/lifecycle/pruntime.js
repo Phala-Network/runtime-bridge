@@ -259,7 +259,7 @@ export const startSyncBlob = (runtime) => {
     if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
       syncStatus.paraHeaderSynchedTo = paraSynchedTo
     }
-
+    await wait(2000)
     return headerSync(parentSynchedTo + 1).catch(doReject)
   }
 
@@ -290,7 +290,7 @@ export const startSyncBlob = (runtime) => {
       return paraBlockSync(dispatchedTo + 1).catch(doReject)
     }
 
-    await wait(2000)
+    await wait(6000)
     return paraBlockSync(next).catch(doReject)
   }
 
@@ -307,7 +307,7 @@ export const startSyncBlob = (runtime) => {
       return
     }
     runtime.shouldStopUpdateInfo = true
-    runtime.stopSync()
+    runtime.stopSync?.()
     synchedToTargetPromiseFinished = true
     synchedToTargetPromiseReject(error)
   }

@@ -1,5 +1,6 @@
 import { DB_WORKER, setupDb } from '../io/db'
 import { TX_QUEUE_SIZE } from '../utils/constants'
+import { getPool } from '../lifecycle/worker'
 import { setupPhalaApi } from '../utils/api'
 import createTradeQueue, { createSubQueue } from './trade_queue'
 import env from '../utils/env'
@@ -25,17 +26,21 @@ const start = async () => {
     $logger.info({ action: job.data.action }, `Processing job #${job.id}...`)
 
     const { pid } = job.data.payload
+    let pool = pools.get(pid)
+    if (!pool) {
+      pool = await getPool(pid, context)
+    }
 
-    let subQueue = subQueues.get(pid)
+    let subQueue = subQueues.get(pool.ss58Phala)
     if (!subQueue) {
       subQueue = createSubQueue({
         redisUrl: env.redisEndpoint,
-        pid,
+        sender: pool.ss58Phala,
         actions,
         txQueue,
         context,
       })
-      subQueues.set(pid, subQueue)
+      subQueues.set(pool.ss58Phala, subQueue)
     }
 
     try {

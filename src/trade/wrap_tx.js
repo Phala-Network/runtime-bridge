@@ -1,4 +1,4 @@
-export const wrapTx = async (makeTx, options) => {
+export const wrapTx = async (makeTx, options, shouldProxy) => {
   let resolve
   let reject
   const promise = new Promise((_resolve, _reject) => {
@@ -11,6 +11,7 @@ export const wrapTx = async (makeTx, options) => {
     resolve,
     reject,
     options,
+    shouldProxy,
   })
 
   return await promise
