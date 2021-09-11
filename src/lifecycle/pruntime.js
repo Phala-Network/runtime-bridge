@@ -109,7 +109,11 @@ export const initRuntime = async (
       skipRa: false,
       encodedGenesisState: genesisState,
       encodedGenesisInfo: bridgeGenesisInfo,
-      encodedOperator: Buffer.from(pool.pair.addressRaw),
+      encodedOperator: Buffer.from(
+        pool.isProxy
+          ? pool.pair.addressRaw
+          : phalaApi.createType('AccountId', pool.realPhalaSs58).toU8a()
+      ),
       isParachain: true,
     }
     if (skipRa) {
