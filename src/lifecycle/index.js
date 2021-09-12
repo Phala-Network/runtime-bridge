@@ -36,6 +36,7 @@ const start = async () => {
     txQueue,
     _dispatchTx: txQueue.dispatch,
   }
+  globalThis.LIFECYCLE_CONTEXT = context;
 
   await setupRpc(context)
 

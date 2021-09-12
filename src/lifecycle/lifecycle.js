@@ -37,7 +37,7 @@ const applyWorker = async (worker, context, result) => {
   }
 }
 
-const addWorker = async (worker, context) => {
+export const addWorker = async (worker, context) => {
   const ret = await createWorkerContext(worker, context)
   context.workerContexts.set(worker.uuid, ret)
 
