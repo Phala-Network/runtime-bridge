@@ -18,8 +18,8 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_PARENT_CHAIN_ENDPOINT=ws://path.to.relaychain.node:9945
-      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node:9944
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   lifecycle:
@@ -35,8 +35,8 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_PARENT_CHAIN_ENDPOINT=ws://path.to.relaychain.node:9945
-      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node:9944
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   trade:
@@ -52,8 +52,8 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_PARENT_CHAIN_ENDPOINT=ws://path.to.relaychain.node:9945
-      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node:9944
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   inspect:
@@ -88,24 +88,32 @@ services:
 
   redis:
     image: redis:alpine
-    command: ["redis-server", "--appendonly", "no"]
+    command: ["redis-server", "--appendonly", "no", '--save', '']
     restart: always
     hostname: redis
     ports:
       - "63791:6379"
 
+  arena:
+    image: phalanetwork/prb:latest
+    hostname: trade
+    depends_on:
+      - redis
+      - io
+    volumes: *default-volume-config
+    environment:
+      - PHALA_MODULE=utils/arena
+      - NODE_ENV=testing
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
+      - PHALA_LOGGER_LEVEL=debug
+    ports:
+      - "4567:4567"
+
   monitor:
     image: phalanetwork/prb-monitor:latest
     hostname: monitor
     environment:
-      - REDIS_ENDPOINT=redis://redis:6379
+      - "REDIS_ENDPOINT=redis://redis:6379"
     ports:
       - "3000:3000"
-
-  node:
-    image: phalanetwork/khala-dev-node
-    hostname: node
-    volumes:
-      - ./data/node:/root/data
-    environment:
-      - NODE_ROLE=MINER

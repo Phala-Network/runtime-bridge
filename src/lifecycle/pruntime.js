@@ -111,8 +111,8 @@ export const initRuntime = async (
       encodedGenesisInfo: bridgeGenesisInfo,
       encodedOperator: Buffer.from(
         pool.isProxy
-          ? pool.pair.addressRaw
-          : phalaApi.createType('AccountId', pool.realPhalaSs58).toU8a()
+          ? phalaApi.createType('AccountId', pool.realPhalaSs58).toU8a()
+          : pool.pair.addressRaw
       ),
       isParachain: true,
     }
