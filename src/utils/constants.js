@@ -22,7 +22,7 @@ export const FRNK = '0x46524e4b'
 
 export const TX_QUEUE_SIZE = 1000
 export const TX_SUB_QUEUE_SIZE = 50
-export const TX_SEND_QUEUE_SIZE = 30
+export const TX_SEND_QUEUE_SIZE = 80
 
 export const BLOB_MAX_RANGE_COUNT = 900
 export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 300

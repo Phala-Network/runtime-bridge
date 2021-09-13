@@ -263,7 +263,7 @@ export const startSyncBlob = (runtime) => {
     if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
       syncStatus.paraHeaderSynchedTo = paraSynchedTo
     }
-    await wait(2000)
+    await wait(0)
     return headerSync(parentSynchedTo + 1).catch(doReject)
   }
 
@@ -352,10 +352,8 @@ export const startSyncMessage = (runtime) => {
       logger.warn('Unexpected rejection.', error)
       return
     }
-    runtime.shouldStopUpdateInfo = true
-    runtime.stopSyncMessage()
-    synchedToTargetPromiseReject(error)
-    synchedToTargetPromiseFinished = true
+    logger.warn(workerBrief, 'Error occurred when synching mq...', error)
+    return startSyncMqEgress().catch(doReject)
   }
 
   runtime.stopSyncMessage = stopSyncMessage

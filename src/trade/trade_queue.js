@@ -9,6 +9,8 @@ import BeeQueue from 'bee-queue'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
 
+export class TxTimeOutError extends Error {}
+
 const createSubQueue = ({ redisUrl, sender, actions, txQueue, context }) => {
   const queueName = `${APP_MESSAGE_QUEUE_NAME}__${sender}`
   const ret = new BeeQueue(queueName, {
@@ -47,7 +49,7 @@ const createSubQueue = ({ redisUrl, sender, actions, txQueue, context }) => {
     }
 
     if (!sendQueue.length) {
-      await wait(6000)
+      await wait(1000)
       return await processSendQueue(_nextNonce)
     }
 
@@ -152,45 +154,66 @@ const sendBatchedTransactions = async (currentJobs, nextNonce) => {
 }
 
 const sendTx = (tx, sender, options) =>
-  new Promise((resolve, reject) => {
+  // eslint-disable-next-line no-async-promise-executor
+  new Promise(async (resolve, reject) => {
     logger.debug(
       { nonce: options.nonce, hash: tx.hash.toHex() },
       'Start sending tx...'
     )
-    tx.signAndSend(sender, options, (result) => {
-      const { status, dispatchError } = result
-      logger.debug(
-        { nonce: options.nonce },
-        'Tx status changed.',
-        status.toString()
-      )
+    let timeout
+    const clearCurrentTimeout = () => clearTimeout(timeout)
+    const unsub = await tx
+      .signAndSend(sender, options, (result) => {
+        const { status, dispatchError } = result
+        logger.debug(
+          { nonce: options.nonce },
+          'Tx status changed.',
+          status.toString()
+        )
 
-      try {
-        if (status.isUsurped || status.isDropped || status.isInvalid) {
-          return reject(`${status}`)
-        }
-        if (status.isInBlock) {
-          if (dispatchError) {
-            if (dispatchError.isModule) {
-              const decoded = phalaApi.registry.findMetaError(
-                dispatchError.asModule
-              )
-              const { documentation, name, section } = decoded
-
-              return reject(
-                new Error(`${section}.${name}: ${documentation?.join(' ')}`)
-              )
-            } else {
-              return reject(new Error(dispatchError.toString()))
-            }
-          } else {
-            return resolve(`${status}`)
+        try {
+          if (status.isUsurped || status.isDropped || status.isInvalid) {
+            unsub()
+            clearCurrentTimeout()
+            return reject(`${status}`)
           }
+          if (status.isInBlock) {
+            if (dispatchError) {
+              if (dispatchError.isModule) {
+                const decoded = phalaApi.registry.findMetaError(
+                  dispatchError.asModule
+                )
+                const { documentation, name, section } = decoded
+
+                clearCurrentTimeout()
+                unsub()
+                return reject(
+                  new Error(`${section}.${name}: ${documentation?.join(' ')}`)
+                )
+              } else {
+                clearCurrentTimeout()
+                unsub()
+                return reject(new Error(dispatchError.toString()))
+              }
+            } else {
+              clearCurrentTimeout()
+              unsub()
+              return resolve(`${status}`)
+            }
+          }
+        } catch (e) {
+          unsub()
+          reject(e)
         }
-      } catch (e) {
-        reject(e)
-      }
-    }).catch(reject)
+      })
+      .catch(() => {
+        clearCurrentTimeout()
+        reject()
+      })
+    setTimeout(() => {
+      unsub()
+      reject(new TxTimeOutError())
+    }, 5 * 60000)
   })
 
 export default createTradeQueue
