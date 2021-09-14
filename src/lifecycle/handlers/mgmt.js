@@ -55,6 +55,7 @@ const requestCreateWorker = async (message) => {
   await UWorker.createItems(input)
   return returnAllWorkers()
 }
+
 const requestUpdateWorker = async (message) => {
   const items = await Promise.all(
     message.content.requestUpdateWorker.items.map((item) => {
@@ -76,12 +77,8 @@ const requestUpdateWorker = async (message) => {
 const requestRestartWorker = async (message) => {
   const promises = [];
 
-  for (const item of message.content.requestRestartWorker.items) {
-    const idPb = prb.PoolOrWorkerQueryIdentity.fromObject(item.id)
-    const idKey = idPb.identity
-    const idValue = idPb[idKey]
-
-    const worker = await UWorker.getBy(idKey, idValue);
+  for (const uuid of message.content.requestRestartWorker.ids.map((i) => i.uuid)) {
+    const worker = await UWorker.getBy('uuid', uuid);
     const context = globalThis.LIFECYCLE_CONTEXT;
 
     promises.push(addWorker(worker, context));
