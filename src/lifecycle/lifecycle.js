@@ -10,7 +10,7 @@ import wait from '../utils/wait'
 
 const WORKER_ALTER = 'WORKER_ALTER'
 
-const applyWorker = async (worker, context, result) => {
+export const applyWorker = async (worker, context, result) => {
   const { workerContexts } = context
   const workerContext = workerContexts.get(worker.uuid)
   if (!workerContext) {

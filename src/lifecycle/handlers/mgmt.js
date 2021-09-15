@@ -1,7 +1,8 @@
 import { UPool, UWorker } from '../../io/worker'
 import { keyring } from '../../utils/api'
 import { prb } from '../../message/proto.generated'
-import { addWorker } from '../lifecycle'
+import logger from '../../utils/logger'
+import { addWorker, applyWorker } from '../lifecycle'
 import { returnAllWorkers } from './infra'
 
 const applyOwner = (item) => {
@@ -74,6 +75,27 @@ const requestUpdateWorker = async (message) => {
   return returnAllWorkers()
 }
 
+const requestApplyWorkers = async (message) => {
+  const context = globalThis.LIFECYCLE_CONTEXT;
+
+  const result = {
+    added: 0,
+    deleted: 0,
+    updated: 0,
+    _failed: 0,
+  }
+
+  const workers = await UWorker.getAll()
+  for (const w of workers) {
+    await applyWorker(w, context, result).catch((e) => {
+      logger.warn(e)
+      result._failed += 1
+    })
+  }
+
+  return returnAllWorkers()
+}
+
 const requestRestartWorker = async (message) => {
   const promises = [];
 
@@ -95,6 +117,7 @@ export default {
     requestUpdatePool,
     requestCreateWorker,
     requestUpdateWorker,
+    requestApplyWorkers,
     requestRestartWorker,
   },
   plainHandlers: {},
