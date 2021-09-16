@@ -4,7 +4,7 @@ import { PHALA_SS58_FORMAT } from './constants'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import phalaTypes from './typedefs'
 import spec from '@polkadot/apps-config/api/spec/phala'
-import typesChain from '@polkadot/apps-config/api/chain'
+import { typesBundle, typesChain } from '@polkadot/apps-config'
 
 let _phalaApi, _parentApi
 
@@ -35,6 +35,17 @@ const rpc = {
         },
       ],
       type: 'Vec<StorageChanges>',
+    },
+    getMqNextSequence: {
+      description:
+        'Return the next mq sequence number for given sender which take the ready transactions in txpool in count.',
+      params: [
+        {
+          name: 'senderHex',
+          type: 'string', // hex string of scale-encoded `MessageOrigin`
+        },
+      ],
+      type: 'u64',
     },
   },
 }
@@ -86,15 +97,9 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
     throw new Error('Parent API already created!')
   }
 
-  const phalaProvider = new WsProvider(endpoint)
+  const parentProvider = new WsProvider(endpoint)
   const parentApi = await ApiPromise.create({
-    provider: phalaProvider,
-    types: phalaTypes,
-    typesChain: {
-      ...typesChain,
-      ...phalaTypesChain,
-    },
-    typesBundle: { spec },
+    provider: parentProvider,
     rpc,
   })
 

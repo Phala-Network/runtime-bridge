@@ -160,9 +160,19 @@ const sendTx = (tx, sender, options) =>
       { nonce: options.nonce, hash: tx.hash.toHex() },
       'Start sending tx...'
     )
-    let timeout
+    let unsub
+    const doUnsub = (reason) => {
+      unsub?.()
+      clearCurrentTimeout()
+      return reject(reason)
+    }
+    let timeout = setTimeout(() => {
+      unsub()
+      reject(new TxTimeOutError())
+    }, 5 * 60000)
     const clearCurrentTimeout = () => clearTimeout(timeout)
-    const unsub = await tx
+
+    unsub = await tx
       .signAndSend(sender, options, (result) => {
         const { status, dispatchError } = result
         logger.debug(
@@ -173,9 +183,7 @@ const sendTx = (tx, sender, options) =>
 
         try {
           if (status.isUsurped || status.isDropped || status.isInvalid) {
-            unsub()
-            clearCurrentTimeout()
-            return reject(`${status}`)
+            return doUnsub(`${status}`)
           }
           if (status.isInBlock) {
             if (dispatchError) {
@@ -185,35 +193,25 @@ const sendTx = (tx, sender, options) =>
                 )
                 const { documentation, name, section } = decoded
 
-                clearCurrentTimeout()
-                unsub()
-                return reject(
-                  new Error(`${section}.${name}: ${documentation?.join(' ')}`)
+                return doUnsub(
+                  `${section}.${name}: ${documentation?.join(' ')}`
                 )
               } else {
-                clearCurrentTimeout()
-                unsub()
-                return reject(new Error(dispatchError.toString()))
+                doUnsub(new Error(dispatchError.toString()))
               }
             } else {
               clearCurrentTimeout()
-              unsub()
+              unsub?.()
               return resolve(`${status}`)
             }
           }
         } catch (e) {
-          unsub()
-          reject(e)
+          doUnsub(e)
         }
       })
-      .catch(() => {
-        clearCurrentTimeout()
-        reject()
+      .catch((e) => {
+        doUnsub(e)
       })
-    setTimeout(() => {
-      unsub()
-      reject(new TxTimeOutError())
-    }, 5 * 60000)
   })
 
 export default createTradeQueue
