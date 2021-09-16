@@ -167,9 +167,9 @@ const sendTx = (tx, sender, options) =>
       return reject(reason)
     }
     let timeout = setTimeout(() => {
-      unsub()
+      unsub?.()
       reject(new TxTimeOutError())
-    }, 5 * 60000)
+    }, 3 * 60000)
     const clearCurrentTimeout = () => clearTimeout(timeout)
 
     unsub = await tx

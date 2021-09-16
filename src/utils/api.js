@@ -4,7 +4,7 @@ import { PHALA_SS58_FORMAT } from './constants'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import phalaTypes from './typedefs'
 import spec from '@polkadot/apps-config/api/spec/phala'
-import { typesBundle, typesChain } from '@polkadot/apps-config'
+import typesChain from '@polkadot/apps-config/api/chain'
 
 let _phalaApi, _parentApi
 
@@ -15,6 +15,7 @@ export const keyring = new Keyring({
 
 const typesBundle = {
   spec: {
+    ...spec,
     'phala-node': spec,
     'phale-node': spec,
   },
@@ -63,7 +64,7 @@ const setupPhalaApi = async (endpoint, forceRecreate = false) => {
       ...typesChain,
       ...phalaTypesChain,
     },
-    typesBundle: { spec },
+    typesBundle,
     rpc,
   })
 
@@ -100,6 +101,7 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
   const parentProvider = new WsProvider(endpoint)
   const parentApi = await ApiPromise.create({
     provider: parentProvider,
+    types: phalaTypes,
     rpc,
   })
 
