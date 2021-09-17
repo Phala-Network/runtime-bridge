@@ -1,9 +1,9 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from './constants'
+import { khala } from '@phala/typedefs'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import phalaTypes from './typedefs'
-import spec from '@polkadot/apps-config/api/spec/phala'
 import typesChain from '@polkadot/apps-config/api/chain'
 
 let _phalaApi, _parentApi
@@ -15,9 +15,7 @@ export const keyring = new Keyring({
 
 const typesBundle = {
   spec: {
-    ...spec,
-    'phala-node': spec,
-    'phale-node': spec,
+    khala,
   },
 }
 
@@ -66,6 +64,9 @@ const setupPhalaApi = async (endpoint, forceRecreate = false) => {
     },
     typesBundle,
     rpc,
+    typesAlias: {
+      ChainId: 'u8',
+    },
   })
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
