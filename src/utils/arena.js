@@ -12,6 +12,7 @@ export default async () => {
   const url = process.env.REDIS_ENDPOINT || 'redis://redis:6379/'
 
   const pools = await UPool.getAll()
+  const accounts = [...new Set(pools.map((i) => i.owner.ss58Phala))]
 
   const arena = Arena({
     Bee,
@@ -22,8 +23,8 @@ export default async () => {
         type: 'bee',
         url,
       },
-      ...pools.map((i) => ({
-        name: `prbmq__${i.pid}`,
+      ...accounts.map((i) => ({
+        name: `prbmq__${i}`,
         hostId: 'prb',
         type: 'bee',
         url,

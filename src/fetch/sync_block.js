@@ -1,9 +1,5 @@
 import { DB_BLOCK, setupDb } from '../io/db'
-import {
-  EVENT_INDEX_NEW_SESSION,
-  FRNK,
-  GRANDPA_AUTHORITIES_KEY,
-} from '../utils/constants'
+import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import { SET_GENESIS, SET_PARA_KNOWN_HEIGHT, SET_PARENT_KNOWN_HEIGHT } from '.'
 import {
   encodeBlockScale,
@@ -237,35 +233,22 @@ const startSyncParent = (start, target) => {
   }
 }
 
-const _processGenesis = async (paraId, _parentNumber = 0) => {
+const _processGenesis = async (paraId) => {
   const paraNumber = 0
-  let parentNumber = _parentNumber
-  if (!parentNumber) {
-    parentNumber =
-      (
-        await phalaApi.query.parachainSystem.validationData.at(
-          await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
-        )
-      ).toJSON().relayParentNumber - 1
-  }
+  const parentNumber =
+    (
+      await phalaApi.query.parachainSystem.validationData.at(
+        await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
+      )
+    ).toJSON().relayParentNumber - 1
 
   const parentHash = await parentApi.rpc.chain.getBlockHash(parentNumber)
   const parentBlock = await parentApi.rpc.chain.getBlock(parentHash)
-
-  const nextParentHash = await parentApi.rpc.chain.getBlockHash(
-    parentNumber + 1
-  )
-  const nextEvents = await parentApi.query.system.events.at(nextParentHash)
-
-  if (
-    nextEvents
-      .map((i) => i.event.index.toJSON())
-      .indexOf(EVENT_INDEX_NEW_SESSION) > -1
-  ) {
-    return _processGenesis(paraId, parentNumber - 1)
-  }
-
   const parentHeader = parentBlock.block.header
+
+  const setIdKey = parentApi.query.grandpa.currentSetId.key()
+  const setId = await parentApi.query.grandpa.currentSetId.at(parentHash)
+
   const grandpaAuthorities = parentApi.createType(
     'VersionedAuthorityList',
     (await parentApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, parentHash))
@@ -273,7 +256,7 @@ const _processGenesis = async (paraId, _parentNumber = 0) => {
   )
   const grandpaAuthoritiesStorageProof = (
     await parentApi.rpc.state.getReadProof(
-      [GRANDPA_AUTHORITIES_KEY],
+      [GRANDPA_AUTHORITIES_KEY, setIdKey],
       parentHash
     )
   ).proof
@@ -282,7 +265,10 @@ const _processGenesis = async (paraId, _parentNumber = 0) => {
     parentApi
       .createType('GenesisInfo', {
         header: parentHeader,
-        validators: grandpaAuthorities.authorityList,
+        authoritySet: {
+          authoritySet: grandpaAuthorities.authorityList,
+          setId,
+        },
         proof: grandpaAuthoritiesStorageProof,
       })
       .toU8a()

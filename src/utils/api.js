@@ -15,6 +15,7 @@ export const keyring = new Keyring({
 
 const typesBundle = {
   spec: {
+    ...spec,
     'phala-node': spec,
     'phale-node': spec,
   },
@@ -36,6 +37,17 @@ const rpc = {
       ],
       type: 'Vec<StorageChanges>',
     },
+    getMqNextSequence: {
+      description:
+        'Return the next mq sequence number for given sender which take the ready transactions in txpool in count.',
+      params: [
+        {
+          name: 'senderHex',
+          type: 'string', // hex string of scale-encoded `MessageOrigin`
+        },
+      ],
+      type: 'u64',
+    },
   },
 }
 
@@ -52,7 +64,7 @@ const setupPhalaApi = async (endpoint, forceRecreate = false) => {
       ...typesChain,
       ...phalaTypesChain,
     },
-    typesBundle: { spec },
+    typesBundle,
     rpc,
   })
 
@@ -86,15 +98,10 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
     throw new Error('Parent API already created!')
   }
 
-  const phalaProvider = new WsProvider(endpoint)
+  const parentProvider = new WsProvider(endpoint)
   const parentApi = await ApiPromise.create({
-    provider: phalaProvider,
+    provider: parentProvider,
     types: phalaTypes,
-    typesChain: {
-      ...typesChain,
-      ...phalaTypesChain,
-    },
-    typesBundle: { spec },
     rpc,
   })
 

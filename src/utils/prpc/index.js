@@ -4,6 +4,7 @@ import Queue from 'promise-queue'
 import fetch from 'node-fetch'
 import logger from '../logger'
 import promiseRetry from 'promise-retry'
+import wait from '../wait'
 
 const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
 
@@ -15,6 +16,7 @@ export const createRpcClient = (endpoint) => {
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
       logger.debug({ url, requestData }, 'Sending HTTP request...')
+      await wait(100)
       try {
         const res = await clientQueue.add(() =>
           promiseRetry(

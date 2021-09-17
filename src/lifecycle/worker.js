@@ -21,6 +21,8 @@ export const getPool = async (pidStr, context, forceReload = false) => {
     pid: pidStr,
     ss58Phala: pool.owner.ss58Phala,
     ss58Polkadot: pool.owner.ss58Polkadot,
+    realPhalaSs58: pool.realPhalaSs58,
+    isProxy: !!pool.realPhalaSs58,
   })
   const pair = keyring.addFromJson(JSON.parse(pool.owner.polkadotJson))
   pair.decodePkcs8()

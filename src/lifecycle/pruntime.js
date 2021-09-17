@@ -109,7 +109,11 @@ export const initRuntime = async (
       skipRa: false,
       encodedGenesisState: genesisState,
       encodedGenesisInfo: bridgeGenesisInfo,
-      encodedOperator: Buffer.from(pool.pair.addressRaw),
+      encodedOperator: Buffer.from(
+        pool.isProxy
+          ? phalaApi.createType('AccountId', pool.realPhalaSs58).toU8a()
+          : pool.pair.addressRaw
+      ),
       isParachain: true,
     }
     if (skipRa) {
@@ -259,7 +263,7 @@ export const startSyncBlob = (runtime) => {
     if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
       syncStatus.paraHeaderSynchedTo = paraSynchedTo
     }
-
+    await wait(0)
     return headerSync(parentSynchedTo + 1).catch(doReject)
   }
 
@@ -290,7 +294,7 @@ export const startSyncBlob = (runtime) => {
       return paraBlockSync(dispatchedTo + 1).catch(doReject)
     }
 
-    await wait(2000)
+    await wait(6000)
     return paraBlockSync(next).catch(doReject)
   }
 
@@ -307,7 +311,7 @@ export const startSyncBlob = (runtime) => {
       return
     }
     runtime.shouldStopUpdateInfo = true
-    runtime.stopSync()
+    runtime.stopSync?.()
     synchedToTargetPromiseFinished = true
     synchedToTargetPromiseReject(error)
   }
@@ -348,10 +352,8 @@ export const startSyncMessage = (runtime) => {
       logger.warn('Unexpected rejection.', error)
       return
     }
-    runtime.shouldStopUpdateInfo = true
-    runtime.stopSyncMessage()
-    synchedToTargetPromiseReject(error)
-    synchedToTargetPromiseFinished = true
+    logger.warn(workerBrief, 'Error occurred when synching mq...', error)
+    return startSyncMqEgress().catch(doReject)
   }
 
   runtime.stopSyncMessage = stopSyncMessage

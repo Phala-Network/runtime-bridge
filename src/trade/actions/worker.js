@@ -9,15 +9,24 @@ export const REGISTER_WORKER = async ({ runtimeInfo, attestation }, options) =>
   )
 
 export const ADD_WORKER = async ({ publicKey, pid }, options) =>
-  wrapTx(() => [phalaApi.tx.phalaStakePool.addWorker(pid, publicKey)], options)
+  wrapTx(
+    () => [phalaApi.tx.phalaStakePool.addWorker(pid, publicKey)],
+    options,
+    true
+  )
 
 export const START_MINING = async ({ pid, publicKey, stake }, options) => {
   const stakeBn = new BN(stake)
   return wrapTx(
     () => [phalaApi.tx.phalaStakePool.startMining(pid, publicKey, stakeBn)],
-    options
+    options,
+    true
   )
 }
 
 export const STOP_MINING = async ({ pid, publicKey }, options) =>
-  wrapTx(() => [phalaApi.tx.phalaStakePool.stopMining(pid, publicKey)], options)
+  wrapTx(
+    () => [phalaApi.tx.phalaStakePool.stopMining(pid, publicKey)],
+    options,
+    true
+  )
