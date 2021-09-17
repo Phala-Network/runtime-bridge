@@ -1,6 +1,3 @@
-import { khalaDev } from '@phala/typedefs'
-
-export const chainTypes = khalaDev
 export const bridgeTypes = {
   StorageProof: 'Vec<Vec<u8>>',
   VersionedAuthorityList: {
@@ -55,21 +52,9 @@ export const bridgeTypes = {
   EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
 }
 
-const localOverrides = {
-  WorkerInfo: {
-    pubkey: 'WorkerPublicKey',
-    ecdhPubkey: 'EcdhPublicKey',
-    runtimeVersion: 'u32',
-    lastUpdated: 'u64',
-    operator: 'Option<AccountId>',
-    confidenceLevel: 'u8',
-    initialScore: 'Option<u32>',
-    features: 'Vec<u32>',
-  },
-}
+const localOverrides = {}
 
 export const phalaTypes = {
-  ...chainTypes,
   ...bridgeTypes,
   ...localOverrides,
 }
