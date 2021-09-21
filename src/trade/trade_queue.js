@@ -2,6 +2,7 @@ import {
   APP_MESSAGE_QUEUE_NAME,
   TX_SEND_QUEUE_SIZE,
   TX_SUB_QUEUE_SIZE,
+  TX_TIMEOUT,
 } from '../utils/constants'
 import { getPool } from '../lifecycle/worker'
 import { phalaApi } from '../utils/api'
@@ -169,7 +170,7 @@ const sendTx = (tx, sender, options) =>
     let timeout = setTimeout(() => {
       unsub?.()
       reject(new TxTimeOutError())
-    }, 3 * 60000)
+    }, TX_TIMEOUT)
     const clearCurrentTimeout = () => clearTimeout(timeout)
 
     unsub = await tx

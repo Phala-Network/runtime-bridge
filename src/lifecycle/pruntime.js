@@ -405,17 +405,10 @@ export const startSyncMessage = (runtime) => {
     const promise = new Promise((_resolve) => {
       resolve = _resolve
     })
-    const internalCancelTimeout = setTimeout(() => {
-      if (resolved) {
-        return
-      }
-      resolve(_startSyncMqEgress())
-      resolved = true
-    }, 6 * 60000)
+
     ;(async () => {
       try {
         const shouldStop = await startSyncMqEgress()
-        clearTimeout(internalCancelTimeout)
         if (shouldStop) {
           return
         }
@@ -426,7 +419,6 @@ export const startSyncMessage = (runtime) => {
         resolve(_startSyncMqEgress())
         resolved = true
       } catch (e) {
-        clearTimeout(internalCancelTimeout)
         if (synchedToTargetPromiseFinished) {
           logger.warn(workerBrief, 'Unexpected rejection.', e)
         } else {
