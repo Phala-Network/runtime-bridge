@@ -372,7 +372,7 @@ export const commitParaBlockRange = async (blocks) => {
   await db.put(markKey, Buffer.from([1]))
   await setLastCommittedParaBlock(lastBlockNumber)
   logger.info(
-    `Found range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
+    `Saved range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
   )
 }
 

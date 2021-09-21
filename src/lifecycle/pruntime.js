@@ -333,12 +333,15 @@ export const startSyncMessage = (runtime) => {
   let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
   let synchedToTargetPromiseFinished = false
   let shouldStop = false
+  let loopPromise
+  let attempt = 0
+
   const synchedToTargetPromise = new Promise((resolve, reject) => {
     synchedToTargetPromiseResolve = resolve
     synchedToTargetPromiseReject = reject
   })
 
-  const stopSyncMessage = () => {
+  runtime.stopSyncMessage = () => {
     shouldStop = true
     runtime.stopSyncMessage = null
     runtime.shouldStopUpdateInfo = true
@@ -347,20 +350,9 @@ export const startSyncMessage = (runtime) => {
     synchedToTargetPromiseReject(null)
   }
 
-  const doReject = (error) => {
-    if (synchedToTargetPromiseFinished) {
-      logger.warn('Unexpected rejection.', error)
-      return
-    }
-    logger.warn(workerBrief, 'Error occurred when synching mq...', error)
-    return startSyncMqEgress().catch(doReject)
-  }
-
-  runtime.stopSyncMessage = stopSyncMessage
-
   const startSyncMqEgress = async () => {
     if (shouldStop) {
-      return
+      return true
     }
 
     const messages = phalaApi.createType(
@@ -402,11 +394,45 @@ export const startSyncMessage = (runtime) => {
       }
     }
 
-    await wait(12000)
-    return startSyncMqEgress().catch(doReject)
+    return false
   }
 
-  startSyncMqEgress().catch(doReject)
+  const _startSyncMqEgress = () => {
+    logger.debug({ loopPromise, attempt, ...workerBrief }, 'Synching mq...')
+    attempt += 1
+    let resolve
+    const promise = new Promise((_resolve) => {
+      resolve = _resolve
+    })
+    const internalCancelTimeout = setTimeout(
+      () => resolve(_startSyncMqEgress()),
+      6 * 60000
+    )
+    ;(async () => {
+      try {
+        const shouldStop = await startSyncMqEgress()
+        clearTimeout(internalCancelTimeout)
+        if (shouldStop) {
+          return
+        }
+        await wait(36000)
+        return await _startSyncMqEgress()
+      } catch (e) {
+        clearTimeout(internalCancelTimeout)
+        if (synchedToTargetPromiseFinished) {
+          logger.warn(workerBrief, 'Unexpected rejection.', e)
+        } else {
+          logger.warn(workerBrief, 'Error occurred when synching mq...', e)
+          await wait(12000)
+          return await _startSyncMqEgress()
+        }
+      }
+    })()
+
+    return promise
+  }
+
+  loopPromise = _startSyncMqEgress() // avoid GC
 
   return () => synchedToTargetPromise
 }
