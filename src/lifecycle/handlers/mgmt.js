@@ -46,7 +46,7 @@ const requestUpdatePool = async (message) => {
   )
   await UPool.updateItems(items)
 
-  return returnAllWorkers()
+  return returnAllWorkers() // TODO: return only related
 }
 
 const requestCreateWorker = async (message) => {
@@ -69,7 +69,7 @@ const requestUpdateWorker = async (message) => {
   )
   await UWorker.updateItems(items)
 
-  return returnAllWorkers()
+  return returnAllWorkers() // TODO: return only related
 }
 
 export default {
