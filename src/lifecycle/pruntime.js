@@ -401,13 +401,17 @@ export const startSyncMessage = (runtime) => {
     logger.debug({ loopPromise, attempt, ...workerBrief }, 'Synching mq...')
     attempt += 1
     let resolve
+    let resolved = false
     const promise = new Promise((_resolve) => {
       resolve = _resolve
     })
-    const internalCancelTimeout = setTimeout(
-      () => resolve(_startSyncMqEgress()),
-      6 * 60000
-    )
+    const internalCancelTimeout = setTimeout(() => {
+      if (resolved) {
+        return
+      }
+      resolve(_startSyncMqEgress())
+      resolved = true
+    }, 6 * 60000)
     ;(async () => {
       try {
         const shouldStop = await startSyncMqEgress()
@@ -416,7 +420,11 @@ export const startSyncMessage = (runtime) => {
           return
         }
         await wait(36000)
-        return await _startSyncMqEgress()
+        if (resolved) {
+          return
+        }
+        resolve(_startSyncMqEgress())
+        resolved = true
       } catch (e) {
         clearTimeout(internalCancelTimeout)
         if (synchedToTargetPromiseFinished) {
@@ -424,7 +432,11 @@ export const startSyncMessage = (runtime) => {
         } else {
           logger.warn(workerBrief, 'Error occurred when synching mq...', e)
           await wait(12000)
-          return await _startSyncMqEgress()
+          if (resolved) {
+            return
+          }
+          resolve(_startSyncMqEgress())
+          resolved = true
         }
       }
     })()
