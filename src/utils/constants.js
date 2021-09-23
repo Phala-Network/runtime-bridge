@@ -23,7 +23,7 @@ export const FRNK = '0x46524e4b'
 export const TX_QUEUE_SIZE = 1000
 export const TX_SUB_QUEUE_SIZE = 50
 export const TX_SEND_QUEUE_SIZE = 80
-export const TX_TIMEOUT = 5 * 60 * 1000
+export const TX_TIMEOUT = 8 * 60 * 60 * 1000 // TODO: temp fix, remove later!
 
 export const BLOB_MAX_RANGE_COUNT = 900
 export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 300
@@ -32,4 +32,4 @@ export const MIN_SYNCHED_DISTANCE = 3
 
 export const BN_1PHA = new BN('1000000000000')
 
-export const PRPC_QUEUE_SIZE = 8192
+export const PRPC_QUEUE_SIZE = 32768

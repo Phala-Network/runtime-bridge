@@ -2,40 +2,40 @@ import { EVENTS } from './state_machine'
 import { createRpcClient } from '../utils/prpc'
 import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
-import fetch from 'node-fetch'
+import { requestQueue__blob, runtimeRequest } from '../utils/prpc/request'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
 
-const wrapRequest =
-  (endpoint) =>
-  async (resource, payload = {}) => {
-    const url = `${endpoint}${resource}`
-    $logger.debug({ url }, 'Sending HTTP request...')
-    const fetchOptions = {
-      method: 'POST',
-      body: payload,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-    }
-    const res = await fetch(url, fetchOptions)
-    const data = await res.json()
+const wrapRequest = (endpoint) => async (resource, body) => {
+  const url = `${endpoint}${resource}`
+  $logger.debug({ url }, 'Sending HTTP request...')
+  const res = await runtimeRequest(
+    url,
+    {
+      body,
+      responseType: 'json',
+    },
+    requestQueue__blob
+  )
 
-    if (data.status === 'ok') {
-      $logger.debug({ url }, 'Receiving...')
-      return {
-        ...data,
-        payload: JSON.parse(data.payload),
-      }
-    }
+  const data = res.body
+  const payload = JSON.parse(data.payload)
 
-    $logger.warn({ url, data }, 'Receiving with error...')
-    throw {
+  if (data.status === 'ok') {
+    $logger.debug({ url }, 'Receiving...')
+    return {
       ...data,
-      payload: JSON.parse(data.payload),
-      isRuntimeReturnedError: true,
+      payload,
     }
   }
+
+  $logger.warn({ url, data }, 'Receiving with error...')
+  throw {
+    ...data,
+    payload,
+    isRuntimeReturnedError: true,
+  }
+}
 
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, rpcClient } = runtime

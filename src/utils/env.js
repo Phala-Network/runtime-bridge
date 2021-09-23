@@ -14,6 +14,8 @@ export const ENV_LIST = [
   ['PHALA_DB_HOST', 'dbHost'],
   ['PHALA_DB_PORT_BASE', 'dbPortBase'],
   ['PHALA_DB_TYPE', 'dbType'],
+  ['PHALA_ENABLE_KEEP_ALIVE', 'enableKeepAlive'],
+  ['PHALA_KEEP_ALIVE_TIMEOUT', 'keepAliveTimeout'],
 ]
 
 const _env = {}
@@ -29,4 +31,10 @@ export const shouldSkipRa = env.devSkipRa === 'true'
 export const httpKeepAliveEnabled = env.httpKeepAliveEnabled === 'true'
 export const legacySystemMqEnabled = env.enableLegacySystemMq === 'true'
 export const dbType = env.dbType === 'leveldb' ? LevelDOWN : RocksDB
+export const enableKeepAlive = env.enableKeepAlive
+  ? env.enableKeepAlive === 'true'
+  : false
+export const keepAliveTimeout = env.keepAliveTimeout
+  ? parseInt(env.keepAliveTimeout)
+  : 60000
 export default env

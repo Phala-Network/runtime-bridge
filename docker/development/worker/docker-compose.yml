@@ -7,6 +7,9 @@ services:
     hostname: pruntime
     environment:
       - "ENABLE_KICK_API=1"
+      - ROCKET_KEEP_ALIVE=60
+      - ROCKET_READ_TIMEOUT=60
+      - ROCKET_WRITE_TIMEOUT=60
     volumes:
       - "pruntime-data:/root/data"
     devices:

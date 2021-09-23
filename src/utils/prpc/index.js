@@ -1,12 +1,7 @@
-import { PRPC_QUEUE_SIZE } from '../constants'
 import { prpc, pruntime_rpc } from './proto.generated'
+import { runtimeRequest } from './request'
 import Queue from 'promise-queue'
-import fetch from 'node-fetch'
 import logger from '../logger'
-import promiseRetry from 'promise-retry'
-import wait from '../wait'
-
-const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
 
 export const PhactoryAPI = pruntime_rpc.PhactoryAPI
 
@@ -16,39 +11,18 @@ export const createRpcClient = (endpoint) => {
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
       logger.debug({ url, requestData }, 'Sending HTTP request...')
-      await wait(100)
       try {
         const res = await clientQueue.add(() =>
-          promiseRetry(
-            (retry) =>
-              requestQueue
-                .add(() =>
-                  fetch(url, {
-                    method: 'POST',
-                    body: requestData,
-                    headers: {
-                      'Content-Type': 'application/octet-stream',
-                    },
-                    timeout: 10000,
-                  })
-                )
-                .catch((...args) => {
-                  logger.warn(...args)
-                  return retry(...args)
-                }),
-            {
-              retries: 3,
-              minTimeout: 1000,
-              maxTimeout: 30000,
-            }
-          )
+          runtimeRequest(url, {
+            body: requestData,
+            responseType: 'buffer',
+          })
         )
 
-        const buffer = await res.buffer()
-        if (res.status === 200) {
-          callback(null, buffer)
+        if (res.statusCode === 200) {
+          callback(null, res.rawBody)
         } else {
-          const errPb = prpc.PrpcError.decode(buffer)
+          const errPb = prpc.PrpcError.decode(res.rawBody)
           logger.warn(prpc.PrpcError.toObject(errPb))
           callback(new Error(errPb.message))
         }

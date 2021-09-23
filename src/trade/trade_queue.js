@@ -169,7 +169,7 @@ const sendTx = (tx, sender, options) =>
     }
     let timeout = setTimeout(() => {
       unsub?.()
-      reject(new TxTimeOutError())
+      reject(new TxTimeOutError('Timeout!'))
     }, TX_TIMEOUT)
     const clearCurrentTimeout = () => clearTimeout(timeout)
 
