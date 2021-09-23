@@ -1,49 +1,18 @@
 import { EVENTS } from './state_machine'
-import { createRpcClient, keepaliveAgent, requestQueue } from '../utils/prpc'
+import { createRpcClient } from '../utils/prpc'
 import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
 import { phalaApi } from '../utils/api'
-import got from 'got'
+import { runtimeRequest } from '../utils/prpc/request'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
 
 const wrapRequest = (endpoint) => async (resource, body) => {
   const url = `${endpoint}${resource}`
   $logger.debug({ url }, 'Sending HTTP request...')
-  const res = await requestQueue.add(() =>
-    got(url, {
-      method: 'POST',
-      body,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-      timeout: 30000,
-      retry: {
-        limit: 5,
-        methods: ['POST'],
-        errorCodes: [
-          'ETIMEDOUT',
-          'ECONNRESET',
-          'EADDRINUSE',
-          'ECONNREFUSED',
-          'EPIPE',
-          'ENOTFOUND',
-          'ENETUNREACH',
-          'EAI_AGAIN',
-        ],
-      },
-      agent: {
-        http: keepaliveAgent,
-      },
-      hooks: {
-        beforeRetry: [
-          (options, error, retryCount) => {
-            logger.warn({ retryCount, url }, error)
-          },
-        ],
-      },
-      responseType: 'json',
-    })
-  )
+  const res = await runtimeRequest(url, {
+    body,
+    responseType: 'json',
+  })
 
   const data = res.body
   const payload = JSON.parse(data.payload)
