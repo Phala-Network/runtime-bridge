@@ -1,14 +1,24 @@
 import { PRPC_QUEUE_SIZE } from '../constants'
+import { enableKeepAlive, keepAliveTimeout } from '../env'
 import { prpc, pruntime_rpc } from './proto.generated'
+import HttpAgent from 'agentkeepalive'
 import Queue from 'promise-queue'
-import fetch from 'node-fetch'
+import got from 'got'
 import logger from '../logger'
-import promiseRetry from 'promise-retry'
 import wait from '../wait'
 
-const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
+export const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
+
+const keepAliveOptions = {
+  keepAlive: enableKeepAlive,
+  maxFreeSockets: 12888,
+  freeSocketTimeout: keepAliveTimeout,
+}
+
+logger.info(keepAliveOptions, 'keepAliveOptions')
 
 export const PhactoryAPI = pruntime_rpc.PhactoryAPI
+export const keepaliveAgent = new HttpAgent(keepAliveOptions)
 
 export const createRpcClient = (endpoint) => {
   const clientQueue = new Queue(5, Infinity)
@@ -16,39 +26,49 @@ export const createRpcClient = (endpoint) => {
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
       logger.debug({ url, requestData }, 'Sending HTTP request...')
-      await wait(100)
       try {
         const res = await clientQueue.add(() =>
-          promiseRetry(
-            (retry) =>
-              requestQueue
-                .add(() =>
-                  fetch(url, {
-                    method: 'POST',
-                    body: requestData,
-                    headers: {
-                      'Content-Type': 'application/octet-stream',
-                    },
-                    timeout: 10000,
-                  })
-                )
-                .catch((...args) => {
-                  logger.warn(...args)
-                  return retry(...args)
-                }),
-            {
-              retries: 3,
-              minTimeout: 1000,
-              maxTimeout: 30000,
-            }
+          requestQueue.add(() =>
+            got(url, {
+              method: 'POST',
+              body: requestData,
+              headers: {
+                'Content-Type': 'application/octet-stream',
+              },
+              timeout: 30000,
+              retry: {
+                limit: 5,
+                methods: ['POST'],
+                errorCodes: [
+                  'ETIMEDOUT',
+                  'ECONNRESET',
+                  'EADDRINUSE',
+                  'ECONNREFUSED',
+                  'EPIPE',
+                  'ENOTFOUND',
+                  'ENETUNREACH',
+                  'EAI_AGAIN',
+                ],
+              },
+              agent: {
+                http: keepaliveAgent,
+              },
+              hooks: {
+                beforeRetry: [
+                  (options, error, retryCount) => {
+                    logger.warn({ retryCount, url }, error)
+                  },
+                ],
+              },
+              responseType: 'buffer',
+            })
           )
         )
 
-        const buffer = await res.buffer()
-        if (res.status === 200) {
-          callback(null, buffer)
+        if (res.statusCode === 200) {
+          callback(null, res.rawBody)
         } else {
-          const errPb = prpc.PrpcError.decode(buffer)
+          const errPb = prpc.PrpcError.decode(res.rawBody)
           logger.warn(prpc.PrpcError.toObject(errPb))
           callback(new Error(errPb.message))
         }
