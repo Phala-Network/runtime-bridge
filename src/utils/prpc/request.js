@@ -6,6 +6,7 @@ import got from 'got'
 import logger from '../logger'
 
 export const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
+export const requestQueue__blob = new Queue(PRPC_QUEUE_SIZE, Infinity)
 
 const keepAliveOptions = {
   keepAlive: enableKeepAlive,
@@ -48,7 +49,7 @@ const RUNTIME_REQUEST_BASE_OPTIONS = Object.freeze({
   },
 })
 
-export const runtimeRequest = (url, options) =>
-  requestQueue.add(() =>
+export const runtimeRequest = (url, options, queue = requestQueue) =>
+  queue.add(() =>
     got(url, Object.assign(options, RUNTIME_REQUEST_BASE_OPTIONS))
   )
