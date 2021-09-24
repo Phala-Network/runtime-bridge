@@ -334,7 +334,6 @@ export const startSyncMessage = (runtime) => {
   let synchedToTargetPromiseFinished = false
   let shouldStop = false
   let loopPromise
-  let attempt = 0
 
   const synchedToTargetPromise = new Promise((resolve, reject) => {
     synchedToTargetPromiseResolve = resolve
@@ -352,6 +351,8 @@ export const startSyncMessage = (runtime) => {
 
   const startSyncMqEgress = async () => {
     if (shouldStop) {
+      synchedToTargetPromiseFinished = true
+      synchedToTargetPromiseReject(null)
       return true
     }
 
@@ -397,43 +398,27 @@ export const startSyncMessage = (runtime) => {
     return false
   }
 
-  const _startSyncMqEgress = () => {
+  const _startSyncMqEgress = async (_attempt = 0) => {
+    const attempt = _attempt + 1
     logger.debug({ loopPromise, attempt, ...workerBrief }, 'Synching mq...')
-    attempt += 1
-    let resolve
-    let resolved = false
-    const promise = new Promise((_resolve) => {
-      resolve = _resolve
-    })
 
-    ;(async () => {
-      try {
-        const shouldStop = await startSyncMqEgress()
-        if (shouldStop) {
-          return
-        }
-        await wait(36000)
-        if (resolved) {
-          return
-        }
-        resolve(_startSyncMqEgress())
-        resolved = true
-      } catch (e) {
-        if (synchedToTargetPromiseFinished) {
-          logger.warn(workerBrief, 'Unexpected rejection.', e)
-        } else {
-          logger.warn(workerBrief, 'Error occurred when synching mq...', e)
-          await wait(12000)
-          if (resolved) {
-            return
-          }
-          resolve(_startSyncMqEgress())
-          resolved = true
-        }
+    try {
+      const _shouldStop = await startSyncMqEgress()
+      if (_shouldStop) {
+        return
       }
-    })()
-
-    return promise
+      await wait(36000)
+      return await _startSyncMqEgress(attempt)
+    } catch (e) {
+      if (synchedToTargetPromiseFinished) {
+        logger.warn(workerBrief, 'Unexpected rejection.', e)
+        return await _startSyncMqEgress(attempt)
+      } else {
+        logger.warn(workerBrief, 'Error occurred when synching mq...', e)
+        await wait(12000)
+        return await _startSyncMqEgress(attempt)
+      }
+    }
   }
 
   loopPromise = _startSyncMqEgress() // avoid GC

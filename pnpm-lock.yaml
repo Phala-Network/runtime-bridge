@@ -29,6 +29,7 @@ specifiers:
   core-js: ^3.18.0
   datagram-stream: ^1.1.1
   dayjs: ^1.10.7
+  decimal.js: ^10.3.1
   duplexify: ^4.1.2
   encoding-down: ^7.0.0
   end-of-stream: ^1.4.4
@@ -93,6 +94,7 @@ dependencies:
   core-js: 3.18.0
   datagram-stream: 1.1.1
   dayjs: 1.10.7
+  decimal.js: 10.3.1
   duplexify: 4.1.2
   encoding-down: 7.0.0
   end-of-stream: 1.4.4
@@ -2718,6 +2720,10 @@ packages:
     dependencies:
       ms: 2.1.2
 
+  /decimal.js/10.3.1:
+    resolution: {integrity: sha512-V0pfhfr8suzyPGOx3nmq4aHqabehUZn6Ch9kyFpV79TGDTWFmHqUqXdabR7QHqxzrYolF4+tVmJhUG4OURg5dQ==}
+    dev: false
+
   /decompress-response/6.0.0:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
@@ -5312,7 +5318,7 @@ packages:
   /signed-varint/2.0.1:
     resolution: {integrity: sha1-UKmYnafJjCxh2tEZvJdHDvhSgSk=}
     dependencies:
-      varint: 5.0.0
+      varint: 5.0.2
     dev: false
 
   /slash/2.0.0:
