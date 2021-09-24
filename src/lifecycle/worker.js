@@ -1,8 +1,9 @@
-import { BN_1PHA } from '../utils/constants'
+import { BN_1PHA, MINER_V_BASE } from '../utils/constants'
 import { UPool } from '../io/worker'
 import { keyring, phalaApi } from '../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'
+import Decimal from 'decimal.js'
 import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../utils/logger'
@@ -159,7 +160,19 @@ export const subscribeOnChainState = async (workerContext) => {
                 ret._unsubscribeMinerInfo?.()
                 return
               }
-              ret.minerInfo = minerInfo.unwrapOrDefault()
+              const _minerInfo = minerInfo.unwrapOrDefault()
+              ret.minerInfo = Object.assign(
+                minerInfo.unwrapOrDefault().toHuman(),
+                {
+                  raw: _minerInfo,
+                  v: new Decimal(_minerInfo?.v?.toJSON() || '0')
+                    .div(MINER_V_BASE)
+                    .toFixed(8),
+                  ve: new Decimal(_minerInfo?.ve?.toJSON() || '0')
+                    .div(MINER_V_BASE)
+                    .toFixed(8),
+                }
+              )
               if (ret.minerInfo.state.isMiningUnresponsive) {
                 workerContext.message = 'Notice: worker unresponsive!'
               }

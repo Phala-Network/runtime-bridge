@@ -12,7 +12,7 @@ const getWorkerStates = (ids, context) =>
       publicKey: runtimeInfo?.publicKey,
       lastMessage: w?.message,
       minerAccountId: w?.onChainState?.accountId?.toString(),
-      minerInfoJson: JSON.stringify(w?.onChainState?.minerInfo || {}),
+      minerInfoJson: JSON.stringify(w?.onChainState?.minerInfo || {}, null, 0),
     }
   })
 
