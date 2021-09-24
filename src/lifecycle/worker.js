@@ -161,18 +161,17 @@ export const subscribeOnChainState = async (workerContext) => {
                 return
               }
               const _minerInfo = minerInfo.unwrapOrDefault()
-              ret.minerInfo = Object.assign(
-                minerInfo.unwrapOrDefault().toHuman(),
-                {
-                  raw: _minerInfo,
-                  v: new Decimal(_minerInfo?.v?.toJSON() || '0')
-                    .div(MINER_V_BASE)
-                    .toFixed(8),
-                  ve: new Decimal(_minerInfo?.ve?.toJSON() || '0')
-                    .div(MINER_V_BASE)
-                    .toFixed(8),
-                }
-              )
+              _minerInfo.humanReadable = {
+                ..._minerInfo.toHuman(),
+                v: new Decimal(_minerInfo?.v?.toJSON() || '0')
+                  .div(MINER_V_BASE)
+                  .toFixed(8),
+                ve: new Decimal(_minerInfo?.ve?.toJSON() || '0')
+                  .div(MINER_V_BASE)
+                  .toFixed(8),
+                raw: _minerInfo,
+              }
+              ret.minerInfo = _minerInfo
               if (ret.minerInfo.state.isMiningUnresponsive) {
                 workerContext.message = 'Notice: worker unresponsive!'
               }
