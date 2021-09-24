@@ -1,7 +1,6 @@
 import {
   destroyWorkerContext,
   startMining,
-  stopMining,
   subscribeOnChainState,
 } from './worker'
 import {
