@@ -3,6 +3,7 @@ import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from './constants'
 import { khala } from '@phala/typedefs'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
+import logger from './logger'
 import phalaTypes from './typedefs'
 import typesChain from '@polkadot/apps-config/api/chain'
 
@@ -69,6 +70,11 @@ const setupPhalaApi = async (endpoint, forceRecreate = false) => {
     },
   })
 
+  phalaApi.on('disconnected', (e) => {
+    logger.info(e)
+    process.exit(255)
+  })
+
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
     await Promise.all([
       phalaApi.rpc.system.chain(),
@@ -104,6 +110,11 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
     provider: parentProvider,
     types: phalaTypes,
     rpc,
+  })
+
+  parentApi.on('disconnected', (e) => {
+    logger.info(e)
+    process.exit(255)
   })
 
   const [parentChain, parentNodeName, parentNodeVersion] = (
