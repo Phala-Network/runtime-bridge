@@ -11,6 +11,10 @@ import {
   setParentBlock,
 } from '../io/block'
 import {
+  getLastCommittedParaBlock,
+  getLastCommittedParentBlock,
+} from '../io/window'
+import {
   parentApi,
   phalaApi,
   setupParentApi,
@@ -21,10 +25,11 @@ import env from '../utils/env'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const FETCH_QUEUE_CONCURRENT = parseInt(env.parallelBlocks) || 50
+const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 30
+const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 80
 
-const paraFetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
-const parentFetchQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
+const paraFetchQueue = new Queue(FETCH_PARA_QUEUE_CONCURRENT, Infinity)
+const parentFetchQueue = new Queue(FETCH_PARENT_QUEUE_CONCURRENT, Infinity)
 
 let __paraId
 let __storageKey_keys_paras
@@ -32,9 +37,7 @@ let __storageKey_keys_paras
 const processParaBlock = (number) =>
   (async () => {
     const hash = await phalaApi.rpc.chain.getBlockHash(number)
-    const blockData = await phalaApi.rpc.chain.getBlock(hash)
-
-    const header = blockData.block.header
+    const header = await phalaApi.rpc.chain.getHeader(hash)
     const headerHash = header.hash
 
     const storageChanges = (
@@ -105,19 +108,22 @@ const processParentBlock = (number) =>
 
     const setId = (await parentApi.query.grandpa.currentSetId.at(hash)).toJSON()
 
-    let justification = blockData.justifications.toJSON()
-    if (justification) {
+    let hasJustification = false
+    let justification
+
+    if (blockData.justifications.isSome) {
       justification = parentApi.createType(
         'JustificationToSync',
-        justification.reduce(
-          (acc, current) => (current[0] === FRNK ? current[1] : acc),
-          '0x'
-        )
+        blockData.justifications
+          .toJSON()
+          .reduce(
+            (acc, current) => (current[0] === FRNK ? current[1] : acc),
+            '0x'
+          )
       )
+      hasJustification = justification ? justification.isSome : false
     }
-    const hasJustification = justification
-      ? justification.toHex().length > 2
-      : false
+
     const syncHeaderData = parentApi.createType('HeaderToSync', {
       header,
       justification,
@@ -213,18 +219,23 @@ const walkParentBlock = (parentBlockNumber) =>
       process.exit(-1)
     })
 
-const startSyncPara = (target) => {
-  const bufferQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
+const startSyncPara = async (start, target) => {
+  const bufferQueue = new Queue(
+    Math.round(FETCH_PARA_QUEUE_CONCURRENT * 1.618),
+    Infinity
+  )
+  logger.info({ start, target }, 'Starting synching parachain...')
 
-  logger.info({ target }, 'Starting synching parachain...')
-
-  for (let number = 0; number < target; number++) {
+  for (let number = start; number < target; number++) {
     bufferQueue.add(() => walkParaBlock(number))
   }
 }
 
 const startSyncParent = (start, target) => {
-  const bufferQueue = new Queue(FETCH_QUEUE_CONCURRENT, Infinity)
+  const bufferQueue = new Queue(
+    Math.round(FETCH_PARENT_QUEUE_CONCURRENT * 1.618),
+    Infinity
+  )
 
   logger.info({ start, target }, 'Starting synching parent chain...')
 
@@ -321,14 +332,16 @@ export default async () => {
   __storageKey_keys_paras = parentApi.query.paras.heads.key(paraId)
   process.send({ type: SET_GENESIS, payload: _genesis })
 
+  const paraStart = await getLastCommittedParaBlock()
+  const parentStart = await getLastCommittedParentBlock()
+
   await Promise.all([
     phalaApi.rpc.chain.subscribeFinalizedHeads((header) => {
       const number = header.number.toNumber()
       process.send({ type: SET_PARA_KNOWN_HEIGHT, payload: number })
-
       if (!paraSyncLock) {
         paraSyncLock = true
-        startSyncPara(number)
+        startSyncPara(paraStart || 0, number)
       }
 
       walkParaBlock(number)
@@ -339,7 +352,7 @@ export default async () => {
 
       if (!parentSyncLock) {
         parentSyncLock = true
-        startSyncParent(parentNumber, number)
+        startSyncParent(parentStart || parentNumber, number)
       }
 
       walkParentBlock(number)

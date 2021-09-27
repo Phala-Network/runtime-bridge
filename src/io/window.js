@@ -1,6 +1,9 @@
 import { DB_ENCODING_JSON, pbToObject } from './db_encoding'
 import { DB_WINDOW, getDb, getKeyExistance, waitFor } from './db'
-import { LAST_COMMITTED_PARA_BLOCK } from '../utils/constants'
+import {
+  LAST_COMMITTED_PARA_BLOCK,
+  LAST_COMMITTED_PARENT_BLOCK,
+} from '../utils/constants'
 import { getParentBlock } from './block'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
@@ -290,6 +293,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   }
   await batch.write()
   await windowDb.put(blobRangeCommittedMarkKey, Buffer.from([1]))
+  await setLastCommittedParentBlock(parentStopBlock)
 
   logger.info(
     { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
@@ -314,6 +318,23 @@ export const getLastCommittedParaBlock = async () => {
 export const setLastCommittedParaBlock = async (number) => {
   const db = await getDb(DB_WINDOW)
   return db.put(LAST_COMMITTED_PARA_BLOCK, number, { ...DB_ENCODING_JSON })
+}
+
+export const getLastCommittedParentBlock = async () => {
+  try {
+    const db = await getDb(DB_WINDOW)
+    return await db.get(LAST_COMMITTED_PARENT_BLOCK, { ...DB_ENCODING_JSON })
+  } catch (e) {
+    if (e instanceof levelErrors.NotFoundError) {
+      return 0
+    }
+    throw e
+  }
+}
+
+export const setLastCommittedParentBlock = async (number) => {
+  const db = await getDb(DB_WINDOW)
+  return db.put(LAST_COMMITTED_PARENT_BLOCK, number, { ...DB_ENCODING_JSON })
 }
 
 export const setDryParaBlockRange = async (block) => {

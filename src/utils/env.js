@@ -3,13 +3,15 @@ import RocksDB from 'rocksdb'
 
 export const ENV_LIST = [
   ['NODE_ENV', 'nodeEnv'],
-  ['PHALA_PARALLEL_BLOCKS', 'parallelBlocks'],
+  ['PHALA_PARA_PARALLEL_BLOCKS', 'parallelParaBlocks'],
+  ['PHALA_PARENT_PARALLEL_BLOCKS', 'parallelParentBlocks'],
   ['PHALA_LOGGER_LEVEL', 'loggerLevel'],
   ['PHALA_MODULE', 'moduleName'],
   ['PHALA_DB_PREFIX', 'dbPrefix'],
   ['PHALA_PARENT_CHAIN_ENDPOINT', 'parentChainEndpoint'],
   ['PHALA_CHAIN_ENDPOINT', 'chainEndpoint'],
   ['PHALA_REDIS_ENDPOINT', 'redisEndpoint'],
+  ['PHALA_Q_REDIS_ENDPOINT', 'qRedisEndpoint'],
   ['PHALA_DEV_SKIP_RA', 'devSkipRa'],
   ['PHALA_DB_HOST', 'dbHost'],
   ['PHALA_DB_PORT_BASE', 'dbPortBase'],
