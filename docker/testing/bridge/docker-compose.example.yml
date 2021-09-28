@@ -58,7 +58,7 @@ services:
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
-      - PHALA_CHAIN_ENDPOINT=http://node:9933
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
       - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
       - PHALA_NAMESPACE=default
