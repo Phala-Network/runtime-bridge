@@ -1,4 +1,4 @@
-import { ApiPromise, WsProvider } from '@polkadot/api'
+import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from './constants'
 import { khala } from '@phala/typedefs'
@@ -50,12 +50,16 @@ const rpc = {
   },
 }
 
-const setupPhalaApi = async (endpoint, forceRecreate = false) => {
+const setupPhalaApi = async (
+  endpoint,
+  useHttp = false,
+  forceRecreate = false
+) => {
   if (!forceRecreate && !!_phalaApi) {
     throw new Error('Phala API already created!')
   }
 
-  const phalaProvider = new WsProvider(endpoint)
+  const phalaProvider = new (useHttp ? HttpProvider : WsProvider)(endpoint)
   const phalaApi = await ApiPromise.create({
     provider: phalaProvider,
     types: phalaTypes,

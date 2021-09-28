@@ -9,7 +9,7 @@ export default async () => {
   await setupDb(DB_WORKER)
   const router = express.Router()
 
-  const url = process.env.REDIS_ENDPOINT || 'redis://redis:6379/'
+  const url = process.env.REDIS_ENDPOINT || 'redis://redis-q:6379/'
 
   const pools = await UPool.getAll()
   const accounts = [...new Set(pools.map((i) => i.owner.ss58Phala))]

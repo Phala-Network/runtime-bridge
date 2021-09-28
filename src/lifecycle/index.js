@@ -21,7 +21,7 @@ const updateFetcherState = async (query, state) => {
 const start = async () => {
   await setupDb(DB_WORKER, DB_BLOCK, DB_WINDOW)
   await setupPhalaApi(env.chainEndpoint)
-  const txQueue = createTradeQueue(env.redisEndpoint)
+  const txQueue = createTradeQueue(env.qRedisEndpoint)
   await txQueue.ready()
 
   const context = {
