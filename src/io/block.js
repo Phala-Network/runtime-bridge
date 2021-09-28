@@ -80,7 +80,7 @@ const _waitForParaBlock = async (blockNumber) => {
     return ret
   } catch (error) {
     if (error === NOT_FOUND_ERROR) {
-      await wait(100)
+      await wait(2000)
       return _waitForParaBlock(blockNumber)
     }
     throw error
@@ -141,7 +141,7 @@ const _waitForParentBlock = async (blockNumber) => {
     return ret
   } catch (error) {
     if (error === NOT_FOUND_ERROR) {
-      await wait(100)
+      await wait(2000)
       return _waitForParentBlock(blockNumber)
     }
     throw error

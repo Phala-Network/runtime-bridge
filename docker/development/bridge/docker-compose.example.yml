@@ -7,7 +7,10 @@ x-defaults: &defaults
 
 services:
   fetch:
-    image: phalanetwork/poc4-prb:testing
+    image: phalanetwork/prb:development
+    build:
+      context: ../../..
+      dockerfile: docker/development/Dockerfile
     hostname: fetch
     depends_on:
       - redis
@@ -15,52 +18,74 @@ services:
     volumes: *default-volume-config
     environment:
       - PHALA_MODULE=fetch
-      - NODE_ENV=testing
+      - NODE_ENV=development
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_MAIN_CHAIN_ENDPOINT=ws://path.to.parent.node
-      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
 
   lifecycle:
-    image: phalanetwork/poc4-prb:testing
+    image: phalanetwork/prb:development
     hostname: lifecycle
     depends_on:
       - redis
+      - redis-q
       - io
     volumes: *default-volume-config
     environment:
       - PHALA_MODULE=lifecycle
-      - NODE_ENV=testing
+      - NODE_ENV=development
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_MAIN_CHAIN_ENDPOINT=ws://path.to.parent.node
-      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+      - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
+      - PHALA_NAMESPACE=default
+      - PHALA_ENABLE_KEEP_ALIVE=true
 
   trade:
-    image: phalanetwork/poc4-prb:testing
+    image: phalanetwork/prb:development
     hostname: trade
     depends_on:
       - redis
+      - redis-q
       - io
     volumes: *default-volume-config
     environment:
       - PHALA_MODULE=trade
-      - NODE_ENV=testing
+      - NODE_ENV=development
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_MAIN_CHAIN_ENDPOINT=ws://path.to.parent.node
-      - PHALA_CHAIN_ENDPOINT=ws://path.to.phala.node
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=http://node:9933
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+      - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
+      - PHALA_NAMESPACE=default
+
+  io:
+    << : *defaults
+    image: phalanetwork/prb:development
+    hostname: io
+    restart: always
+    environment:
+      - PHALA_MODULE=io
+      - NODE_ENV=development
+      - PHALA_DB_HOST=io
+      - PHALA_DB_PORT_BASE=9000
+      - PHALA_LOGGER_LEVEL=debug
+      - PHALA_DB_PREFIX=/var/data
+      - PHALA_DB_TYPE=rocksdb
 
   inspect:
-    image: phalanetwork/poc4-prb:development
-    hostname: inspect
+    image: phalanetwork/prb:development
+    hostname: trade
     depends_on:
+      - redis
       - io
     volumes: *default-volume-config
     environment:
@@ -74,23 +99,60 @@ services:
       - "9001:9001"
       - "9003:9003"
 
-  io:
-    << : *defaults
-    image: phalanetwork/poc4-prb:testing
-    hostname: io
-    restart: always
+  arena:
+    image: phalanetwork/prb:development
+    hostname: trade
+    depends_on:
+      - redis-q
+    volumes: *default-volume-config
     environment:
-      - PHALA_MODULE=io
-      - NODE_ENV=testing
+      - PHALA_MODULE=utils/arena
+      - NODE_ENV=development
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
-      - PHALA_DB_PREFIX=/var/data
+      - PHALA_NAMESPACE=default
+      - REDIS_ENDPOINT=redis://redis-q:6379/
+    ports:
+      - "4567:4567"
 
   redis:
     image: redis:alpine
-    command: ["redis-server", "--appendonly", "no"]
+    command: ["redis-server", "--appendonly", "no", '--save', '']
     restart: always
     hostname: redis
     ports:
       - "63791:6379"
+
+  redis-q:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "no", '--save', '']
+    restart: always
+    hostname: redis-q
+    ports:
+      - "63792:6379"
+
+  node:
+    image: phalanetwork/khala-pt2-node:latest
+    hostname: node
+    volumes:
+      - ./data/node:/root/data
+    environment:
+      - NODE_ROLE=MINER
+      - WASMTIME_BACKTRACE_DETAILS=1
+    ports:
+      - "9944:9944"
+      - "9945:9945"
+      - "9933:9933"
+      - "9934:9934"
+      - "30333:30333"
+      - "30334:30334"
+
+  monitor:
+    image: phalanetwork/prb-monitor:latest
+    hostname: monitor
+    environment:
+      - "REDIS_ENDPOINT=redis://redis:6379"
+      - PHALA_NAMESPACE=default
+    ports:
+      - "3000:3000"

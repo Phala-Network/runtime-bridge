@@ -27,6 +27,7 @@ services:
     hostname: lifecycle
     depends_on:
       - redis
+      - redis-q
       - io
     volumes: *default-volume-config
     environment:
@@ -38,12 +39,16 @@ services:
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+      - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
+      - PHALA_NAMESPACE=default
+      - PHALA_ENABLE_KEEP_ALIVE=true
 
   trade:
     image: phalanetwork/prb:latest
     hostname: trade
     depends_on:
       - redis
+      - redis-q
       - io
     volumes: *default-volume-config
     environment:
@@ -53,8 +58,10 @@ services:
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
-      - PHALA_CHAIN_ENDPOINT=ws://node:9944
+      - PHALA_CHAIN_ENDPOINT=http://node:9933
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+      - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
+      - PHALA_NAMESPACE=default
 
   inspect:
     image: phalanetwork/prb:latest
@@ -85,6 +92,7 @@ services:
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_DB_PREFIX=/var/data
+      - PHALA_DB_TYPE=rocksdb
 
   redis:
     image: redis:alpine
@@ -93,6 +101,14 @@ services:
     hostname: redis
     ports:
       - "63791:6379"
+
+  redis-q:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "no", '--save', '']
+    restart: always
+    hostname: redis-q
+    ports:
+      - "63792:6379"
 
   arena:
     image: phalanetwork/prb:latest
@@ -107,6 +123,7 @@ services:
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
       - PHALA_LOGGER_LEVEL=debug
+      - REDIS_ENDPOINT=redis://redis-q:6379/
     ports:
       - "4567:4567"
 
@@ -115,5 +132,6 @@ services:
     hostname: monitor
     environment:
       - "REDIS_ENDPOINT=redis://redis:6379"
+      - PHALA_NAMESPACE=default
     ports:
       - "3000:3000"

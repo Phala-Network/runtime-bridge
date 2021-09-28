@@ -1,8 +1,9 @@
-import { ApiPromise, WsProvider } from '@polkadot/api'
+import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from './constants'
 import { khala } from '@phala/typedefs'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
+import logger from './logger'
 import phalaTypes from './typedefs'
 import typesChain from '@polkadot/apps-config/api/chain'
 
@@ -49,12 +50,16 @@ const rpc = {
   },
 }
 
-const setupPhalaApi = async (endpoint, forceRecreate = false) => {
+const setupPhalaApi = async (
+  endpoint,
+  useHttp = false,
+  forceRecreate = false
+) => {
   if (!forceRecreate && !!_phalaApi) {
     throw new Error('Phala API already created!')
   }
 
-  const phalaProvider = new WsProvider(endpoint)
+  const phalaProvider = new (useHttp ? HttpProvider : WsProvider)(endpoint)
   const phalaApi = await ApiPromise.create({
     provider: phalaProvider,
     types: phalaTypes,
@@ -67,6 +72,11 @@ const setupPhalaApi = async (endpoint, forceRecreate = false) => {
     typesAlias: {
       ChainId: 'u8',
     },
+  })
+
+  phalaApi.on('disconnected', (e) => {
+    logger.info(e)
+    process.exit(255)
   })
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
@@ -104,6 +114,11 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
     provider: parentProvider,
     types: phalaTypes,
     rpc,
+  })
+
+  parentApi.on('disconnected', (e) => {
+    logger.info(e)
+    process.exit(255)
   })
 
   const [parentChain, parentNodeName, parentNodeVersion] = (

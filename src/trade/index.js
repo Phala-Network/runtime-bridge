@@ -9,8 +9,8 @@ import * as actions from './actions'
 
 const start = async () => {
   await setupDb(DB_WORKER)
-  await setupPhalaApi(env.chainEndpoint)
-  const txQueue = createTradeQueue(env.redisEndpoint)
+  await setupPhalaApi(env.chainEndpoint, true)
+  const txQueue = createTradeQueue(env.qRedisEndpoint)
   const subQueues = new Map()
   const pools = new Map()
 
@@ -34,7 +34,7 @@ const start = async () => {
     let subQueue = subQueues.get(pool.ss58Phala)
     if (!subQueue) {
       subQueue = createSubQueue({
-        redisUrl: env.redisEndpoint,
+        redisUrl: env.qRedisEndpoint,
         sender: pool.ss58Phala,
         actions,
         txQueue,
