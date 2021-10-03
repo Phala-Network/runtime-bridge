@@ -126,8 +126,8 @@ export const subscribeOnChainState = async (workerContext) => {
   let shouldStop = false
 
   const { runtime } = workerContext
-  const { initInfo } = runtime
-  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  const { info } = runtime
+  const publicKey = '0x' + info.publicKey
 
   const ret = {
     publicKey,
@@ -207,8 +207,8 @@ export const destroyWorkerContext = async (
 export const startMining = async (workerContext) => {
   const { pid, dispatchTx, snapshotBrief, runtime } = workerContext
   const { stake } = snapshotBrief
-  const { initInfo } = runtime
-  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  const { info } = runtime
+  const publicKey = '0x' + info.publicKey
   workerContext.message = 'Starting mining on chain...'
   await dispatchTx({
     action: 'START_MINING',
@@ -221,8 +221,8 @@ export const startMining = async (workerContext) => {
 }
 export const stopMining = async (workerContext) => {
   const { pid, dispatchTx, runtime } = workerContext
-  const { initInfo } = runtime
-  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  const { info } = runtime
+  const publicKey = '0x' + info.publicKey
   workerContext.message = 'Stopping mining on chain...'
   await dispatchTx({
     action: 'STOP_MINING',

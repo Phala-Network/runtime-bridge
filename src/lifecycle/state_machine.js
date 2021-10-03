@@ -43,7 +43,7 @@ const onStarting = async (fromState, toState, context) => {
   const { pid, runtime, innerTxQueue } =
     context.stateMachine.rootStateMachine.workerContext
 
-  const initInfo = await innerTxQueue.add(async () => {
+  await innerTxQueue.add(async () => {
     if (shouldSkipRa) {
       return initRuntime(
         runtime,
@@ -56,7 +56,7 @@ const onStarting = async (fromState, toState, context) => {
   })
 
   const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
-    new Uint8Array(initInfo.publicKey)
+    '0x' + runtime.info.publicKey
   )
   if (currentPool.isSome && currentPool.toString() !== pid) {
     throw new Error('Worker is assigned to other pool!')
@@ -96,7 +96,7 @@ const onSynched = async (fromState, toState, context) => {
 const onPreMining = async (fromState, toState, context) => {
   const { runtime, onChainState } =
     context.stateMachine.rootStateMachine.workerContext
-  const { initInfo, rpcClient } = runtime
+  const { info, initInfo, rpcClient } = runtime
 
   await wait(12000) // wait for onChainState to be synched
   if (
@@ -108,17 +108,19 @@ const onPreMining = async (fromState, toState, context) => {
     return
   }
 
-  context.stateMachine.rootStateMachine.workerContext.message =
-    'Ensuring registration on chain...'
-  let res = await rpcClient.getRuntimeInfo({})
-  res = res.constructor.toObject(res, {
-    defaults: true,
-    enums: String,
-    longs: Number,
-  })
-  Object.assign(initInfo, res)
+  if (!info.registered) {
+    context.stateMachine.rootStateMachine.workerContext.message =
+      'Ensuring registration on chain...'
+    let res = await rpcClient.getRuntimeInfo({})
+    res = res.constructor.toObject(res, {
+      defaults: true,
+      enums: String,
+      longs: Number,
+    })
+    Object.assign(initInfo, res)
+  }
+  await registerWorker(runtime)
 
-  await registerWorker(runtime, true)
   if (!runtime.skipRa) {
     context.stateMachine.rootStateMachine.workerContext.message =
       'Waiting until worker ready...'

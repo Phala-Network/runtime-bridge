@@ -93,44 +93,46 @@ export const initRuntime = async (
   const runtimeInfo = await runtime.updateInfo()
   runtime.skipRa = skipRa
 
-  if (runtimeInfo.initialized) {
-    let res = await rpcClient.getRuntimeInfo({})
-    res = res.constructor.toObject(res, {
-      defaults: true,
-      enums: String,
-      longs: Number,
-    })
-    Object.assign(initInfo, res)
-    workerContext.message = 'Runtime already initialized.'
-    logger.debug(workerBrief, 'Already initialized.', res)
-  } else {
-    const { genesisState, bridgeGenesisInfo } = appContext.genesis
-    const initRequestPayload = {
-      skipRa: false,
-      encodedGenesisState: genesisState,
-      encodedGenesisInfo: bridgeGenesisInfo,
-      encodedOperator: Buffer.from(
-        pool.isProxy
-          ? phalaApi.createType('AccountId', pool.realPhalaSs58).toU8a()
-          : pool.pair.addressRaw
-      ),
-      isParachain: true,
-    }
-    if (skipRa) {
-      initRequestPayload.skipRa = true
-      initRequestPayload.debugSetKey = Buffer.from(debugSetKey, 'hex')
-      logger.info({ skipRa, debugSetKey }, 'Init runtime in debug mode.')
-    }
-    let res = await rpcClient.initRuntime(initRequestPayload)
-    res = res.constructor.toObject(res, {
-      defaults: true,
-      enums: String,
-      longs: Number,
-    })
+  if (!(runtimeInfo.initialized && runtimeInfo.registered)) {
+    if (runtimeInfo.initialized) {
+      let res = await rpcClient.getRuntimeInfo({})
+      res = res.constructor.toObject(res, {
+        defaults: true,
+        enums: String,
+        longs: Number,
+      })
+      Object.assign(initInfo, res)
+      workerContext.message = 'Runtime already initialized.'
+      logger.debug(workerBrief, 'Already initialized.', res)
+    } else {
+      const { genesisState, bridgeGenesisInfo } = appContext.genesis
+      const initRequestPayload = {
+        skipRa: false,
+        encodedGenesisState: genesisState,
+        encodedGenesisInfo: bridgeGenesisInfo,
+        encodedOperator: Buffer.from(
+          pool.isProxy
+            ? phalaApi.createType('AccountId', pool.realPhalaSs58).toU8a()
+            : pool.pair.addressRaw
+        ),
+        isParachain: true,
+      }
+      if (skipRa) {
+        initRequestPayload.skipRa = true
+        initRequestPayload.debugSetKey = Buffer.from(debugSetKey, 'hex')
+        logger.info({ skipRa, debugSetKey }, 'Init runtime in debug mode.')
+      }
+      let res = await rpcClient.initRuntime(initRequestPayload)
+      res = res.constructor.toObject(res, {
+        defaults: true,
+        enums: String,
+        longs: Number,
+      })
 
-    Object.assign(initInfo, res)
-    workerContext.message = 'Runtime initialized.'
-    $logger.debug(workerBrief, `Initialized pRuntime.`)
+      Object.assign(initInfo, res)
+      workerContext.message = 'Runtime initialized.'
+      $logger.debug(workerBrief, `Initialized pRuntime.`)
+    }
   }
 
   await runtime.updateInfo()
@@ -151,11 +153,11 @@ export const initRuntime = async (
   return initInfo
 }
 
-export const registerWorker = async (runtime, forceRegister = false) => {
-  const { initInfo, workerContext } = runtime
+export const registerWorker = async (runtime) => {
+  const { initInfo, info, workerContext } = runtime
   const { pid, dispatchTx } = workerContext
 
-  const publicKey = '0x' + initInfo.encodedPublicKey.toString('hex')
+  const publicKey = '0x' + info.publicKey
 
   const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
     publicKey
@@ -165,7 +167,7 @@ export const registerWorker = async (runtime, forceRegister = false) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
-  if (forceRegister || !initInfo.registered) {
+  if (!info.registered) {
     await dispatchTx({
       action: 'REGISTER_WORKER',
       payload: {
