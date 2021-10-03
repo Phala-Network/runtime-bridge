@@ -17,10 +17,11 @@ jobs:
           username: ${{ secrets.PACKAGE_MANAGER_USERNAME }}
           password: ${{ secrets.PACKAGE_MANAGER_TOKEN }}
           repository: phalanetwork/prb
-          tag_with_ref: true
+          tag_with_ref: false
           tag_with_sha: true
           tags: git
           dockerfile: 'docker/testing/Dockerfile'
+          cache_froms: phalanetwork/prb:git
   push_cn:
     runs-on: ubuntu-18.04
     steps:
@@ -33,7 +34,8 @@ jobs:
           username: ${{ secrets.HW_USERNAME }}
           password: ${{ secrets.HW_TOKEN }}
           repository: phala/prb
-          tag_with_ref: true
+          tag_with_ref: false
           tag_with_sha: true
           tags: git
           dockerfile: 'docker/testing/Dockerfile'
+          cache_froms: phalanetwork/prb:git
