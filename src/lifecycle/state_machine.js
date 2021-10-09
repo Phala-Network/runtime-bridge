@@ -75,10 +75,11 @@ const onSynching = async (fromState, toState, context) => {
     context.stateMachine.rootStateMachine.workerContext
 
   const waitUntilSynched = await startSyncBlob(runtime)
-  await waitUntilSynched()
   context.stateMachine.rootStateMachine.workerContext.message =
-    'waitUntilSynched done.'
-  logger.debug(workerBrief, 'waitUntilSynched done.')
+    'Synching block data...'
+  logger.debug(workerBrief, 'Synching block data...')
+  await waitUntilSynched()
+
   context.stateMachine.handle(EVENTS.SHOULD_MARK_SYNCHED)
 }
 
@@ -86,10 +87,13 @@ const onSynched = async (fromState, toState, context) => {
   const { runtime, workerBrief } =
     context.stateMachine.rootStateMachine.workerContext
   const waitUntilMqSynched = await startSyncMessage(runtime)
+  context.stateMachine.rootStateMachine.workerContext.message =
+    'Synching message queue...'
+  logger.debug(workerBrief, 'Synching message queue...')
   await waitUntilMqSynched()
   context.stateMachine.rootStateMachine.workerContext.message =
-    'waitUntilMqSynched done.'
-  logger.debug(workerBrief, 'waitUntilMqSynched done.')
+    'Message queue synched.'
+  logger.debug(workerBrief, 'Message queue synched.')
   context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
 }
 

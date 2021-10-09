@@ -203,11 +203,11 @@ export const registerWorker = async (runtime) => {
       await wait(24000)
       return await waitUntilWorkerHasInitialScore() // using `return await` for node 14's bad behavior
     }
-    workerContext.message = 'waitUntilWorkerHasInitialScore'
-    logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore')
+    workerContext.message = 'Waiting for benchmark...'
+    logger.info({ publicKey }, 'Waiting for benchmark...')
     await waitUntilWorkerHasInitialScore()
-    workerContext.message = 'waitUntilWorkerHasInitialScore done.'
-    logger.info({ publicKey }, 'waitUntilWorkerHasInitialScore done.')
+    workerContext.message = 'Adding worker on chain...'
+    logger.info({ publicKey }, 'Adding worker on chain...')
 
     await dispatchTx({
       action: 'ADD_WORKER',
