@@ -7,21 +7,23 @@ import logger from '../utils/logger'
 
 export const RP_INIT = 'RP_INIT'
 export const RP_PREPROCESSED = 'RP_PREPROCESSED'
+export const RP_SHOULD_RETRY = 'RP_SHOULD_RETRY'
 export const RP_WORKING = 'RP_WORKING'
+export const RP_FAILED = 'RP_FAILED'
 export const RP_FINISHED = 'RP_FINISHED'
 
 const messageBus = {
-  queuesPerQueue: {},
+  queuesPerPool: {},
 }
 
 const getQueue = (pid) => {
   const pidStr = `${pid}`
-  let queue = messageBus.queuesPerQueue[pidStr]
+  let queue = messageBus.queuesPerPool[pidStr]
   if (queue) {
     return queue
   }
   queue = createPoolQueue(pidStr)
-  messageBus.queuesPerQueue[pidStr] = queue
+  messageBus.queuesPerPool[pidStr] = queue
   return queue
 }
 
@@ -50,10 +52,10 @@ const startMessageBus = async (appContext) => {
   inputQueue.process(TX_QUEUE_SIZE, async (job) => {
     await job.reportProgress(RP_INIT)
     const callMeta = await preprocess(job)
+    await job.reportProgress(RP_PREPROCESSED)
     let remainingRetries = callMeta.shouldRetry ? 3 : 0
 
     const processJob = async () => {
-      await job.reportProgress(RP_PREPROCESSED)
       const waitUntilFinished = await enqueue(callMeta)
       await job.reportProgress(RP_WORKING)
       await waitUntilFinished()
@@ -61,8 +63,10 @@ const startMessageBus = async (appContext) => {
     }
     const rescureJob = (e) => {
       if (!remainingRetries) {
+        job.reportProgress(RP_FAILED)
         throw e
       }
+      job.reportProgress(RP_SHOULD_RETRY)
       remainingRetries -= 1
       logger.warn(`Retrying job #${job.id} with error:`, e)
       return processJob().catch(rescureJob)
