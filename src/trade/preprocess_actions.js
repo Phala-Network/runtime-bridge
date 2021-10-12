@@ -1,40 +1,33 @@
-import { wrapTx } from './preprocess'
+import { phalaApi as _api } from '../utils/api'
+import { apiProxy as api, wrapTx } from './preprocess'
 import BN from 'bn.js'
 
-export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }, options) =>
+export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }) =>
   wrapTx(
-    (api) =>
-      messages.map((msg) =>
-        api.tx.phalaMq.syncOffchainMessage(api.createType('SignedMessage', msg))
-      ),
-    options
+    messages.map((msg) =>
+      api.tx.phalaMq.syncOffchainMessage(_api.createType('SignedMessage', msg))
+    )
   )
 
-export const REGISTER_WORKER = async ({ runtimeInfo, attestation }, options) =>
-  wrapTx(
-    (api) => [api.tx.phalaRegistry.registerWorker(runtimeInfo, attestation)],
-    options
-  )
+export const REGISTER_WORKER = async ({ runtimeInfo, attestation }) =>
+  wrapTx([api.tx.phalaRegistry.registerWorker(runtimeInfo, attestation)], true)
 
-export const ADD_WORKER = async ({ publicKey, pid }, options) =>
-  wrapTx(
-    (api) => [api.tx.phalaStakePool.addWorker(pid, publicKey)],
-    options,
-    true
-  )
+export const ADD_WORKER = async ({ publicKey, pid }) =>
+  wrapTx([api.tx.phalaStakePool.addWorker(pid, publicKey)], true)
 
-export const START_MINING = async ({ pid, publicKey, stake }, options) => {
+export const START_MINING = async ({ pid, publicKey, stake }) => {
   const stakeBn = new BN(stake)
   return wrapTx(
-    (api) => [api.tx.phalaStakePool.startMining(pid, publicKey, stakeBn)],
-    options,
+    [
+      api.tx.phalaStakePool.startMining(
+        pid,
+        publicKey,
+        stakeBn.toString('hex')
+      ),
+    ],
     true
   )
 }
 
-export const STOP_MINING = async ({ pid, publicKey }, options) =>
-  wrapTx(
-    (api) => [api.tx.phalaStakePool.stopMining(pid, publicKey)],
-    options,
-    true
-  )
+export const STOP_MINING = async ({ pid, publicKey }) =>
+  wrapTx([api.tx.phalaStakePool.stopMining(pid, publicKey)], true)

@@ -11,7 +11,11 @@ export const TM_UP_WORKING = Symbol('TM_UP_WORKING')
 export const TM_ERROR = Symbol('TM_ERROR')
 
 export class TraderDownError extends Error {
-  message = 'Trader is down!'
+  constructor(message) {
+    super(message)
+    this.name = 'TraderDownError'
+    this.message = 'Trader is down!'
+  }
 }
 
 class TraderManager {
@@ -26,7 +30,7 @@ class TraderManager {
 
   constructor(appContext) {
     this.#appContext = appContext
-    this.#startProcess().catch(logger.warn)
+    this.#startProcess().catch((e) => logger.warn(e))
   }
 
   async addBatchJob(batch) {}
@@ -52,7 +56,7 @@ class TraderManager {
     }
   }
 
-  async #restartProcess() {
+  async restartProcess() {
     await this.#stopProcess()
     await this.#startProcess()
   }
@@ -88,7 +92,7 @@ class TraderManager {
         logger.info({ code, signal }, `Trader exited.`)
         this.#status = TM_DOWN
       }
-      this.#startProcess().catch(logger.warn)
+      this.#startProcess().catch((e) => logger.warn(e))
     })
     this.#process = process
   }

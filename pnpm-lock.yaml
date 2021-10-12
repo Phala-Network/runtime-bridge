@@ -21,7 +21,7 @@ specifiers:
   agentkeepalive: ^4.1.4
   bee-queue: ^1.4.0
   bn.js: ^5.2.0
-  bull-arena: ^3.29.3
+  bull-arena: github:bee-queue/arena
   bunyan: ^1.8.15
   byte-base64: ^1.1.0
   chalk: ^4.1.2
@@ -5296,7 +5296,7 @@ packages:
   /signed-varint/2.0.1:
     resolution: {integrity: sha1-UKmYnafJjCxh2tEZvJdHDvhSgSk=}
     dependencies:
-      varint: 5.0.0
+      varint: 5.0.2
     dev: false
 
   /slash/2.0.0:
