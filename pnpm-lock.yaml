@@ -9,7 +9,7 @@ specifiers:
   '@babel/preset-env': ^7.15.8
   '@pcan/leveldb-viewer': ^0.1.3
   '@phala/typedefs': ^0.2.28
-  '@polkadot/api': ^6.3.1
+  '@polkadot/api': ^6.3.2-10
   '@polkadot/apps-config': ^0.96.1
   '@polkadot/keyring': ^7.4.1
   '@polkadot/networks': ^7.4.1
@@ -78,7 +78,7 @@ specifiers:
 dependencies:
   '@pcan/leveldb-viewer': 0.1.3
   '@phala/typedefs': 0.2.28
-  '@polkadot/api': 6.3.1
+  '@polkadot/api': 6.3.2-10
   '@polkadot/apps-config': 0.96.1
   '@polkadot/keyring': 7.4.1
   '@polkadot/networks': 7.4.1
@@ -1391,6 +1391,7 @@ packages:
 
   /@nicolo-ribaudo/chokidar-2/2.1.8-no-fsevents.3:
     resolution: {integrity: sha512-s88O1aVtXftvp5bCPB7WnmXc5IwOZZ7YPuwNPt+GtOOXpPvad1LfbmjYv+qII7zP6RU2QGnqve27dnLycEnyEQ==}
+    requiresBuild: true
     dev: true
     optional: true
 
@@ -1426,30 +1427,30 @@ packages:
       '@polkadot/types': 5.9.1
     dev: false
 
-  /@polkadot/api-derive/6.3.1:
-    resolution: {integrity: sha512-SjE/ntziGzTcC/q+rx8HOGrCPFXGCLO9ZjoNrc+otEq9jikrMtY3pDbIyCCnnutHmx7se46e/thPungjV/wccg==}
+  /@polkadot/api-derive/6.3.2-10:
+    resolution: {integrity: sha512-DgP1/W+7zK/U8EIZxwyodsp2Rs5bEhS5ITvUQVXLj3KR4094sRovcuHm17EUafgJVmJ/85Z6P+djXOiAy/O+Rw==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@babel/runtime': 7.15.4
-      '@polkadot/api': 6.3.1
-      '@polkadot/rpc-core': 6.3.1
-      '@polkadot/types': 6.3.1
+      '@polkadot/api': 6.3.2-10
+      '@polkadot/rpc-core': 6.3.2-10
+      '@polkadot/types': 6.3.2-10
       '@polkadot/util': 7.4.1
       '@polkadot/util-crypto': 7.4.1
       rxjs: 7.4.0
     dev: false
 
-  /@polkadot/api/6.3.1:
-    resolution: {integrity: sha512-4WbQNXIzPsmwktjR6VFQupU2uKl7Mkbch1ZsMc68a2TrGmeJTlhsTas2iL89VeM0Js3P7qp36ZiiKtMZ/IjWHQ==}
+  /@polkadot/api/6.3.2-10:
+    resolution: {integrity: sha512-nxiRlwFgwUj299PYZLtMx4Qfvl0LYuN6pBEoJgCuLhpZWAvxfCC4SPVisqNOKQ+v1bHLM5Y4Ugr5HlYcbABs2w==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@babel/runtime': 7.15.4
-      '@polkadot/api-derive': 6.3.1
+      '@polkadot/api-derive': 6.3.2-10
       '@polkadot/keyring': 7.4.1
-      '@polkadot/rpc-core': 6.3.1
-      '@polkadot/rpc-provider': 6.3.1
-      '@polkadot/types': 6.3.1
-      '@polkadot/types-known': 6.3.1
+      '@polkadot/rpc-core': 6.3.2-10
+      '@polkadot/rpc-provider': 6.3.2-10
+      '@polkadot/types': 6.3.2-10
+      '@polkadot/types-known': 6.3.2-10
       '@polkadot/util': 7.4.1
       '@polkadot/util-crypto': 7.4.1
       eventemitter3: 4.0.7
@@ -1542,23 +1543,23 @@ packages:
       '@babel/runtime': 7.15.4
     dev: false
 
-  /@polkadot/rpc-core/6.3.1:
-    resolution: {integrity: sha512-JClQ2Gfr4g9cU+S1NADc9GH+YfwjniZXA1vYub0/94Oung7GGwp6zeICQow90NfOtYi4cpp/iPOD0H7HtDIRYA==}
+  /@polkadot/rpc-core/6.3.2-10:
+    resolution: {integrity: sha512-tmIPD7apFfuUUzQkr9gjNBD5bkh4x3zXeeBt3i9qZs/HjmCySTyVkGYuW5l4yN+De3f0OXkXzsUsYOrZ7i2knw==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@babel/runtime': 7.15.4
-      '@polkadot/rpc-provider': 6.3.1
-      '@polkadot/types': 6.3.1
+      '@polkadot/rpc-provider': 6.3.2-10
+      '@polkadot/types': 6.3.2-10
       '@polkadot/util': 7.4.1
       rxjs: 7.4.0
     dev: false
 
-  /@polkadot/rpc-provider/6.3.1:
-    resolution: {integrity: sha512-hf1wIfQZWsq/OLrszsGTRx/bBjDqLOKj/e7Ly5O7t9ai3ItUsYewgjXo6AiCD80jttHm3h8wg+twnh7DJxJfHQ==}
+  /@polkadot/rpc-provider/6.3.2-10:
+    resolution: {integrity: sha512-nziYOKYssaVhmLRsVuFC1OQm9Z7KTi6CR+mmOQx35OgNBKmauHWwD3Ad6NXX9YFVeCMP/HJgytE1W6x4x1CWKw==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@babel/runtime': 7.15.4
-      '@polkadot/types': 6.3.1
+      '@polkadot/types': 6.3.2-10
       '@polkadot/util': 7.4.1
       '@polkadot/util-crypto': 7.4.1
       '@polkadot/x-fetch': 7.4.1
@@ -1587,13 +1588,13 @@ packages:
       '@polkadot/util': 6.11.1
     dev: false
 
-  /@polkadot/types-known/6.3.1:
-    resolution: {integrity: sha512-zeFA2c/8irg0L5OQDfMAxBnODTbsibaa0q8bk+bsqK0sVgJ/l3Sz9XtONWL72s7FEi/zzXIOQLd+ffEVWmAN7A==}
+  /@polkadot/types-known/6.3.2-10:
+    resolution: {integrity: sha512-pRkHTHk7RhhgKnZahNfT24o4bBerFp8JAzdmGpo3e4rdPr2/PyY1yhMstBKdZRQwDMIiniZds8aGsqO79XDZrA==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@babel/runtime': 7.15.4
       '@polkadot/networks': 7.4.1
-      '@polkadot/types': 6.3.1
+      '@polkadot/types': 6.3.2-10
       '@polkadot/util': 7.4.1
     dev: false
 
@@ -1632,6 +1633,16 @@ packages:
 
   /@polkadot/types/6.3.1:
     resolution: {integrity: sha512-ZZHwohZlyBgTAXmvISWY/lkpOfi6IvX4QAxXUNG+fH2ZB8uLB+ZPKeztPIleOqApj3HzczOCpH9QXK3he2IzHQ==}
+    engines: {node: '>=14.0.0'}
+    dependencies:
+      '@babel/runtime': 7.15.4
+      '@polkadot/util': 7.4.1
+      '@polkadot/util-crypto': 7.4.1
+      rxjs: 7.4.0
+    dev: false
+
+  /@polkadot/types/6.3.2-10:
+    resolution: {integrity: sha512-RIeZGO3L+5SINjEbm87t2xU1eMdE0TNnt7BKgp3dnEV1IVj0KaCbZYWcYUdUTSk5QIfPYhdWFK2ZPn8qN8BPNA==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@babel/runtime': 7.15.4
@@ -2474,6 +2485,7 @@ packages:
   /chokidar/3.5.2:
     resolution: {integrity: sha512-ekGhOnNVPgT77r4K/U3GDhu+FQ2S8TnK/s2KbIGXi0SZWuwkZ2QNyfWdZW+TVfn84DpEP7rLeCt2UI6bJ8GwbQ==}
     engines: {node: '>= 8.10.0'}
+    requiresBuild: true
     dependencies:
       anymatch: 3.1.2
       braces: 3.0.2
@@ -3348,6 +3360,7 @@ packages:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+    requiresBuild: true
     dev: true
     optional: true
 
@@ -4424,6 +4437,7 @@ packages:
   /mv/2.1.1:
     resolution: {integrity: sha1-rmzg1vbV4KT32JN5jQPB6pVZtqI=}
     engines: {node: '>=0.8.0'}
+    requiresBuild: true
     dependencies:
       mkdirp: 0.5.5
       ncp: 2.0.0
@@ -5068,6 +5082,7 @@ packages:
 
   /safe-json-stringify/1.2.0:
     resolution: {integrity: sha512-gH8eh2nZudPQO6TytOvbxnuhYBOvDBBLW52tz5q6X58lJcd/tkmqFR+5Z9adS8aJtURSXWThWy/xJtJwixErvg==}
+    requiresBuild: true
     dev: false
     optional: true
 
@@ -5172,7 +5187,7 @@ packages:
   /signed-varint/2.0.1:
     resolution: {integrity: sha1-UKmYnafJjCxh2tEZvJdHDvhSgSk=}
     dependencies:
-      varint: 5.0.0
+      varint: 5.0.2
     dev: false
 
   /slash/2.0.0:
