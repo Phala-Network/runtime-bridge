@@ -1,14 +1,17 @@
 import {
   TX_BATCH_COMMIT_TIMEOUT,
+  TX_BATCH_DEQUEUE_TIMEOUT,
   TX_BATCH_SIZE,
   TX_QUEUE_SIZE,
 } from '../utils/constants'
 import { preprocess } from './preprocess'
 import { setupPhalaApi } from '../utils/api'
+import { traderManager } from './trader_manager'
 import { v4 as uuid } from 'uuid'
 import createTradeQueue from './trade_queue'
 import env from '../utils/env'
 import logger from '../utils/logger'
+import wait from '../utils/wait'
 
 export const RP_INIT = 'RP_INIT'
 export const RP_PREPROCESSED = 'RP_PREPROCESSED'
@@ -29,7 +32,7 @@ class PoolQueue {
 
   constructor(pid) {
     this.#pid = pid
-    this.#dequeueLoop().catch((e) => {})
+    this.#dequeueLoop()
   }
 
   addJob(calls) {
@@ -122,7 +125,27 @@ class PoolQueue {
     return this.#queue
   }
 
-  async #dequeueLoop() {}
+  async #dequeue() {
+    const item = this.#queue.shift()
+    if (typeof item === 'undefined') {
+      return true
+    }
+    await traderManager.addBatchJob(item)
+    return false
+  }
+
+  async #dequeueLoop() {
+    try {
+      const isEmpty = await this.#dequeue()
+      if (isEmpty) {
+        await wait(TX_BATCH_DEQUEUE_TIMEOUT)
+      }
+      return this.#dequeueLoop()
+    } catch (e) {
+      logger.error(e)
+      return this.#dequeueLoop()
+    }
+  }
 
   get currentBatch() {
     return this.#currentBatch
@@ -161,9 +184,14 @@ const startMessageBus = async (appContext) => {
       try {
         await batch.finishedPromise
         delete callRefs[callMeta.id]
+        // todo: determine if failed
       } catch (e) {
-        delete callRefs[callMeta.id]
+        logger.error(`Job #{callMeta.id} failed:`, e)
         throw e
+      } finally {
+        if (callRefs[callMeta.id]) {
+          delete callRefs[callMeta.id]
+        }
       }
     }
   }

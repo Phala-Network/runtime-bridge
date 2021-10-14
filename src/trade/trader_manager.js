@@ -1,3 +1,12 @@
+import {
+  MA_BATCH_ADDED,
+  MA_BATCH_FAILED,
+  MA_BATCH_FINISHED,
+  MA_BATCH_FINISHED_WITH_ERROR,
+  MA_BATCH_WORKING,
+  MA_ERROR,
+  MA_ONLINE,
+} from './trader'
 import cluster, { isMaster } from 'cluster'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
@@ -65,23 +74,26 @@ class TraderManager {
     if (!isMaster) {
       throw new Error('Not a master process.')
     }
-    const process = cluster.fork({
+    const traderProcess = cluster.fork({
       PHALA_MODULE: 'trade/trader',
     })
-    process.on('message', ({ action, payload }) => {
+    traderProcess.on('message', ({ action, payload }) => {
       switch (action) {
-        case 'online':
+        case MA_ONLINE:
           this.#status = TM_UP_IDLE
           logger.info('Trader up!')
           break
-        case 'error':
+        case MA_ERROR:
           this.#status = TM_ERROR
           logger.error({ payload }, 'Trader error!')
           this.#currentError = new Error(payload)
           break
+        default:
+          this.#handleProcessMessage({ action, payload })
+          break
       }
     })
-    process.on('exit', (code, signal) => {
+    traderProcess.on('exit', (code, signal) => {
       if (this.hasError) {
         logger.info(
           { code, signal },
@@ -94,7 +106,22 @@ class TraderManager {
       }
       this.#startProcess().catch((e) => logger.warn(e))
     })
-    this.#process = process
+    this.#process = traderProcess
+  }
+
+  #handleProcessMessage({ action, payload }) {
+    switch (action) {
+      case MA_BATCH_ADDED:
+        break
+      case MA_BATCH_WORKING:
+        break
+      case MA_BATCH_FINISHED:
+        break
+      case MA_BATCH_FINISHED_WITH_ERROR:
+        break
+      case MA_BATCH_FAILED:
+        break
+    }
   }
 
   async waitUntilUp() {

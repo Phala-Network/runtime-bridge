@@ -45,7 +45,7 @@ services:
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
       - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
       - PHALA_NAMESPACE=default
-      - PHALA_ENABLE_KEEP_ALIVE=true
+      - PHALA_ENABLE_KEEP_ALIVE=false
 
   trade:
     image: phalanetwork/prb:development
