@@ -1,4 +1,5 @@
 import {
+  MA_ADD_BATCH,
   MA_BATCH_ADDED,
   MA_BATCH_FAILED,
   MA_BATCH_FINISHED,
@@ -48,6 +49,7 @@ class TraderManager {
     return this.#addQueue.add(() => this.#addBatch(batch))
   }
   async #addBatch(batch) {
+    await this.waitUntilUp()
     const addedPromise = new Promise(
       (addedPromise__resolve, addedPromise__reject) => {
         Object.assign(batch, {
@@ -55,6 +57,13 @@ class TraderManager {
           addedPromise__reject,
         })
         this.#batchJobs[batch.id] = batch
+        this.#process.send({
+          action: MA_ADD_BATCH,
+          payload: {
+            id: batch.id,
+            calls: batch.calls,
+          },
+        })
       }
     )
     try {
