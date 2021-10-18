@@ -2,11 +2,12 @@ import {
   MA_BATCH_ADDED,
   MA_BATCH_FAILED,
   MA_BATCH_FINISHED,
-  MA_BATCH_FINISHED_WITH_ERROR,
+  MA_BATCH_REJECTED,
   MA_BATCH_WORKING,
   MA_ERROR,
   MA_ONLINE,
 } from './trader'
+import PQueue from 'p-queue'
 import cluster, { isMaster } from 'cluster'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
@@ -31,20 +32,83 @@ class TraderManager {
   #appContext
   #status = TM_DOWN
   #process = null
-  #firstStartedAt = 0
-  #lastStartedAt = 0
-  #currentBatch = null
-  #currentBatchCount = 0
+  #batchJobs = {}
+  #currentBatchJobIds = []
+  #activeBatchJobIds = []
   #currentError = null
+  #addQueue
 
   constructor(appContext) {
     this.#appContext = appContext
+    this.#addQueue = new PQueue({ concurrency: 1 })
     this.#startProcess().catch((e) => logger.warn(e))
   }
 
-  async addBatchJob(batch) {}
+  addBatchJob(batch) {
+    return this.#addQueue.add(() => this.#addBatch(batch))
+  }
+  async #addBatch(batch) {
+    const addedPromise = new Promise(
+      (addedPromise__resolve, addedPromise__reject) => {
+        Object.assign(batch, {
+          addedPromise__resolve,
+          addedPromise__reject,
+        })
+        this.#batchJobs[batch.id] = batch
+      }
+    )
+    try {
+      await addedPromise
+    } catch (e) {
+      if (e) {
+        logger.error(e)
+        batch.addedPromise__reject(e)
+        batch.finishedPromise__reject(e)
+      }
+      await this.restartProcess()
+      return this.#addBatch(batch)
+    }
+  }
 
-  async #processBatchJob(batch) {}
+  #onBatchJobAdded(id) {
+    this.#batchJobs[id]?.addedPromise__resolve?.()
+  }
+  #onBatchJobRejected(id) {
+    this.#batchJobs[id]?.addedPromise__reject?.()
+  }
+  #onBatchJobWorking(id) {
+    this.#batchJobs[id]?.startedPromise__resolve()
+  }
+  #onBatchJobFinished(id, failedCalls) {
+    const batch = this.#batchJobs[id]
+    if (!batch) {
+      return
+    }
+    const indexes = failedCalls.map((i) => batch.callToJobId[i.index])
+    this.#batchJobs[id]?.finishedPromise__resolve({
+      indexes,
+      reasons: failedCalls,
+    })
+  }
+  #onBatchJobFailed(id, e) {
+    this.#batchJobs[id]?.startedPromise__reject(e)
+    this.#batchJobs[id]?.finishedPromise__reject(e)
+  }
+
+  async #onProcessExited(code) {
+    for (const id of this.#activeBatchJobIds) {
+      const batch = this.#batchJobs[id]
+      if (this.#currentBatchJobIds[0] === id) {
+        this.#currentBatchJobIds.shift()
+      }
+      if (batch) {
+        batch.jobs.map((j) =>
+          j.startedPromise__reject(new Error(`Trader process exited: ${code}`))
+        )
+      }
+    }
+    this.#activeBatchJobIds = []
+  }
 
   async #startProcess() {
     if (this.isStarting) {
@@ -104,7 +168,9 @@ class TraderManager {
         logger.info({ code, signal }, `Trader exited.`)
         this.#status = TM_DOWN
       }
-      this.#startProcess().catch((e) => logger.warn(e))
+      this.#onProcessExited(signal || code)
+        .then(() => this.#startProcess())
+        .catch((e) => logger.warn(e))
     })
     this.#process = traderProcess
   }
@@ -112,14 +178,19 @@ class TraderManager {
   #handleProcessMessage({ action, payload }) {
     switch (action) {
       case MA_BATCH_ADDED:
+        this.#onBatchJobAdded(payload.id)
+        break
+      case MA_BATCH_REJECTED:
+        this.#onBatchJobRejected(payload.id)
         break
       case MA_BATCH_WORKING:
+        this.#onBatchJobWorking(payload.id)
         break
       case MA_BATCH_FINISHED:
-        break
-      case MA_BATCH_FINISHED_WITH_ERROR:
+        this.#onBatchJobFinished(payload.id, payload.failedCalls)
         break
       case MA_BATCH_FAILED:
+        this.#onBatchJobFailed(payload.id, payload.error)
         break
     }
   }

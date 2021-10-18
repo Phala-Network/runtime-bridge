@@ -6,9 +6,9 @@ export const MA_ONLINE = 'MA_ONLINE'
 export const MA_ERROR = 'MA_ERROR'
 export const MA_ADD_BATCH = 'MA_ADD_BATCH'
 export const MA_BATCH_ADDED = 'MA_BATCH_ADDED'
+export const MA_BATCH_REJECTED = 'MA_BATCH_REJECTED'
 export const MA_BATCH_WORKING = 'MA_BATCH_WORKING'
 export const MA_BATCH_FINISHED = 'MA_BATCH_FINISHED'
-export const MA_BATCH_FINISHED_WITH_ERROR = 'MA_BATCH_FINISHED_WITH_ERROR'
 export const MA_BATCH_FAILED = 'MA_BATCH_FINISHED'
 
 const start = async () => {

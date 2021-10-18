@@ -9,12 +9,20 @@ export const preprocess = async (job) => {
   if (!(action && pid)) {
     new Error('Invalid job!')
   }
+  let resultPromise__resolve, resultPromise__reject
+  const resultPromise = new Promise((resolve, reject) => {
+    resultPromise__resolve = resolve
+    resultPromise__reject = reject
+  })
 
   const jobMeta = await actions[action](job.data.payload)
   Object.assign(jobMeta, {
     id: job.id,
     pid: `${pid}`,
     getRawJob: () => job,
+    getResultPromise: () => resultPromise,
+    resultPromise__resolve,
+    resultPromise__reject,
   })
 
   return jobMeta

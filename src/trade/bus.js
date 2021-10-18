@@ -27,7 +27,7 @@ const messageBus = {
 class PoolQueue {
   #pid
   #queue = []
-  #aliveBatches = {}
+  // #aliveBatches = {}
   #currentBatch = null
 
   constructor(pid) {
@@ -35,9 +35,9 @@ class PoolQueue {
     this.#dequeueLoop()
   }
 
-  addJob(calls) {
+  addJob(job) {
     const batch = this.#findBatch()
-    batch.addCalls(calls)
+    batch.addCalls(job)
     return batch
   }
 
@@ -57,6 +57,8 @@ class PoolQueue {
     let commitTimeout
     const batchId = uuid()
     const calls = []
+    const callToJobId = {}
+    const jobs = []
 
     let startedPromise__resolve, startedPromise__reject
     const startedPromise = new Promise((resolve, reject) => {
@@ -88,9 +90,14 @@ class PoolQueue {
       }
     }
 
-    const addCalls = wrapError((calls) => {
+    const addCalls = wrapError((job) => {
       updateCommitTimeout()
-      calls.push(...calls)
+      const currentLength = calls.length
+      job.calls.forEach((call, idx) => {
+        callToJobId[currentLength + idx] = call.id
+        calls.push(call)
+      })
+      jobs.push(job)
     })
     const commit = wrapError(() => {
       clearTimeout(commitTimeout)
@@ -100,6 +107,8 @@ class PoolQueue {
 
     const batchRef = {
       id: batchId,
+      jobs,
+      callToJobId,
       batchId,
       calls,
       addCalls,
@@ -107,12 +116,10 @@ class PoolQueue {
       startedPromise,
       startedPromise__resolve,
       startedPromise__reject,
-      finishedPromise,
       finishedPromise__resolve,
       finishedPromise__reject,
+      finishedPromise,
     }
-
-    this.#aliveBatches[batchId] = batchRef
 
     return batchRef
   }
@@ -177,14 +184,16 @@ const startMessageBus = async (appContext) => {
 
   const enqueue = async (callMeta) => {
     const poolQueue = getPoolQueue(callMeta.pid)
-    const batch = poolQueue.addJob(callMeta.calls)
+    const batch = poolQueue.addJob(callMeta)
     callRefs[callMeta.id] = batch
     await batch.startedPromise
     return async () => {
       try {
-        await batch.finishedPromise
-        delete callRefs[callMeta.id]
-        // todo: determine if failed
+        const { indexes, reasons } = await batch.finishedPromise
+        const reasonId = indexes.indexOf(callMeta.id)
+        if (reasonId > -1) {
+          throw new Error(`Chain-side failed: ${reasons[reasonId].message}`)
+        }
       } catch (e) {
         logger.error(`Job #{callMeta.id} failed:`, e)
         throw e
