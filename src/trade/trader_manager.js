@@ -61,6 +61,7 @@ class TraderManager {
           action: MA_ADD_BATCH,
           payload: {
             id: batch.id,
+            pid: batch.pid,
             calls: batch.calls,
           },
         })
