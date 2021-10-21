@@ -82,10 +82,10 @@ const start = async () => {
         phalaApi
       )
     )
-    let tx = txs.length === 1 ? txs[0] : phalaApi.tx.utility.batchTry(txs)
+    const batchTx = phalaApi.tx.utility.batchTry(txs)
     return pool.isProxy
-      ? phalaApi.tx.proxy.proxy(pool.realPhalaSs58, null, tx)
-      : tx
+      ? phalaApi.tx.proxy.proxy(pool.realPhalaSs58, null, batchTx)
+      : batchTx
   }
 
   const processBatch = async (batch) => {
