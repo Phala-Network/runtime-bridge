@@ -13,13 +13,13 @@ const createTradeQueue = (redisUrl) => {
 
   ret.dispatch = (...args) => {
     const job = ret.createJob(...args)
-    return waitForJob(queueName, job)
+    return waitForJob(queueName, job, ret)
   }
 
   return ret
 }
 
-const waitForJob = (queueName, job) =>
+const waitForJob = (queueName, job, queue) =>
   new Promise((resolve, reject) => {
     job
       .save()
@@ -35,12 +35,26 @@ const waitForJob = (queueName, job) =>
           )
         })
         job.on('failed', (err) => {
-          $logger.warn(
-            { queueName },
-            err,
-            `Job #${job.id} failed with error ${err.message}.`
-          )
-          reject(err)
+          if (err.message?.length) {
+            reject(err)
+          } else {
+            queue.getJob(job.id).then((j) => {
+              let stack = j?.options?.stacktraces
+              if (typeof stack !== 'string') {
+                if (Array.isArray(stack)) {
+                  stack = stack.join('')
+                } else {
+                  stack = JSON.stringify(stack, null, 2)
+                }
+              }
+              console.log(1111, stack)
+              $logger.warn(
+                { queueName },
+                `Job #${job.id} failed with error: ${stack}.`
+              )
+              reject(stack)
+            })
+          }
         })
       })
       .catch(reject)

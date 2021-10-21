@@ -17,7 +17,7 @@ export const MA_BATCH_ADDED = 'MA_BATCH_ADDED'
 export const MA_BATCH_REJECTED = 'MA_BATCH_REJECTED'
 export const MA_BATCH_WORKING = 'MA_BATCH_WORKING'
 export const MA_BATCH_FINISHED = 'MA_BATCH_FINISHED'
-export const MA_BATCH_FAILED = 'MA_BATCH_FINISHED'
+export const MA_BATCH_FAILED = 'MA_BATCH_FAILED'
 
 export class TxTimeOutError extends Error {
   constructor(m) {
@@ -61,9 +61,9 @@ const start = async () => {
         id: batch.id,
       },
     })
-    return processQueue.add(() =>
-      getPoolQueue(batch.pid).add(() => processBatch(batch))
-    )
+    processQueue
+      .add(() => getPoolQueue(batch.pid).add(() => processBatch(batch)))
+      .catch((e) => logger.error(e))
   }
   const rejectJob = async (batch) => {
     await processQueue.onIdle()
@@ -93,7 +93,7 @@ const start = async () => {
     const tx = formTx(pool, batch.calls)
     try {
       process.send({ action: MA_BATCH_WORKING, payload: { id: batch.id } })
-      const failedCalls = await sendTx(tx, pool.pair)
+      const failedCalls = await sendTx(tx, pool)
       process.send({
         action: MA_BATCH_FINISHED,
         payload: { id: batch.id, failedCalls },
@@ -120,7 +120,7 @@ const start = async () => {
   })
 }
 
-const sendTx = (tx, sender) =>
+const sendTx = (tx, pool) =>
   new Promise((resolve, reject) => {
     let unsub
     const doUnsub = (reason) => {
@@ -133,7 +133,7 @@ const sendTx = (tx, sender) =>
       reject(new TxTimeOutError('Timeout!'))
     }, TX_TIMEOUT)
     const clearCurrentTimeout = () => clearTimeout(timeout)
-    tx.signAndSend(sender, (result) => {
+    tx.signAndSend(pool.pair, (result) => {
       const { status, dispatchError, events } = result
       logger.debug(
         { hash: tx.hash.toHex() },
@@ -148,6 +148,30 @@ const sendTx = (tx, sender) =>
           if (dispatchError) {
             doUnsub(resolveDispatchError(dispatchError))
           } else {
+            if (pool.isProxy) {
+              const {
+                event: {
+                  data: [proxyResult],
+                },
+              } = events.filter(({ event }) =>
+                phalaApi.events.proxy.ProxyExecuted.is(event)
+              )[0]
+
+              if (proxyResult.isErr) {
+                return doUnsub(new Error(JSON.stringify(proxyResult.toJSON())))
+              }
+            }
+
+            const batchFailed = !events.filter(
+              ({ event }) =>
+                phalaApi.events.utility.BatchCompleted.is(event) ||
+                phalaApi.events.utility.BatchCompletedWithErrors.is(event)
+            ).length
+
+            if (batchFailed) {
+              return doUnsub(new Error('Batch failed with no reason!'))
+            }
+
             const failedCalls = events
               .filter(({ event }) =>
                 phalaApi.events.utility.ItemFailed.is(event)
@@ -158,7 +182,7 @@ const sendTx = (tx, sender) =>
                     data: [index, dispatchError],
                   },
                 }) => ({
-                  index,
+                  index: index.toNumber(),
                   reason: resolveDispatchError(dispatchError),
                 })
               )

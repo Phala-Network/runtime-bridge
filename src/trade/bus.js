@@ -3,6 +3,7 @@ import {
   TX_BATCH_DEQUEUE_TIMEOUT,
   TX_BATCH_SIZE,
   TX_QUEUE_SIZE,
+  TX_RETRY_TIMES,
 } from '../utils/constants'
 import { preprocess } from './preprocess'
 import { setupPhalaApi } from '../utils/api'
@@ -195,10 +196,10 @@ const startMessageBus = async (appContext) => {
         const { indexes, reasons } = await batch.finishedPromise
         const reasonId = indexes.indexOf(callMeta.id)
         if (reasonId > -1) {
-          throw new Error(`Chain-side failed: ${reasons[reasonId].message}`)
+          throw new Error(`Tx failed: ${reasons[reasonId].reason}`)
         }
       } catch (e) {
-        logger.error(`Job #{callMeta.id} failed:`, e)
+        logger.error(`Job #${callMeta.id} failed:`, e)
         throw e
       } finally {
         if (callRefs[callMeta.id]) {
@@ -209,28 +210,32 @@ const startMessageBus = async (appContext) => {
   }
 
   inputQueue.process(TX_QUEUE_SIZE, async (job) => {
-    await job.reportProgress(RP_INIT)
-    const callMeta = await preprocess(job)
-    await job.reportProgress(RP_PREPROCESSED)
-    let remainingRetries = callMeta.shouldRetry ? 3 : 0
+    try {
+      await job.reportProgress(RP_INIT)
+      const callMeta = await preprocess(job)
+      await job.reportProgress(RP_PREPROCESSED)
+      let remainingRetries = callMeta.shouldRetry ? TX_RETRY_TIMES : 0
 
-    const processJob = async () => {
-      const waitUntilFinished = await enqueue(callMeta)
-      await job.reportProgress(RP_WORKING)
-      await waitUntilFinished()
-      await job.reportProgress(RP_FINISHED)
-    }
-    const rescueJob = (e) => {
-      if (!remainingRetries) {
-        job.reportProgress(RP_FAILED)
-        throw e
+      const processJob = async () => {
+        const waitUntilFinished = await enqueue(callMeta)
+        await job.reportProgress(RP_WORKING)
+        await waitUntilFinished()
+        await job.reportProgress(RP_FINISHED)
       }
-      job.reportProgress(RP_SHOULD_RETRY)
-      remainingRetries -= 1
-      logger.warn(`Retrying job #${job.id} with error:`, e)
-      return processJob().catch(rescueJob)
+      const rescueJob = (e) => {
+        if (!remainingRetries) {
+          job.reportProgress(RP_FAILED)
+          throw e
+        }
+        job.reportProgress(RP_SHOULD_RETRY)
+        remainingRetries -= 1
+        logger.debug(`Retrying job #${job.id} with error:`, e)
+        return processJob().catch(rescueJob)
+      }
+      await processJob().catch(rescueJob)
+    } catch (e) {
+      throw e?.stack || e?.toString?.() || e
     }
-    await processJob().catch(rescueJob)
   })
 
   Object.assign(appContext, { messageBus })

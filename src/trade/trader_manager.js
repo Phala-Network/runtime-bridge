@@ -65,8 +65,10 @@ class TraderManager {
             calls: batch.calls,
           },
         })
+        logger.debug({ batchId: batch.id }, 'Sent batch add request...')
       }
     )
+
     try {
       await addedPromise
     } catch (e) {
@@ -185,7 +187,9 @@ class TraderManager {
     this.#process = traderProcess
   }
 
-  #handleProcessMessage({ action, payload }) {
+  #handleProcessMessage(message) {
+    logger.debug(message, 'Received from trader')
+    const { action, payload } = message
     switch (action) {
       case MA_BATCH_ADDED:
         this.#onBatchJobAdded(payload.id)
