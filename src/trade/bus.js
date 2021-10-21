@@ -101,8 +101,7 @@ class PoolQueue {
     })
     const commit = wrapError(() => {
       clearTimeout(commitTimeout)
-      logger.info(`Committed batch`)
-      console.log(222, batchRef)
+      logger.info({ batchId, length: jobs.length }, `Committed batch`)
       this.#currentBatch = null
       this.#queue.push(batchRef)
     })
