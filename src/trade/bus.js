@@ -94,13 +94,15 @@ class PoolQueue {
       updateCommitTimeout()
       const currentLength = calls.length
       job.calls.forEach((call, idx) => {
-        callToJobId[currentLength + idx] = call.id
+        callToJobId[currentLength + idx] = job.id
         calls.push(call)
       })
       jobs.push(job)
     })
     const commit = wrapError(() => {
       clearTimeout(commitTimeout)
+      logger.info(`Committed batch`)
+      console.log(222, batchRef)
       this.#currentBatch = null
       this.#queue.push(batchRef)
     })
@@ -120,6 +122,8 @@ class PoolQueue {
       finishedPromise__reject,
       finishedPromise,
     }
+
+    this.#currentBatch = batchRef
 
     return batchRef
   }

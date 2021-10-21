@@ -42,7 +42,7 @@ const start = async () => {
   await setupDb(DB_WORKER)
   await setupPhalaApi(env.chainEndpoint)
 
-  const __fakeLifecycleContext = { pools: {} }
+  const __fakeLifecycleContext = { pools: new Map() }
 
   let deadCount = 0
 
@@ -90,16 +90,20 @@ const start = async () => {
 
   const processBatch = async (batch) => {
     const pool = await getPool(batch.pid, __fakeLifecycleContext, true)
-    const tx = formTx(pool, batch)
+    const tx = formTx(pool, batch.calls)
     try {
-      process.send({ action: MA_BATCH_WORKING })
+      process.send({ action: MA_BATCH_WORKING, payload: { id: batch.id } })
       const failedCalls = await sendTx(tx, pool.pair)
-      process.send({ action: MA_BATCH_FINISHED, payload: { failedCalls } })
+      process.send({
+        action: MA_BATCH_FINISHED,
+        payload: { id: batch.id, failedCalls },
+      })
     } catch (e) {
       logger.error(e)
       process.send({
         action: MA_BATCH_FAILED,
         payload: {
+          id: batch.id,
           error: e.stack || e.toString(),
         },
       })
