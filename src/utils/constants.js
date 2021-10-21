@@ -22,8 +22,7 @@ export const APP_MESSAGE_TUNNEL_QUERY_TIMEOUT = 15000
 
 export const FRNK = '0x46524e4b'
 
-export const TX_RETRY_TIMES = 0
-// export const TX_RETRY_TIMES = 3
+export const TX_RETRY_TIMES = 3
 
 export const TX_QUEUE_SIZE = 1000
 export const TX_BATCH_SIZE = 100
