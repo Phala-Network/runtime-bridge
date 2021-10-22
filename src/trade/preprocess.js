@@ -45,6 +45,9 @@ export const apiProxy = new Proxy(noop, {
             if (arg.toHex) {
               return arg.toHex()
             }
+            if (arg.toString) {
+              return arg.toString()
+            }
             throw new Error(
               `Invalid arguments for call: api.${result.join('.')}`
             )

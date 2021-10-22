@@ -1,6 +1,5 @@
 import { phalaApi as _api } from '../utils/api'
 import { apiProxy as api, wrapTx } from './preprocess'
-import BN from 'bn.js'
 
 export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }) =>
   wrapTx(
@@ -16,13 +15,12 @@ export const ADD_WORKER = async ({ publicKey, pid }) =>
   wrapTx([api.tx.phalaStakePool.addWorker(pid, publicKey)], true)
 
 export const START_MINING = async ({ pid, publicKey, stake }) => {
-  const stakeBn = new BN(stake)
   return wrapTx(
     [
       api.tx.phalaStakePool.startMining(
         pid,
         publicKey,
-        stakeBn.toString('hex')
+        _api.createType('BalanceOf', stake)
       ),
     ],
     true
