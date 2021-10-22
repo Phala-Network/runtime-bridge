@@ -6,7 +6,7 @@
   "type": "module",
   "dependencies": {
     "@pcan/leveldb-viewer": "^0.1.3",
-    "@phala/typedefs": "^0.2.28",
+    "@phala/typedefs": "^0.2.29",
     "@polkadot/api": "^6.3.2-10",
     "@polkadot/apps-config": "^0.96.1",
     "@polkadot/keyring": "^7.4.1",
@@ -30,7 +30,7 @@
     "esm": "^3.2.25",
     "finity": "^0.5.4",
     "got": "^11.8.2",
-    "ioredis": "^4.27.11",
+    "ioredis": "^4.28.0",
     "length-prefixed-stream": "^2.0.0",
     "level": "^7.0.1",
     "level-errors": "^3.0.1",
@@ -59,13 +59,13 @@
     "@babel/preset-env": "^7.15.8",
     "@protobufjs/aspromise": "^1.1.2",
     "@protobufjs/inquire": "^1.1.0",
-    "bull-arena": "^3.29.3",
+    "bull-arena": "github:bee-queue/arena",
     "chalk": "^4.1.2",
     "escodegen": "^2.0.0",
     "eslint": "^8.0.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-config-standard": "^16.0.3",
-    "eslint-plugin-import": "^2.25.1",
+    "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-promise": "^5.1.0",
@@ -86,8 +86,8 @@
     "proto:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
     "proto:darwin:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && gsed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js",
     "proto:darwin:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && gsed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
-    "start_module": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
-    "dump_workers": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_workers",
-    "import_workers": "node --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_workers"
+    "start_module": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
+    "dump_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_workers",
+    "import_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_workers"
   }
 }

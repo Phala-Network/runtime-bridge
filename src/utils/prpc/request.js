@@ -43,7 +43,7 @@ const RUNTIME_REQUEST_BASE_OPTIONS = Object.freeze({
   hooks: {
     beforeRetry: [
       (options, error, retryCount) => {
-        logger.warn({ retryCount, url: options.url }, error)
+        logger.debug({ retryCount, url: options.url }, error)
       },
     ],
   },

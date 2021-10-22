@@ -101,6 +101,7 @@ const onPreMining = async (fromState, toState, context) => {
   const { runtime, onChainState } =
     context.stateMachine.rootStateMachine.workerContext
   const { info, initInfo, rpcClient } = runtime
+  const publicKey = '0x' + info.publicKey
 
   await wait(12000) // wait for onChainState to be synched
   if (
@@ -112,7 +113,14 @@ const onPreMining = async (fromState, toState, context) => {
     return
   }
 
-  if (!info.registered) {
+  if (
+    !(
+      (await phalaApi.query.phalaRegistry.workers(publicKey))
+        .unwrapOrDefault()
+        .initialScore.toJSON() > 50
+    ) ||
+    !info.registered
+  ) {
     context.stateMachine.rootStateMachine.workerContext.message =
       'Ensuring registration on chain...'
     let res = await rpcClient.getRuntimeInfo({})

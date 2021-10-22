@@ -167,7 +167,14 @@ export const registerWorker = async (runtime) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
-  if (!info.registered) {
+  if (
+    !(
+      (await phalaApi.query.phalaRegistry.workers(publicKey))
+        .unwrapOrDefault()
+        .initialScore.toJSON() > 50
+    ) ||
+    !info.registered
+  ) {
     await dispatchTx({
       action: 'REGISTER_WORKER',
       payload: {

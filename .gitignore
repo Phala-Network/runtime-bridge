@@ -132,6 +132,7 @@ docker/development/testing/data
 *.dump
 test_data_alt.json
 **/*.generated.**
+proto.generated.js
 
 # User-specific stuff:
 .idea/workspace.xml
@@ -147,6 +148,8 @@ test_data_alt.json
 .idea/sqlDataSources.xml
 .idea/dynamic.xml
 .idea/uiDesigner.xml
+
+.idea/workspace.sync-conflict*
 
 # Gradle:
 .idea/gradle.xml

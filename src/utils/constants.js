@@ -22,10 +22,15 @@ export const APP_MESSAGE_TUNNEL_QUERY_TIMEOUT = 15000
 
 export const FRNK = '0x46524e4b'
 
+export const TX_RETRY_TIMES = 3
+
 export const TX_QUEUE_SIZE = 1000
-export const TX_SUB_QUEUE_SIZE = 50
-export const TX_SEND_QUEUE_SIZE = 80
-export const TX_TIMEOUT = 8 * 60 * 60 * 1000 // TODO: temp fix, remove later!
+export const TX_BATCH_SIZE = 100
+export const TX_SEND_QUEUE_SIZE = 10
+export const TX_BATCH_COMMIT_TIMEOUT = 6000
+export const TX_BATCH_DEQUEUE_TIMEOUT = 1000
+export const TX_DEAD_COUNT_THRESHOLD = 500
+export const TX_TIMEOUT = 1000 * 12 * 10
 
 export const BLOB_MAX_RANGE_COUNT = 900
 export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 300

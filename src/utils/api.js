@@ -76,7 +76,9 @@ const setupPhalaApi = async (
 
   phalaApi.on('disconnected', (e) => {
     logger.info(e)
-    process.exit(255)
+    if (_phalaApi === phalaApi) {
+      process.exit(255)
+    }
   })
 
   const [phalaChain, phalaNodeName, phalaNodeVersion] = (
@@ -118,7 +120,9 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
 
   parentApi.on('disconnected', (e) => {
     logger.info(e)
-    process.exit(255)
+    if (_parentApi === parentApi) {
+      process.exit(255)
+    }
   })
 
   const [parentChain, parentNodeName, parentNodeVersion] = (
