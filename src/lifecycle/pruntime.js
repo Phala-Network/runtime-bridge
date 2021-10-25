@@ -83,6 +83,19 @@ export const setupRuntime = (workerContext) => {
   return runtime
 }
 
+const triggerRa = async (runtime) => {
+  const { initInfo, rpcClient, workerContext } = runtime
+  workerContext.message = 'Getting RA report...'
+  let res = await rpcClient.getRuntimeInfo({})
+  res = res.constructor.toObject(res, {
+    defaults: true,
+    enums: String,
+    longs: Number,
+  })
+  Object.assign(initInfo, res)
+  return initInfo
+}
+
 export const initRuntime = async (
   runtime,
   debugSetKey = undefined,
@@ -155,7 +168,7 @@ export const initRuntime = async (
 
 export const registerWorker = async (runtime) => {
   const { initInfo, info, workerContext } = runtime
-  const { pid, dispatchTx } = workerContext
+  const { pid, dispatchTx, pool } = workerContext
 
   const publicKey = '0x' + info.publicKey
 
@@ -167,14 +180,22 @@ export const registerWorker = async (runtime) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
-  if (
-    !(
-      (await phalaApi.query.phalaRegistry.workers(publicKey))
-        .unwrapOrDefault()
-        .initialScore.toJSON() > 50
-    ) ||
-    !info.registered
-  ) {
+  let shouldRegister = !info.registered
+
+  const workerInfo = (
+    await phalaApi.query.phalaRegistry.workers(publicKey)
+  ).unwrapOrDefault()
+
+  shouldRegister =
+    shouldRegister ||
+    !(workerInfo.initialScore.toJSON() > 50) ||
+    !(workerInfo.operator.toString() === pool.isProxy
+      ? pool.realPhalaSs58
+      : pool.ss58Phala)
+
+  if (shouldRegister) {
+    await triggerRa(runtime)
+    workerContext.message = 'Registering worker on chain...'
     await dispatchTx({
       action: 'REGISTER_WORKER',
       payload: {
