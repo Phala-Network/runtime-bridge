@@ -189,9 +189,10 @@ export const registerWorker = async (runtime) => {
   shouldRegister =
     shouldRegister ||
     !(workerInfo.initialScore.toJSON() > 50) ||
-    !(workerInfo.operator.toString() === pool.isProxy
-      ? pool.realPhalaSs58
-      : pool.ss58Phala)
+    !(
+      workerInfo.operator.toString() ===
+      (pool.isProxy ? pool.realPhalaSs58 : pool.ss58Phala)
+    )
 
   if (shouldRegister) {
     await triggerRa(runtime)
