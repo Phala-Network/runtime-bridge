@@ -212,7 +212,7 @@ const wrapStateMachineStateError = (state) =>
     .on(EVENTS.ERROR)
     .transitionTo(StatusEnumValues.S_ERROR)
     .withAction(wrapEventAction(onError))
-    .on(EVENTS.KICK)
+    .on(EVENTS.SHOULD_KICK)
     .transitionTo(StatusEnumValues.S_KICKED)
     .withAction(wrapEventAction(onKicked))
 

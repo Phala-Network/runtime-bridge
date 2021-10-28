@@ -4,9 +4,24 @@ import { pbToObject } from './db_encoding'
 import { v4 as uuid } from 'uuid'
 import levelErrors from 'level-errors'
 
-export class NotFoundError extends Error {}
-export class BadInputError extends Error {}
-export class DuplicatedItemError extends Error {}
+export class NotFoundError extends Error {
+  constructor(m) {
+    super(m)
+    this.name = 'NotFoundError'
+  }
+}
+export class BadInputError extends Error {
+  constructor(m) {
+    super(m)
+    this.name = 'BadInputError'
+  }
+}
+export class DuplicatedItemError extends Error {
+  constructor(m) {
+    super(m)
+    this.name = 'DuplicatedItemError'
+  }
+}
 
 const getBy = async (conf, key, value) => {
   try {

@@ -1,3 +1,8 @@
+import { EVENTS } from '../state_machine'
+import { NotFoundError } from '../../io/updatable'
+import { UWorker } from '../../io/worker'
+import { addWorker, deleteWorker } from '../lifecycle'
+
 const getWorkerStates = (ids, context) =>
   ids.map((id) => {
     const w = context.workerContexts.get(id)
@@ -20,6 +25,16 @@ const getWorkerStates = (ids, context) =>
     }
   })
 
+const getWorker = async (id) => {
+  if (id.uuid) {
+    return await UWorker.get(id.uuid)
+  }
+  if (id.name) {
+    return await UWorker.getBy('name', id.name)
+  }
+  throw new NotFoundError(JSON.stringify(id))
+}
+
 const queryWorkerState = async (message, context) => {
   const ids = message.content.queryWorkerState.ids.map((i) => i.uuid)
   const results = getWorkerStates(ids, context)
@@ -29,8 +44,32 @@ const queryWorkerState = async (message, context) => {
     },
   }
 }
-const requestKickWorker = async (message, context) => {}
-const requestStartWorkerLifecycle = async (message, context) => {}
+const requestKickWorker = async (message, context) => {
+  const workers = await Promise.all(
+    message.content.requestKickWorker.requests.map((i) => getWorker(i.id))
+  )
+  const workerContexts = workers.map((i) => context.workerContexts.get(i.uuid))
+  await Promise.all(
+    workerContexts.map(async (c) => {
+      if (c) {
+        await c.stateMachine.handle(EVENTS.SHOULD_KICK)
+      }
+    })
+  )
+}
+const requestStartWorkerLifecycle = async (message, context) => {
+  const workers = await Promise.all(
+    message.content.requestStartWorkerLifecycle.requests.map((i) =>
+      getWorker(i.id)
+    )
+  )
+  await Promise.all(
+    workers.map(async (w) => {
+      await deleteWorker(w, context)
+      await addWorker(w, context)
+    })
+  )
+}
 
 export default {
   queryHandlers: {

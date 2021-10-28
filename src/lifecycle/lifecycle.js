@@ -37,25 +37,25 @@ export const applyWorker = async (worker, context, result) => {
   }
 }
 
-const addWorker = async (worker, context) => {
+export const addWorker = async (worker, context) => {
   const ret = await createWorkerContext(worker, context)
   context.workerContexts.set(worker.uuid, ret)
 
   return ret
 }
 
-const deleteWorker = async (worker, context) => {
-  await destroyWorkerContext(context.workerContexts[worker.uuid], true)
+export const deleteWorker = async (worker, context) => {
+  await destroyWorkerContext(context.workerContexts.get(worker.uuid))
   context.workerContexts.delete(worker.uuid)
-  const { id, nickname } = worker
+  const { uuid, name } = worker
   logger.debug(
     {
-      id,
-      nickname,
+      uuid,
+      name,
     },
     'Stopped worker lifecycle.'
   )
-  return worker.id
+  return worker.uuid
 }
 
 const waitUntilWorkerChanges = async (context) => {

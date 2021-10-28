@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/runtime-bridge.iml" filepath="$PROJECT_DIR$/.idea/runtime-bridge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../runtime-bridge-monitor/.idea/runtime-bridge-monitor.iml" filepath="$PROJECT_DIR$/../runtime-bridge-monitor/.idea/runtime-bridge-monitor.iml" />
     </modules>
   </component>
 </project>
