@@ -104,14 +104,6 @@ const onPreMining = async (fromState, toState, context) => {
   const publicKey = '0x' + info.publicKey
 
   await wait(12000) // wait for onChainState to be synched
-  if (
-    onChainState.minerInfo.state.isMiningIdle ||
-    onChainState.minerInfo.state.isMiningActive ||
-    onChainState.minerInfo.state.isMiningUnresponsive
-  ) {
-    context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
-    return
-  }
 
   if (
     !(
@@ -131,6 +123,7 @@ const onPreMining = async (fromState, toState, context) => {
     })
     Object.assign(initInfo, res)
   }
+
   await registerWorker(runtime)
 
   if (!runtime.skipRa) {
@@ -148,6 +141,16 @@ const onPreMining = async (fromState, toState, context) => {
       'Starting mining on chain...'
     await startMining(context.stateMachine.rootStateMachine.workerContext)
   }
+
+  if (
+    onChainState.minerInfo.state.isMiningIdle ||
+    onChainState.minerInfo.state.isMiningActive ||
+    onChainState.minerInfo.state.isMiningUnresponsive
+  ) {
+    context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+    return
+  }
+
   context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
 }
 
