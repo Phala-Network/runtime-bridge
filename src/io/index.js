@@ -18,7 +18,7 @@ const start = async () => {
           ...DB_ENCODING_JSON,
         })
       )
-      await db.put(DB_TOUCHED_AT, Date.now())
+      await db.set(DB_TOUCHED_AT, Date.now())
       const server = net.createServer((socket) => {
         socket.setKeepAlive(true, 1000)
         socket.on('error', (err) => {

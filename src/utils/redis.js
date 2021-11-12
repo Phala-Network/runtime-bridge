@@ -2,19 +2,19 @@ import { list as redisCommands } from 'redis-commands'
 import PQueue from 'p-queue'
 import Redis from 'ioredis'
 
-const createClient = (redisEndpoint) =>
+const createClient = (redisEndpoint, options = {}) =>
   new Promise((resolve) => {
     const queue = new PQueue({
       timeout: 3000,
       throwOnTimeout: true,
     })
 
-    const client = new Redis(redisEndpoint)
+    const client = new Redis(redisEndpoint, options)
 
     redisCommands.forEach((i) => {
       const command = i.split(' ')[0]
 
-      if (command !== 'multi') {
+      if (command !== 'multi' || command !== 'pipeline') {
         const func = client[i]
         const _func = (...args) => queue.add(() => func.apply(client, args))
 
@@ -33,6 +33,8 @@ const createClient = (redisEndpoint) =>
         }
       }
     })
+
+    client.put = client.set
 
     client.on('ready', () => {
       resolve(client)

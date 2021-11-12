@@ -1,4 +1,4 @@
-import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistance } from './db'
+import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistence } from './db'
 import {
   DB_ENCODING_JSON,
   DB_PB_TO_OBJECT_OPTIONS,
@@ -6,7 +6,6 @@ import {
 } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
-import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../utils/wait'
@@ -47,28 +46,24 @@ export const encodeBlockScale = (block, shouldCopy = false) => {
 
 export const getParaBlockExistance = async (number) => {
   const db = await getDb(DB_BLOCK)
-  return getKeyExistance(db, `para:${number}:written`)
+  return getKeyExistence(db, `para:${number}:written`)
 }
 
 export const setParaBlock = async (number, block) => {
   const db = await getDb(DB_BLOCK)
   const blockPb = ParaBlock.create(block)
-  await db.put(`para:${number}:pb`, ParaBlock.encode(blockPb).finish())
-  await db.put(`para:${number}:written`, Buffer.from([1]))
+  await db.set(`para:${number}:pb`, ParaBlock.encode(blockPb).finish())
+  await db.set(`para:${number}:written`, Buffer.from([1]))
   return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getParaBlock = async (number) => {
   const db = await getDb(DB_BLOCK)
-  try {
-    const buffer = await db.get(`para:${number}:pb`)
-    return pbToObject(ParaBlock.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
+  const buffer = await db.getBuffer(`para:${number}:pb`)
+  if (!buffer) {
+    return buffer
   }
+  return pbToObject(ParaBlock.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
 }
 
 const _waitForParaBlock = async (blockNumber) => {
@@ -108,28 +103,24 @@ export const waitForParaBlock = (blockNumber) =>
 
 export const getParentBlockExistance = async (number) => {
   const db = await getDb(DB_BLOCK)
-  return getKeyExistance(db, `parent:${number}:written`)
+  return getKeyExistence(db, `parent:${number}:written`)
 }
 
 export const setParentBlock = async (number, block) => {
   const db = await getDb(DB_BLOCK)
   const blockPb = ParentBlock.create(block)
-  await db.put(`parent:${number}:pb`, ParentBlock.encode(blockPb).finish())
-  await db.put(`parent:${number}:written`, Buffer.from([1]))
+  await db.set(`parent:${number}:pb`, ParentBlock.encode(blockPb).finish())
+  await db.set(`parent:${number}:written`, Buffer.from([1]))
   return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getParentBlock = async (number) => {
   const db = await getDb(DB_BLOCK)
-  try {
-    const buffer = await db.get(`parent:${number}:pb`)
-    return pbToObject(ParentBlock.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
+  const buffer = await db.getBuffer(`parent:${number}:pb`)
+  if (!buffer) {
+    return buffer
   }
+  return pbToObject(ParentBlock.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
 }
 
 const _waitForParentBlock = async (blockNumber) => {
@@ -169,59 +160,37 @@ export const waitForParentBlock = (blockNumber) =>
 
 export const bindBlock = async (paraNumber, parentNumber) => {
   const db = await getDb(DB_BLOCK)
-  await db.put(`paraToParent:${paraNumber}`, parentNumber, {
+  await db.set(`paraToParent:${paraNumber}`, parentNumber, {
     ...DB_ENCODING_JSON,
   })
-  await db.put(`parentToPara:${parentNumber}`, paraNumber, {
+  await db.set(`parentToPara:${parentNumber}`, paraNumber, {
     ...DB_ENCODING_JSON,
   })
 }
 
 export const getParaNumber = async (parentNumber) => {
   const db = await getDb(DB_BLOCK)
-  try {
-    await db.get(`parentToPara:${parentNumber}`, {
-      ...DB_ENCODING_JSON,
-    })
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
-  }
+  return db.get(`parentToPara:${parentNumber}`)
 }
 
 export const getParentNumber = async (paraNumber) => {
   const db = await getDb(DB_BLOCK)
-  try {
-    await db.get(`paraToParent:${paraNumber}`, {
-      ...DB_ENCODING_JSON,
-    })
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
-  }
+  return db.get(`paraToParent:${paraNumber}`)
 }
 
 export const setGenesis = async (genesis) => {
   const db = await getDb(DB_BLOCK)
   const pb = Genesis.create(genesis)
-  await db.put(`genesis:${genesis.paraId}:pb`, Genesis.encode(pb).finish())
-  await db.put(`genesis:${genesis.paraId}:written`, Buffer.from([1]))
+  await db.set(`genesis:${genesis.paraId}:pb`, Genesis.encode(pb).finish())
+  await db.set(`genesis:${genesis.paraId}:written`, Buffer.from([1]))
   return pbToObject(pb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getGenesis = async (paraId) => {
   const db = await getDb(DB_BLOCK)
-  try {
-    const buffer = await db.get(`genesis:${paraId}:pb`)
-    return pbToObject(Genesis.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
+  const buffer = await db.getBuffer(`genesis:${paraId}:pb`)
+  if (!buffer) {
+    return null
   }
+  return pbToObject(Genesis.decode(buffer), DB_PB_TO_OBJECT_OPTIONS)
 }

@@ -1,5 +1,5 @@
 import { DB_ENCODING_JSON, pbToObject } from './db_encoding'
-import { DB_WINDOW, getDb, getKeyExistance, waitFor } from './db'
+import { DB_WINDOW, getDb, getKeyExistence, waitFor } from './db'
 import {
   LAST_COMMITTED_PARA_BLOCK,
   LAST_COMMITTED_PARENT_BLOCK,
@@ -14,24 +14,19 @@ const { Window, RangeMeta } = prb.db
 
 export const getWindow = async (windowId) => {
   const db = await getDb(DB_WINDOW)
-
-  try {
-    const buffer = await db.get(`window:${windowId}:pb`)
-    const pb = Window.decode(buffer)
-    return pbToObject(pb)
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
+  const buffer = await db.getBuffer(`window:${windowId}:pb`)
+  if (!buffer) {
+    return buffer
   }
+  const pb = Window.decode(buffer)
+  return pbToObject(pb)
 }
 
 export const createWindow = async (windowId, data) => {
   const db = await getDb(DB_WINDOW)
   const pb = Window.create(data)
 
-  await db.put(`window:${windowId}:pb`, Window.encode(pb).finish())
+  await db.set(`window:${windowId}:pb`, Window.encode(pb).finish())
   return pbToObject(pb)
 }
 
@@ -61,39 +56,31 @@ export const updateWindow = async (windowIdOrObject, data) => {
   Object.assign(windowObject, data)
 
   const pb = Window.create(windowObject)
-  await db.put(`window:${windowId}:pb`, Window.encode(pb).finish())
+  await db.set(`window:${windowId}:pb`, Window.encode(pb).finish())
 
   return pbToObject(pb)
 }
 
 export const getRangeByParentNumber = async (number) => {
   const db = await getDb(DB_WINDOW)
-  try {
-    const buffer = await db.get(`rangeByParentBlock:${number}:pb`)
-    const pb = RangeMeta.decode(buffer)
-    return pbToObject(pb)
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
+  const buffer = await db.getBuffer(`rangeByParentBlock:${number}:pb`)
+  if (!buffer) {
+    return buffer
   }
+  const pb = RangeMeta.decode(buffer)
+  return pbToObject(pb)
 }
 export const waitForRangeByParentNumber = (number) =>
   waitFor(() => getRangeByParentNumber(number))
 
 export const getRangeByParaNumber = async (number) => {
   const db = await getDb(DB_WINDOW)
-  try {
-    const buffer = await db.get(`rangeByParaBlock:${number}:pb`)
-    const pb = RangeMeta.decode(buffer)
-    return pbToObject(pb)
-  } catch (error) {
-    if (error instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw error
+  const buffer = await db.getBuffer(`rangeByParaBlock:${number}:pb`)
+  if (!buffer) {
+    return buffer
   }
+  const pb = RangeMeta.decode(buffer)
+  return pbToObject(pb)
 }
 export const waitForRangeByParaNumber = (number) =>
   waitFor(() => getRangeByParaNumber(number))
@@ -118,7 +105,7 @@ export const setDryRange = async (
   const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
   const rangeWrittenMarkKey = `rangeWritten:${keySuffix}`
   const drySyncHeaderReqKey = `drySyncHeader:${keySuffix}`
-  const shouldSkip = await getKeyExistance(windowDb, rangeWrittenMarkKey)
+  const shouldSkip = await getKeyExistence(windowDb, rangeWrittenMarkKey)
 
   const rangeMeta = {
     parentStartBlock,
@@ -168,20 +155,20 @@ export const setDryRange = async (
   const rangeMetaPb = RangeMeta.create(rangeMeta)
   const rangeMetaPbBuffer = RangeMeta.encode(rangeMetaPb).finish()
 
-  const batch = windowDb.batch().put(drySyncHeaderReqKey, drySyncHeaderReq)
+  const batch = windowDb.pipeline().set(drySyncHeaderReqKey, drySyncHeaderReq)
 
   parentBlocks.reduce(
     (b, { number }) =>
-      b.put(`rangeByParentBlock:${number}:pb`, rangeMetaPbBuffer),
+      b.set(`rangeByParentBlock:${number}:pb`, rangeMetaPbBuffer),
     batch
   )
   paraBlocks.reduce(
     (b, { number }) =>
-      b.put(`rangeByParaBlock:${number}:pb`, rangeMetaPbBuffer),
+      b.set(`rangeByParaBlock:${number}:pb`, rangeMetaPbBuffer),
     batch
   )
-  batch.put(rangeWrittenMarkKey, Buffer.from([1]))
-  await batch.write()
+  batch.set(rangeWrittenMarkKey, Buffer.from([1]))
+  await batch.exec()
 
   logger.info(
     { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
@@ -205,7 +192,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 
   const blobRangeCommittedMarkKey = `blobRangeCommitted:${keySuffix}`
   const blobRangeKey_SyncHeaderReq = `blobRange:${keySuffix}:SyncHeaderReq`
-  const shouldSkip = await getKeyExistance(windowDb, blobRangeCommittedMarkKey)
+  const shouldSkip = await getKeyExistence(windowDb, blobRangeCommittedMarkKey)
 
   if (shouldSkip) {
     logger.info(
@@ -242,7 +229,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
     } else {
       const drySyncHeader = phalaApi.createType(
         'SyncCombinedHeadersReq',
-        await windowDb.get(range.drySyncHeaderReqKey)
+        await windowDb.getBuffer(range.drySyncHeaderReqKey)
       )
       for (const h of drySyncHeader.relaychainHeaders) {
         parent__headers.push(h)
@@ -268,7 +255,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 
   const startBlockRangeMetaKey = `rangeByParentBlock:${parentStartBlock}:pb`
   const startBlockRangeMetaPb = RangeMeta.decode(
-    await windowDb.get(startBlockRangeMetaKey)
+    await windowDb.getBuffer(startBlockRangeMetaKey)
   )
 
   const paraStartBlockRangeMetaKey =
@@ -283,16 +270,16 @@ export const commitBlobRange = async (ranges, paraRanges) => {
     startBlockRangeMetaPb
   ).finish()
 
-  const batch = windowDb.batch()
+  const batch = windowDb.pipeline()
 
   batch
-    .put(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()))
-    .put(startBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
+    .set(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()))
+    .set(startBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
   if (paraStartBlockRangeMetaKey) {
-    batch.put(paraStartBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
+    batch.set(paraStartBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
   }
-  await batch.write()
-  await windowDb.put(blobRangeCommittedMarkKey, Buffer.from([1]))
+  await batch.exec()
+  await windowDb.set(blobRangeCommittedMarkKey, Buffer.from([1]))
   await setLastCommittedParentBlock(parentStopBlock)
 
   logger.info(
@@ -304,60 +291,45 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 }
 
 export const getLastCommittedParaBlock = async () => {
-  try {
-    const db = await getDb(DB_WINDOW)
-    return await db.get(LAST_COMMITTED_PARA_BLOCK, { ...DB_ENCODING_JSON })
-  } catch (e) {
-    if (e instanceof levelErrors.NotFoundError) {
-      return 0
-    }
-    throw e
-  }
+  const db = await getDb(DB_WINDOW)
+  return await db.get(LAST_COMMITTED_PARA_BLOCK)
 }
 
 export const setLastCommittedParaBlock = async (number) => {
   const db = await getDb(DB_WINDOW)
-  return db.put(LAST_COMMITTED_PARA_BLOCK, number, { ...DB_ENCODING_JSON })
+  return db.set(LAST_COMMITTED_PARA_BLOCK, number)
 }
 
 export const getLastCommittedParentBlock = async () => {
-  try {
-    const db = await getDb(DB_WINDOW)
-    return await db.get(LAST_COMMITTED_PARENT_BLOCK, { ...DB_ENCODING_JSON })
-  } catch (e) {
-    if (e instanceof levelErrors.NotFoundError) {
-      return 0
-    }
-    throw e
-  }
+  const db = await getDb(DB_WINDOW)
+  return (await db.get(LAST_COMMITTED_PARENT_BLOCK)) || 0
 }
 
 export const setLastCommittedParentBlock = async (number) => {
   const db = await getDb(DB_WINDOW)
-  return db.put(LAST_COMMITTED_PARENT_BLOCK, number, { ...DB_ENCODING_JSON })
+  return db.set(LAST_COMMITTED_PARENT_BLOCK, number)
 }
 
 export const setDryParaBlockRange = async (block) => {
   const db = await getDb(DB_WINDOW)
   const indexKey = `rangeParaBlock:key:${block.number}`
   const key = `dryParaBlock:${block.number}`
-  if (await getKeyExistance(db, key)) {
+  if (await getKeyExistence(db, key)) {
     logger.info(`Found dry cache for para block #${block.number}.`)
     return
   }
-  const batch = db.batch()
-  batch.put(
+  const batch = db.pipeline()
+  batch.set(
     key,
     phalaApi
       .createType('Vec<BlockHeaderWithChanges>', [block.dispatchBlockData])
       .toU8a()
   )
-  batch.put(
-    indexKey,
-    { firstBlockNumber: block.number, lastBlockNumber: block.number },
-    { ...DB_ENCODING_JSON }
-  )
-  await batch.write()
+  batch.set(indexKey, {
+    firstBlockNumber: block.number,
+    lastBlockNumber: block.number,
+  })
+  await batch.exec()
   logger.info(`Saved dry cache for para block #${block.number}.`)
 }
 
@@ -368,14 +340,14 @@ export const commitParaBlockRange = async (blocks) => {
   const indexKey = `rangeParaBlock:key:${firstBlockNumber}`
   const bufferKey = `rangeParaBlock:buffer:${firstBlockNumber}`
   const markKey = `rangeParaBlock:mark:${firstBlockNumber}`
-  if (await getKeyExistance(db, markKey)) {
+  if (await getKeyExistence(db, markKey)) {
     logger.info(
       `Found range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
     )
     return
   }
-  const batch = db.batch()
-  batch.put(
+  const batch = db.pipeline()
+  batch.set(
     bufferKey,
     phalaApi
       .createType(
@@ -384,13 +356,9 @@ export const commitParaBlockRange = async (blocks) => {
       )
       .toU8a()
   )
-  batch.put(
-    indexKey,
-    { bufferKey, firstBlockNumber, lastBlockNumber },
-    { ...DB_ENCODING_JSON }
-  )
-  await batch.write()
-  await db.put(markKey, Buffer.from([1]))
+  batch.set(indexKey, { bufferKey, firstBlockNumber, lastBlockNumber })
+  await batch.exec()
+  await db.set(markKey, Buffer.from([1]))
   await setLastCommittedParaBlock(lastBlockNumber)
   logger.info(
     `Saved range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
@@ -400,14 +368,7 @@ export const commitParaBlockRange = async (blocks) => {
 export const getParaBlockRange = async (number) => {
   const db = await getDb(DB_WINDOW)
   const indexKey = `rangeParaBlock:key:${number}`
-  try {
-    return await db.get(indexKey, { ...DB_ENCODING_JSON })
-  } catch (e) {
-    if (e instanceof levelErrors.NotFoundError) {
-      return null
-    }
-    throw e
-  }
+  return await db.get(indexKey)
 }
 
 export const waitForParaBlockRange = (number) =>

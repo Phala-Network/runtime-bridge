@@ -13,9 +13,11 @@ export const ENV_LIST = [
   ['PHALA_REDIS_ENDPOINT', 'redisEndpoint'],
   ['PHALA_Q_REDIS_ENDPOINT', 'qRedisEndpoint'],
   ['PHALA_DEV_SKIP_RA', 'devSkipRa'],
-  ['PHALA_DB_HOST', 'dbHost'],
-  ['PHALA_DB_PORT_BASE', 'dbPortBase'],
-  ['PHALA_DB_TYPE', 'dbType'],
+
+  ['PHALA_DB_ENDPOINT', 'dbEndpoint'],
+  ['PHALA_DB_NAMESPACE', 'dbNamespace'],
+  ['PHALA_DB_FETCH_NAMESPACE', 'dbFetchNamespace'],
+
   ['PHALA_ENABLE_KEEP_ALIVE', 'enableKeepAlive'],
   ['PHALA_KEEP_ALIVE_TIMEOUT', 'keepAliveTimeout'],
   ['PHALA_MIN_BENCH_SCORE', 'minBenchScore'],

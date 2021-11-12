@@ -24,24 +24,21 @@ export class DuplicatedItemError extends Error {
 }
 
 const getBy = async (conf, key, value) => {
-  try {
-    const db = await conf.dbPromise
+  const db = await conf.dbPromise
 
-    let storageKey
-    if (key === 'uuid') {
-      storageKey = `${conf.PREFIX_ID}${value}`
-    } else {
-      storageKey = await db.get(`${conf.PREFIX_BY}${key}:${value}`, {
-        ...DB_ENCODING_JSON,
-      })
-    }
-    return pbToObject(conf.pbType.decode(await db.get(storageKey)))
-  } catch (e) {
-    if (e instanceof levelErrors.NotFoundError) {
-      throw new NotFoundError(JSON.stringify({ type: conf.name, key, value }))
-    }
-    throw e
+  let storageKey
+  if (key === 'uuid') {
+    storageKey = `${conf.PREFIX_ID}${value}`
+  } else {
+    storageKey = await db.get(`${conf.PREFIX_BY}${key}:${value}`, {
+      ...DB_ENCODING_JSON,
+    })
   }
+  const buffer = await db.getBuffer(storageKey)
+  if (!buffer) {
+    return buffer
+  }
+  return pbToObject(conf.pbType.decode(buffer))
 }
 
 const getAll = async (conf) =>
@@ -99,6 +96,10 @@ const validateItem = async (conf, item, onUpdate) => {
           if (!storageKey) {
             return false
           }
+
+          if (!storageKey) {
+            return false
+          }
           if (onUpdate) {
             if (storageKey === `${conf.PREFIX_ID}${item.uuid}`) {
               return false
@@ -106,9 +107,6 @@ const validateItem = async (conf, item, onUpdate) => {
           }
           return key
         } catch (e) {
-          if (e instanceof levelErrors.NotFoundError) {
-            return false
-          }
           throw e
         }
       })
@@ -137,11 +135,9 @@ const setItems = async (conf, items) => {
       // TODO: delayed deletion
     } else {
       for (const k of conf.uniqueKeys) {
-        batch.put(`${conf.PREFIX_BY}${k}:${i[k]}`, storageKey, {
-          ...DB_ENCODING_JSON,
-        })
+        batch.set(`${conf.PREFIX_BY}${k}:${i[k]}`, storageKey)
       }
-      batch.put(
+      batch.set(
         storageKey,
         conf.pbType.encode(conf.pbType.fromObject(i)).finish()
       )

@@ -69,17 +69,12 @@ services:
 
   io:
     << : *defaults
-    image: phalanetwork/prb:development
+    image: pikadb/pika:v3.4.0
     hostname: io
     restart: always
-    environment:
-      - PHALA_MODULE=io
-      - NODE_ENV=development
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
-      - PHALA_LOGGER_LEVEL=debug
-      - PHALA_DB_PREFIX=/var/data
-      - PHALA_DB_TYPE=rocksdb
+    volumes: &default-volume-config
+      - ./pika.conf:/pika/conf/pika.conf
+      - ./data/pika:/var/data
 
   inspect:
     image: phalanetwork/prb:development

@@ -25,8 +25,8 @@ import env from '../utils/env'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 30
-const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 50
+const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 5
+const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 1
 
 const paraFetchQueue = new Queue(FETCH_PARA_QUEUE_CONCURRENT, Infinity)
 const parentFetchQueue = new Queue(FETCH_PARENT_QUEUE_CONCURRENT, Infinity)
