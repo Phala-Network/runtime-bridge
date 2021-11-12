@@ -1,6 +1,7 @@
 import { EVENTS } from './state_machine'
 import { createRpcClient } from '../utils/prpc'
 import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
+import { minBenchScore } from '../utils/env'
 import { phalaApi } from '../utils/api'
 import { requestQueue__blob, runtimeRequest } from '../utils/prpc/request'
 import logger from '../utils/logger'
@@ -188,7 +189,7 @@ export const registerWorker = async (runtime) => {
 
   shouldRegister =
     shouldRegister ||
-    !(workerInfo.initialScore.toJSON() > 50) ||
+    !(workerInfo.initialScore.toJSON() > minBenchScore) ||
     !(
       workerInfo.operator.toString() ===
       (pool.isProxy ? pool.realPhalaSs58 : pool.ss58Phala)

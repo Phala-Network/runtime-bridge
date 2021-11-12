@@ -9,10 +9,10 @@ import {
   startSyncBlob,
   startSyncMessage,
 } from './pruntime'
+import { minBenchScore, shouldSkipRa } from '../utils/env'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto'
 import { serializeError } from 'serialize-error'
-import { shouldSkipRa } from '../utils/env'
 import Finity from 'finity'
 import logger from '../utils/logger'
 import toEnum from '../utils/to_enum'
@@ -109,7 +109,7 @@ const onPreMining = async (fromState, toState, context) => {
     !(
       (await phalaApi.query.phalaRegistry.workers(publicKey))
         .unwrapOrDefault()
-        .initialScore.toJSON() > 50
+        .initialScore.toJSON() > minBenchScore
     ) ||
     !info.registered
   ) {
