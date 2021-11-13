@@ -26,7 +26,7 @@ import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
 const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 15
-const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 3
+const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 2
 
 logger.info({ FETCH_PARENT_QUEUE_CONCURRENT, FETCH_PARA_QUEUE_CONCURRENT })
 
@@ -112,7 +112,7 @@ const processParentBlock = (number) =>
     const paraNumber = phalaApi
       .createType(
         'Header',
-        await parentApiAt.query.paras.heads(__paraId).unwrapOrDefault()
+        (await parentApiAt.query.paras.heads(__paraId)).unwrapOrDefault()
       )
       .number.toJSON()
 
