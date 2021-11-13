@@ -292,7 +292,7 @@ export const commitBlobRange = async (ranges, paraRanges) => {
 
 export const getLastCommittedParaBlock = async () => {
   const db = await getDb(DB_WINDOW)
-  return await db.get(LAST_COMMITTED_PARA_BLOCK)
+  return parseInt(await db.get(LAST_COMMITTED_PARA_BLOCK)) || 0
 }
 
 export const setLastCommittedParaBlock = async (number) => {
@@ -302,7 +302,7 @@ export const setLastCommittedParaBlock = async (number) => {
 
 export const getLastCommittedParentBlock = async () => {
   const db = await getDb(DB_WINDOW)
-  return (await db.get(LAST_COMMITTED_PARENT_BLOCK)) || 0
+  return parseInt(await db.get(LAST_COMMITTED_PARENT_BLOCK)) || 0
 }
 
 export const setLastCommittedParentBlock = async (number) => {

@@ -25,8 +25,10 @@ import env from '../utils/env'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 5
-const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 1
+const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 15
+const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 3
+
+logger.info({ FETCH_PARENT_QUEUE_CONCURRENT, FETCH_PARA_QUEUE_CONCURRENT })
 
 const paraFetchQueue = new Queue(FETCH_PARA_QUEUE_CONCURRENT, Infinity)
 const parentFetchQueue = new Queue(FETCH_PARENT_QUEUE_CONCURRENT, Infinity)
@@ -103,10 +105,20 @@ const processParentBlock = (number) =>
   (async () => {
     const hash = await parentApi.rpc.chain.getBlockHash(number)
     const blockData = await parentApi.rpc.chain.getBlock(hash)
-
     const header = blockData.block.header
+    const parentApiAt = await parentApi.at(hash)
 
-    const setId = (await parentApi.query.grandpa.currentSetId.at(hash)).toJSON()
+    const setId = (await parentApiAt.query.grandpa.currentSetId()).toJSON()
+    const paraNumber = phalaApi
+      .createType(
+        'Header',
+        await parentApiAt.query.paras.heads(__paraId).unwrapOrDefault()
+      )
+      .number.toJSON()
+
+    const paraProof = (
+      await parentApi.rpc.state.getReadProof([__storageKey_keys_paras], hash)
+    ).proof
 
     let hasJustification = false
     let justification
@@ -154,17 +166,6 @@ const processParentBlock = (number) =>
         })
       )
     }
-
-    const paraProof = (
-      await parentApi.rpc.state.getReadProof([__storageKey_keys_paras], hash)
-    ).proof
-
-    const paraNumber = phalaApi
-      .createType(
-        'Header',
-        (await parentApi.query.paras.heads.at(hash, __paraId)).unwrapOrDefault()
-      )
-      .number.toJSON()
 
     return {
       number,
@@ -248,9 +249,9 @@ const _processGenesis = async (paraId) => {
   const paraNumber = 0
   const parentNumber =
     (
-      await phalaApi.query.parachainSystem.validationData.at(
-        await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
-      )
+      await (
+        await phalaApi.at(await phalaApi.rpc.chain.getBlockHash(paraNumber + 1))
+      ).query.parachainSystem.validationData()
     ).toJSON().relayParentNumber - 1
 
   const parentHash = await parentApi.rpc.chain.getBlockHash(parentNumber)
@@ -258,7 +259,9 @@ const _processGenesis = async (paraId) => {
   const parentHeader = parentBlock.block.header
 
   const setIdKey = parentApi.query.grandpa.currentSetId.key()
-  const setId = await parentApi.query.grandpa.currentSetId.at(parentHash)
+  const setId = await (
+    await parentApi.at(parentHash)
+  ).query.grandpa.currentSetId()
 
   const grandpaAuthorities = parentApi.createType(
     'VersionedAuthorityList',
