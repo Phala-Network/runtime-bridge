@@ -2,6 +2,7 @@ import { MessageTarget } from '../message/proto'
 import { createDispatcher, createMessageTunnel } from '../message'
 import createHandlers from './handlers'
 import env from '../utils/env'
+import logger from '../utils/logger'
 
 const setupRpc = async (context) => {
   const tunnelConnection = await createMessageTunnel({
@@ -35,7 +36,7 @@ const setupRpc = async (context) => {
           }
         }
       } catch (error) {
-        $logger.error(error)
+        logger.error(error)
       }
     },
   })
@@ -47,7 +48,7 @@ const setupRpc = async (context) => {
   })
   await subscribe(dispatcher)
 
-  $logger.info('Now listening to the redis channel for RPC.')
+  logger.info('Now listening to the redis channel for RPC.')
 }
 
 export default setupRpc

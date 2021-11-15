@@ -6,6 +6,7 @@ import { setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
 import createTradeQueue from '../trade/trade_queue'
 import env from '../utils/env'
+import logger from '../utils/logger'
 import setupRpc from './rpc'
 
 const updateFetcherState = async (query, state) => {
@@ -14,7 +15,7 @@ const updateFetcherState = async (query, state) => {
     callOnlineFetcher: {},
   })
   Object.assign(state, fetcherStateUpdate.fetcherStateUpdate)
-  $logger.debug(state, 'fetcher state updated.')
+  logger.debug(state, 'fetcher state updated.')
   return state
 }
 

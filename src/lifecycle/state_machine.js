@@ -33,7 +33,7 @@ export const EVENTS = toEnum([
 const wrapEventAction = (fn) => (fromState, toState, context) =>
   fn(fromState, toState, context).catch((error) => {
     if (fromState === StatusEnumValues.S_ERROR && fromState === toState) {
-      $logger.error({ fromState, toState }, error)
+      logger.error({ fromState, toState }, error)
       return
     }
     context.stateMachine.handle(EVENTS.ERROR, error)
