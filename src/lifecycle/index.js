@@ -5,7 +5,7 @@ import { getGenesis } from '../io/block'
 import { setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
 import createTradeQueue from '../trade/trade_queue'
-import env from '../utils/env'
+import env, { minBenchScore } from '../utils/env'
 import logger from '../utils/logger'
 import setupRpc from './rpc'
 
@@ -24,6 +24,8 @@ const start = async () => {
   await setupPhalaApi(env.chainEndpoint)
   const txQueue = createTradeQueue(env.qRedisEndpoint)
   await txQueue.ready()
+
+  logger.info({ minBenchScore })
 
   const context = {
     workerContexts: new Map(),
