@@ -103,7 +103,7 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
 
         subClient.on('messageBuffer', (channel, message) => {
           if (channel.compare(APP_MESSAGE_TUNNEL_CHANNEL)) {
-            $logger.warn('Invalid message received.', { channel, message })
+            logger.warn('Invalid message received.', { channel, message })
             return
           }
           let _message
@@ -111,7 +111,7 @@ const createMessageTunnel = async ({ redisEndpoint, from, encode, decode }) => {
             _message = (decode || defaultDecode)(message)
             logger.debug(_message, 'Receiving...')
           } catch (error) {
-            $logger.warn('Invalid message received.', error, { message })
+            logger.warn('Invalid message received.', error, { message })
           }
           if (!_message) {
             return
@@ -148,7 +148,7 @@ const createDispatcher = ({
   const plainCallback = (message) => {
     const cb = plainHandlers[Object.keys(message.content)[0]]
     if (typeof cb !== 'function') {
-      $logger.error('Handler not found!', message)
+      logger.error('Handler not found!', message)
       return
     }
     cb(message, tunnelConnection)
@@ -157,7 +157,7 @@ const createDispatcher = ({
   const queryCallback = async (message) => {
     const cb = queryHandlers[Object.keys(message.content)[0]]
     if (typeof cb !== 'function') {
-      $logger.error('Handler not found!', {
+      logger.error('Handler not found!', {
         queryHandlers,
         message,
         key: Object.keys(message.content)[0],
@@ -176,12 +176,12 @@ const createDispatcher = ({
     try {
       const cb = callbacks.get(message.nonceRef)
       if (!cb) {
-        $logger.debug('Received invalid reply message.', { message })
+        logger.debug('Received invalid reply message.', { message })
         return
       }
       cb(message, tunnelConnection)
     } catch (error) {
-      $logger.warn('Error occured while processing a reply message.', error, {
+      logger.warn('Error occured while processing a reply message.', error, {
         message,
       })
       // todo: handle error

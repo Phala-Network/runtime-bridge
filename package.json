@@ -91,6 +91,8 @@
     "proto:darwin:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && gsed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
     "start_module": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/index",
     "dump_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_workers",
-    "import_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_workers"
+    "import_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_workers",
+    "debug_process_para_block": "node --inspect-brk=0.0.0.0:9229 --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/debug_process_para_block"
+
   }
 }

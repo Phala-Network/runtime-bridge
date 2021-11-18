@@ -1,6 +1,7 @@
 import { list as redisCommands } from 'redis-commands'
 import PQueue from 'p-queue'
 import Redis from 'ioredis'
+import logger from './logger'
 
 const createClient = (redisEndpoint, options = {}) =>
   new Promise((resolve) => {
@@ -41,7 +42,7 @@ const createClient = (redisEndpoint, options = {}) =>
     })
 
     client.on('error', (e) => {
-      $logger.error('REDIS ERROR!', e)
+      logger.error('REDIS ERROR!', e)
     })
   })
 

@@ -22,15 +22,11 @@ const typesBundle = {
 
 const rpc = {
   pha: {
-    getStorageChanges: {
+    getStorageChangesAt: {
       description: 'Return the storage changes made by each block one by one',
       params: [
         {
-          name: 'from',
-          type: 'Hash',
-        },
-        {
-          name: 'to',
+          name: 'blockHash',
           type: 'Hash',
         },
       ],
@@ -89,7 +85,7 @@ const setupPhalaApi = async (
     ])
   ).map((i) => i.toString())
 
-  $logger.info(
+  logger.info(
     { chain: phalaChain },
     `Connected to chain ${phalaChain} using ${phalaNodeName} v${phalaNodeVersion}`
   )
@@ -133,7 +129,7 @@ const setupParentApi = async (endpoint, forceRecreate = false) => {
     ])
   ).map((i) => i.toString())
 
-  $logger.info(
+  logger.info(
     { chain: parentChain },
     `Connected to chain ${parentChain} using ${parentNodeName} v${parentNodeVersion}`
   )

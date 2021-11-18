@@ -23,10 +23,7 @@ export const bridgeTypes = {
   },
   StorageCollection: 'Vec<(Vec<u8>, Option<Vec<u8>>)>',
   ChildStorageCollection: 'Vec<(Vec<u8>, StorageCollection)>',
-  StorageChanges: {
-    mainStorageChanges: 'StorageCollection',
-    childStorageChanges: 'ChildStorageCollection',
-  },
+  StorageChanges: 'Raw',
   SyncHeaderReq: {
     headers: 'Vec<HeaderToSync>',
     authoritySetChange: 'Option<AuthoritySetChange>',

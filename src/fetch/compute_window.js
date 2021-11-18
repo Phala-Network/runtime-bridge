@@ -186,7 +186,7 @@ const walkBlock = async (
 const walkWindow = async (windowId = 0, lastWindow = null) => {
   let currentWindow = await getWindow(windowId)
   if (currentWindow && currentWindow.isFinished) {
-    $logger.info(currentWindow, `Window found in cache.`)
+    logger.info(currentWindow, `Window found in cache.`)
     return walkWindow(windowId + 1, currentWindow)
   }
 

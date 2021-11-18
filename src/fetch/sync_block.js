@@ -36,19 +36,54 @@ const parentFetchQueue = new Queue(FETCH_PARENT_QUEUE_CONCURRENT, Infinity)
 let __paraId
 let __storageKey_keys_paras
 
+export const debug__processParaBlock = (number) =>
+  (async () => {
+    const hash = await phalaApi.rpc.chain.getBlockHash(number)
+
+    try {
+      console.log(
+        JSON.stringify(
+          (
+            await phalaApi._rpcCore.provider.send(
+              'pha_getStorageChanges',
+              [hash.toHex(), hash.toHex()],
+              false
+            )
+          )[0],
+          null,
+          2
+        )
+      )
+      debugger
+    } catch (e) {
+      debugger
+    }
+
+    // console.log('storageChanges hash:', storageChanges.hash.toHex())
+    // const dispatchBlockData = phalaApi.createType('BlockHeaderWithChanges', {
+    //   blockHeader: header,
+    //   storageChanges,
+    // })
+  })().catch((e) => {
+    logger.error({ paraBlockNumber: number }, e)
+    throw e
+  })
+
 const processParaBlock = (number) =>
   (async () => {
     const hash = await phalaApi.rpc.chain.getBlockHash(number)
+    const hashHex = hash.toHex()
     const header = await phalaApi.rpc.chain.getHeader(hash)
-    const headerHash = header.hash
 
-    const storageChanges = (
-      await phalaApi.rpc.pha.getStorageChanges(headerHash, headerHash)
-    )[0]
+    const rawStorageChanges = await phalaApi._rpcCore.provider.send(
+      'pha_getStorageChangesAt',
+      [hashHex],
+      false
+    )
 
     const dispatchBlockData = phalaApi.createType('BlockHeaderWithChanges', {
       blockHeader: header,
-      storageChanges,
+      storageChanges: rawStorageChanges,
     })
 
     return {
@@ -58,7 +93,7 @@ const processParaBlock = (number) =>
       dispatchBlockData,
     }
   })().catch((e) => {
-    $logger.error({ paraBlockNumber: number }, e)
+    logger.error({ paraBlockNumber: number }, e)
     throw e
   })
 
@@ -105,6 +140,7 @@ const processParentBlock = (number) =>
   (async () => {
     const hash = await parentApi.rpc.chain.getBlockHash(number)
     const blockData = await parentApi.rpc.chain.getBlock(hash)
+
     const header = blockData.block.header
     const parentApiAt = await parentApi.at(hash)
 
@@ -179,7 +215,7 @@ const processParentBlock = (number) =>
       paraProof,
     }
   })().catch((e) => {
-    $logger.error({ paraBlockNumber: number }, e)
+    logger.error({ paraBlockNumber: number }, e)
     throw e
   })
 
@@ -249,9 +285,9 @@ const _processGenesis = async (paraId) => {
   const paraNumber = 0
   const parentNumber =
     (
-      await (
-        await phalaApi.at(await phalaApi.rpc.chain.getBlockHash(paraNumber + 1))
-      ).query.parachainSystem.validationData()
+      await phalaApi.query.parachainSystem.validationData.at(
+        await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
+      )
     ).toJSON().relayParentNumber - 1
 
   const parentHash = await parentApi.rpc.chain.getBlockHash(parentNumber)
@@ -259,9 +295,7 @@ const _processGenesis = async (paraId) => {
   const parentHeader = parentBlock.block.header
 
   const setIdKey = parentApi.query.grandpa.currentSetId.key()
-  const setId = await (
-    await parentApi.at(parentHash)
-  ).query.grandpa.currentSetId()
+  const setId = await parentApi.query.grandpa.currentSetId.at(parentHash)
 
   const grandpaAuthorities = parentApi.createType(
     'VersionedAuthorityList',

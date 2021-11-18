@@ -1,5 +1,6 @@
 import { APP_MESSAGE_QUEUE_NAME } from '../utils/constants'
 import BeeQueue from 'bee-queue'
+import logger from '../utils/logger'
 
 export class TxTimeOutError extends Error {}
 
@@ -28,7 +29,7 @@ const waitForJob = (queueName, job, queue) =>
           resolve(result)
         })
         job.on('retrying', (err) => {
-          $logger.warn(
+          logger.warn(
             { queueName },
             err,
             `Job #${job.id} failed with error ${err.message} but is being retried!`
@@ -47,8 +48,7 @@ const waitForJob = (queueName, job, queue) =>
                   stack = JSON.stringify(stack, null, 2)
                 }
               }
-              console.log(1111, stack)
-              $logger.warn(
+              logger.warn(
                 { queueName },
                 `Job #${job.id} failed with error: ${stack}.`
               )

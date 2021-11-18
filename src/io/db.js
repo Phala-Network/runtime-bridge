@@ -12,7 +12,14 @@ export const DB_BLOCK = env.dbFetchNamespace
 export const DB_WINDOW = env.dbFetchNamespace
 export const DB_WORKER = env.dbNamespace
 
+export const DB_NUMBER_FETCH = 0
+export const DB_NUMBER_POOL = 1
+
 export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WORKER])
+export const DB_NUMBERS = Object.freeze({
+  [DB_BLOCK]: DB_NUMBER_FETCH,
+  [DB_WORKER]: DB_NUMBER_POOL,
+})
 
 export const getPort = (dbNum) => (parseInt(env.dbPortBase) || 9000) + dbNum
 
@@ -44,6 +51,7 @@ export const getDb = async (ns) => {
     return db
   }
   const redisClient = await createClient(env.dbEndpoint, {
+    db: DB_NUMBERS[ns] || DB_NUMBER_POOL,
     keyPrefix: ns + ':',
   })
 
