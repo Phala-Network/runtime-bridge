@@ -1,9 +1,5 @@
 import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistence } from './db'
-import {
-  DB_ENCODING_JSON,
-  DB_PB_TO_OBJECT_OPTIONS,
-  pbToObject,
-} from './db_encoding'
+import { DB_PB_TO_OBJECT_OPTIONS, pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
 import logger from '../utils/logger'
@@ -160,12 +156,8 @@ export const waitForParentBlock = (blockNumber) =>
 
 export const bindBlock = async (paraNumber, parentNumber) => {
   const db = await getDb(DB_BLOCK)
-  await db.set(`paraToParent:${paraNumber}`, parentNumber, {
-    ...DB_ENCODING_JSON,
-  })
-  await db.set(`parentToPara:${parentNumber}`, paraNumber, {
-    ...DB_ENCODING_JSON,
-  })
+  await db.set(`paraToParent:${paraNumber}`, parentNumber)
+  await db.set(`parentToPara:${parentNumber}`, paraNumber)
 }
 
 export const getParaNumber = async (parentNumber) => {

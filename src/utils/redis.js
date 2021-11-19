@@ -3,6 +3,8 @@ import PQueue from 'p-queue'
 import Redis from 'ioredis'
 import logger from './logger'
 
+const ignoreCommands = ['multi', 'pipeline', 'scanStream']
+
 const createClient = (redisEndpoint, options = {}) =>
   new Promise((resolve) => {
     const queue = new PQueue({
@@ -15,7 +17,7 @@ const createClient = (redisEndpoint, options = {}) =>
     redisCommands.forEach((i) => {
       const command = i.split(' ')[0]
 
-      if (command !== 'multi' || command !== 'pipeline') {
+      if (ignoreCommands.indexOf(command) > -1) {
         const func = client[i]
         const _func = (...args) => queue.add(() => func.apply(client, args))
 

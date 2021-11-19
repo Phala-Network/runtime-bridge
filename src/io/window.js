@@ -1,13 +1,12 @@
-import { DB_ENCODING_JSON, pbToObject } from './db_encoding'
 import { DB_WINDOW, getDb, getKeyExistence, waitFor } from './db'
 import {
   LAST_COMMITTED_PARA_BLOCK,
   LAST_COMMITTED_PARENT_BLOCK,
 } from '../utils/constants'
 import { getParentBlock } from './block'
+import { pbToObject } from './db_encoding'
 import { phalaApi } from '../utils/api'
 import { prb } from '../message/proto.generated'
-import levelErrors from 'level-errors'
 import logger from '../utils/logger'
 
 const { Window, RangeMeta } = prb.db
@@ -321,14 +320,19 @@ export const setDryParaBlockRange = async (block) => {
   const batch = db.pipeline()
   batch.set(
     key,
-    phalaApi
-      .createType('Vec<BlockHeaderWithChanges>', [block.dispatchBlockData])
-      .toU8a()
+    Buffer.from(
+      phalaApi
+        .createType('Vec<BlockHeaderWithChanges>', [block.dispatchBlockData])
+        .toU8a()
+    )
   )
-  batch.set(indexKey, {
-    firstBlockNumber: block.number,
-    lastBlockNumber: block.number,
-  })
+  batch.set(
+    indexKey,
+    JSON.stringify({
+      firstBlockNumber: block.number,
+      lastBlockNumber: block.number,
+    })
+  )
   await batch.exec()
   logger.info(`Saved dry cache for para block #${block.number}.`)
 }
@@ -349,14 +353,19 @@ export const commitParaBlockRange = async (blocks) => {
   const batch = db.pipeline()
   batch.set(
     bufferKey,
-    phalaApi
-      .createType(
-        'Vec<BlockHeaderWithChanges>',
-        blocks.map((b) => b.dispatchBlockData)
-      )
-      .toU8a()
+    Buffer.from(
+      phalaApi
+        .createType(
+          'Vec<BlockHeaderWithChanges>',
+          blocks.map((b) => b.dispatchBlockData)
+        )
+        .toU8a()
+    )
   )
-  batch.set(indexKey, { bufferKey, firstBlockNumber, lastBlockNumber })
+  batch.set(
+    indexKey,
+    JSON.stringify({ bufferKey, firstBlockNumber, lastBlockNumber })
+  )
   await batch.exec()
   await db.set(markKey, Buffer.from([1]))
   await setLastCommittedParaBlock(lastBlockNumber)
@@ -368,7 +377,7 @@ export const commitParaBlockRange = async (blocks) => {
 export const getParaBlockRange = async (number) => {
   const db = await getDb(DB_WINDOW)
   const indexKey = `rangeParaBlock:key:${number}`
-  return await db.get(indexKey)
+  return JSON.parse(await db.get(indexKey))
 }
 
 export const waitForParaBlockRange = (number) =>

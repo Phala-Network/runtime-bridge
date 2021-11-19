@@ -1,8 +1,7 @@
 import { DB_ENCODING_JSON } from './db_encoding'
-import { getDb } from './db'
+import { DB_WORKER, getDb } from './db'
 import { pbToObject } from './db_encoding'
 import { v4 as uuid } from 'uuid'
-import levelErrors from 'level-errors'
 
 export class NotFoundError extends Error {
   constructor(m) {
@@ -30,9 +29,7 @@ const getBy = async (conf, key, value) => {
   if (key === 'uuid') {
     storageKey = `${conf.PREFIX_ID}${value}`
   } else {
-    storageKey = await db.get(`${conf.PREFIX_BY}${key}:${value}`, {
-      ...DB_ENCODING_JSON,
-    })
+    storageKey = JSON.parse(await db.get(`${conf.PREFIX_BY}${key}:${value}`))
   }
   const buffer = await db.getBuffer(storageKey)
   if (!buffer) {
@@ -41,30 +38,25 @@ const getBy = async (conf, key, value) => {
   return pbToObject(conf.pbType.decode(buffer))
 }
 
-const getAll = async (conf) =>
-  conf.dbPromise
-    .then(
-      (db) =>
-        new Promise((resolve, reject) => {
-          const stream = db.createValueStream({
-            gte: conf.PREFIX_ID,
-            lte: conf.PREFIX_ID + '~',
-          })
-          const ret = []
-          stream.on('data', async (value) => {
-            ret.push(value)
-          })
-          stream.on('end', () => resolve(Promise.all(ret)))
-          stream.on('error', reject)
-        })
+const getAll = async (conf) => {
+  const prefixLength = DB_WORKER.length + 1
+  const db = await conf.dbPromise
+  const keys = await db.keys(DB_WORKER + ':' + conf.PREFIX_ID + '*')
+
+  const values = await keys
+    .reduce(
+      (prev, curr) => prev.getBuffer(curr.slice(prefixLength)),
+      db.pipeline()
     )
-    .then((pbs) =>
-      pbs.map((buffer) => {
-        const pb = conf.pbType.decode(buffer)
-        return pbToObject(pb)
-      })
-    )
-    .then((items) => items.filter((i) => !i.deleted))
+    .exec()
+
+  return values
+    .map((v) => {
+      const pb = conf.pbType.decode(v[1])
+      return pbToObject(pb)
+    })
+    .filter((i) => !i.deleted)
+}
 
 const validateItem = async (conf, item, onUpdate) => {
   const db = await conf.dbPromise
@@ -85,30 +77,26 @@ const validateItem = async (conf, item, onUpdate) => {
   const duplication = (
     await Promise.all(
       conf.uniqueKeys.map(async (key) => {
-        try {
-          const storageKey = await db.get(
-            `${conf.PREFIX_BY}${key}:${item[key]}`,
-            {
-              ...DB_ENCODING_JSON,
-            }
-          )
+        const storageKey = await db.get(
+          `${conf.PREFIX_BY}${key}:${item[key]}`,
+          {
+            ...DB_ENCODING_JSON,
+          }
+        )
 
-          if (!storageKey) {
-            return false
-          }
-
-          if (!storageKey) {
-            return false
-          }
-          if (onUpdate) {
-            if (storageKey === `${conf.PREFIX_ID}${item.uuid}`) {
-              return false
-            }
-          }
-          return key
-        } catch (e) {
-          throw e
+        if (!storageKey) {
+          return false
         }
+
+        if (!storageKey) {
+          return false
+        }
+        if (onUpdate) {
+          if (storageKey === `${conf.PREFIX_ID}${item.uuid}`) {
+            return false
+          }
+        }
+        return key
       })
     )
   ).reduce((prev, curr) => prev || curr, false)
@@ -135,7 +123,7 @@ const setItems = async (conf, items) => {
       // TODO: delayed deletion
     } else {
       for (const k of conf.uniqueKeys) {
-        batch.set(`${conf.PREFIX_BY}${k}:${i[k]}`, storageKey)
+        batch.set(`${conf.PREFIX_BY}${k}:${i[k]}`, JSON.stringify(storageKey))
       }
       batch.set(
         storageKey,
