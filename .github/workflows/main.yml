@@ -23,7 +23,7 @@ jobs:
         repository: phalanetwork/prb
         tag_with_ref: true
         tag_with_sha: true
-        tags: testing,latest
+        tags: next
         dockerfile: 'docker/testing/Dockerfile'
   push_cn:
     runs-on: ubuntu-18.04
@@ -39,5 +39,5 @@ jobs:
         repository: phala/prb
         tag_with_ref: true
         tag_with_sha: true
-        tags: testing,latest
+        tags: next
         dockerfile: 'docker/testing/Dockerfile'

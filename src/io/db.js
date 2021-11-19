@@ -8,9 +8,9 @@ const dbMap = new Map()
 
 export const DB_TOUCHED_AT = 'DB_TOUCHED_AT'
 
-export const DB_BLOCK = env.dbFetchNamespace
-export const DB_WINDOW = env.dbFetchNamespace
-export const DB_WORKER = env.dbNamespace
+export const DB_BLOCK = env.dbFetchNamespace ?? 'prb_fetch'
+export const DB_WINDOW = env.dbFetchNamespace ?? 'prb_fetch'
+export const DB_WORKER = env.dbNamespace ?? 'prb_default'
 
 export const DB_NUMBER_FETCH = 0
 export const DB_NUMBER_POOL = 1
@@ -50,12 +50,15 @@ export const getDb = async (ns) => {
   if (db) {
     return db
   }
-  const redisClient = await createClient(env.dbEndpoint, {
+
+  const createOptions = {
     db: DB_NUMBERS[ns] || DB_NUMBER_POOL,
     keyPrefix: ns + ':',
-  })
+  }
+  const redisClient = await createClient(env.dbEndpoint, createOptions)
 
   await redisClient.set(DB_TOUCHED_AT, Date.now())
+  logger.info(createOptions, 'Connecting DB...')
 
   dbMap.set(ns, redisClient)
   return redisClient
