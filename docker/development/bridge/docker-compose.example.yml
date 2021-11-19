@@ -21,10 +21,12 @@ services:
       - NODE_ENV=development
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
-      - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+      - PHALA_REDIS_ENDPOINT=redis://redis:6379
 
   lifecycle:
     image: phalanetwork/prb:development
@@ -37,14 +39,14 @@ services:
     environment:
       - PHALA_MODULE=lifecycle
       - NODE_ENV=development
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
+      - PHALA_DB_NAMESPACE=default
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
       - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
-      - PHALA_NAMESPACE=default
       - PHALA_ENABLE_KEEP_ALIVE=false
 
   trade:
@@ -58,14 +60,14 @@ services:
     environment:
       - PHALA_MODULE=trade
       - NODE_ENV=development
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
+      - PHALA_DB_NAMESPACE=default
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
       - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
-      - PHALA_NAMESPACE=default
 
   io:
     << : *defaults
@@ -75,24 +77,6 @@ services:
     volumes: &default-volume-config
       - ./pika.conf:/pika/conf/pika.conf
       - ./data/pika:/var/data
-
-  inspect:
-    image: phalanetwork/prb:development
-    hostname: trade
-    depends_on:
-      - redis
-      - io
-    volumes: *default-volume-config
-    environment:
-      - PHALA_MODULE=io/inspect
-      - NODE_ENV=development
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
-      - PHALA_LOGGER_LEVEL=debug
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-      - "9003:9003"
 
   arena:
     image: phalanetwork/prb:development

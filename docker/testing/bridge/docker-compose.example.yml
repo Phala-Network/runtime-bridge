@@ -6,7 +6,7 @@ x-defaults: &defaults
 
 services:
   fetch:
-    image: phalanetwork/prb:latest
+    image: phalanetwork/prb:next
     hostname: fetch
     depends_on:
       - redis
@@ -17,13 +17,15 @@ services:
       - NODE_ENV=testing
       - PHALA_DB_HOST=io
       - PHALA_DB_PORT_BASE=9000
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
-      - PHALA_REDIS_ENDPOINT=redis://redis:6379/
+      - PHALA_REDIS_ENDPOINT=redis://redis:6379
 
   lifecycle:
-    image: phalanetwork/prb:latest
+    image: phalanetwork/prb:next
     hostname: lifecycle
     depends_on:
       - redis
@@ -33,18 +35,18 @@ services:
     environment:
       - PHALA_MODULE=lifecycle
       - NODE_ENV=testing
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
+      - PHALA_DB_NAMESPACE=default
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
       - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
-      - PHALA_NAMESPACE=default
-      - PHALA_ENABLE_KEEP_ALIVE=true
+      - PHALA_ENABLE_KEEP_ALIVE=false
 
   trade:
-    image: phalanetwork/prb:latest
+    image: phalanetwork/prb:next
     hostname: trade
     depends_on:
       - redis
@@ -54,45 +56,25 @@ services:
     environment:
       - PHALA_MODULE=trade
       - NODE_ENV=testing
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
+      - PHALA_DB_NAMESPACE=default
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379/
       - PHALA_Q_REDIS_ENDPOINT=redis://redis-q:6379/
-      - PHALA_NAMESPACE=default
-
-  inspect:
-    image: phalanetwork/prb:latest
-    hostname: inspect
-    depends_on:
-      - io
-    volumes: *default-volume-config
-    environment:
-      - PHALA_MODULE=io/inspect
-      - NODE_ENV=inspect
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
-      - PHALA_LOGGER_LEVEL=debug
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-      - "9003:9003"
 
   io:
     << : *defaults
-    image: phalanetwork/prb:latest
+    image: pikadb/pika:latest
     hostname: io
     restart: always
-    environment:
-      - PHALA_MODULE=io
-      - NODE_ENV=testing
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
-      - PHALA_LOGGER_LEVEL=debug
-      - PHALA_DB_PREFIX=/var/data
-      - PHALA_DB_TYPE=rocksdb
+    volumes:
+      - ./pika.conf:/pika/conf/pika.conf
+      - ./data/pika:/var/data
+    ports:
+      - "9221:9221"
 
   redis:
     image: redis:alpine
@@ -111,7 +93,7 @@ services:
       - "63792:6379"
 
   arena:
-    image: phalanetwork/prb:latest
+    image: phalanetwork/prb:next
     hostname: trade
     depends_on:
       - redis
