@@ -19,10 +19,10 @@ const cache = new LRU({
 if (lruCacheDebugLogInterval > 0) {
   let prevLength = -1
   setInterval(() => {
-    prevLength = cache.length
     if (prevLength !== cache.length) {
       logger.info(`LRU cache length: ${cache.length}`)
     }
+    prevLength = cache.length
   }, lruCacheDebugLogInterval)
 }
 
