@@ -1,8 +1,9 @@
 import { DB_BLOCK, DB_WINDOW, DB_WORKER, setupDb } from '../io/db'
 import { EventEmitter } from 'events'
 import { MessageTarget } from '../message/proto'
+import { SET_PARA_KNOWN_HEIGHT } from '../fetch'
 import { getGenesis } from '../io/block'
-import { setupPhalaApi } from '../utils/api'
+import { phalaApi, setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
 import createTradeQueue from '../trade/trade_queue'
 import env, { minBenchScore } from '../utils/env'
@@ -31,7 +32,9 @@ const start = async () => {
     workerContexts: new Map(),
     pools: new Map(),
     genesis: null,
-    fetchStatus: {},
+    fetchStatus: {
+      paraId: (await phalaApi.query.parachainInfo.parachainId()).toNumber(),
+    },
     eventEmitter: new EventEmitter(),
     dispatcher: null,
     query: null,
@@ -39,6 +42,10 @@ const start = async () => {
     txQueue,
     _dispatchTx: txQueue.dispatch,
   }
+
+  await phalaApi.rpc.chain.subscribeFinalizedHeads((header) => {
+    context.fetchStatus.paraBlobHeight = header.number.toNumber()
+  })
 
   await setupRpc(context)
 

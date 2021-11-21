@@ -305,7 +305,7 @@ export const startSyncBlob = (runtime) => {
     }
     const next = typeof _next === 'number' ? _next : info.blocknum
 
-    const { paraBlobHeight, synched } = fetchStatus
+    const { paraBlobHeight } = fetchStatus
     const { paraHeaderSynchedTo } = syncStatus
 
     if (paraHeaderSynchedTo >= next) {
@@ -317,7 +317,7 @@ export const startSyncBlob = (runtime) => {
       syncStatus.paraBlockDispatchedTo = dispatchedTo
 
       if (!synchedToTargetPromiseFinished) {
-        if (synched && dispatchedTo === paraBlobHeight) {
+        if (dispatchedTo >= paraBlobHeight) {
           synchedToTargetPromiseFinished = true
           synchedToTargetPromiseResolve(dispatchedTo)
         }
