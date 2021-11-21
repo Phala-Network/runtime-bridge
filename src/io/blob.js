@@ -17,10 +17,12 @@ const cache = new LRU({
 })
 
 if (lruCacheDebugLogInterval > 0) {
-  setInterval(
-    () => logger.info(`LRU cache length: ${cache.length}`),
-    lruCacheDebugLogInterval
-  )
+  let prevLength = -1
+  setInterval(() => {
+    if (prevLength !== cache.length) {
+      logger.info(`LRU cache length: ${cache.length}`)
+    }
+  }, lruCacheDebugLogInterval)
 }
 
 const getCacheBuffer = async (db, key) => {
