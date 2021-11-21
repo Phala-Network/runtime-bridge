@@ -1,10 +1,13 @@
 import { DB_ENCODING_DEFAULT } from './db_encoding'
 import { getDb, setupDb } from './db'
+import PQueue from 'p-queue'
 import levelup from 'levelup'
 import logger from '../utils/logger'
 import rocksdb from 'rocksdb'
 
 export const migrate = async (newDbNs, oldDbPath) => {
+  let scanDone = false
+
   let total = 0
   let finished = 0
   let failed = 0
@@ -13,30 +16,15 @@ export const migrate = async (newDbNs, oldDbPath) => {
   const oldDb = levelup(rocksdb(oldDbPath), { ...DB_ENCODING_DEFAULT })
   const newDb = await getDb(newDbNs)
 
-  logger.info('Scanning, this may take a while...')
-
-  await new Promise((resolve, reject) => {
-    oldDb
-      .createKeyStream()
-      .on('data', () => {
-        total += 1
-      })
-      .on('error', (err) => {
-        logger.error('Error reading keys.', err)
-        reject(err)
-      })
-      .on('end', () => {
-        resolve()
-      })
+  const queue = new PQueue({
+    concurrency: 1,
   })
 
-  logger.debug(
-    `Got ${total} keys to migrate, existing data with same key will be overwritten.`
-  )
+  logger.info(`Existing data with same key will be overwritten.`)
 
   setInterval(() => {
     logger.info({ total, finished, failed }, 'Migrating keys...')
-    if (finished === total) {
+    if (scanDone && finished === total) {
       logger.info({ total, finished, failed }, 'Done.')
       process.exit(0)
     }
@@ -46,9 +34,10 @@ export const migrate = async (newDbNs, oldDbPath) => {
     oldDb
       .createReadStream({ keyEncoding: 'utf8', valueEncoding: 'binary' })
       .on('data', ({ key, value }) => {
+        total += 1
         const keyStr = key.toString()
-        newDb
-          .put(keyStr, value)
+        queue
+          .add(() => newDb.put(keyStr, value))
           .then(() => {
             finished += 1
           })
@@ -63,6 +52,7 @@ export const migrate = async (newDbNs, oldDbPath) => {
         reject(err)
       })
       .on('end', () => {
+        scanDone = true
         resolve()
       })
   })

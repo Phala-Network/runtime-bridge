@@ -37,6 +37,7 @@
     "leveldown": "^6.1.0",
     "levelup": "^5.1.1",
     "lodash": "^4.17.21",
+    "lru-cache": "^6.0.0",
     "multileveldown": "github:Level/multileveldown",
     "node-fetch": "^3.1.0",
     "p-queue": "^7.1.0",
@@ -93,6 +94,5 @@
     "dump_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/dump_workers",
     "import_workers": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/import_workers",
     "debug_process_para_block": "node --inspect-brk=0.0.0.0:9229 --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await src/scripts/debug_process_para_block"
-
   }
 }

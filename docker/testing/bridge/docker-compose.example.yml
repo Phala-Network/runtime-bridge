@@ -23,6 +23,8 @@ services:
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379
+      - PHALA_PARENT_PARALLEL_BLOCKS=30
+      - PHALA_PARA_PARALLEL_BLOCKS=5
 
   lifecycle:
     image: phalanetwork/prb:next

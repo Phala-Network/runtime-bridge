@@ -57,6 +57,7 @@ specifiers:
   leveldown: ^6.1.0
   levelup: ^5.1.1
   lodash: ^4.17.21
+  lru-cache: ^6.0.0
   minimist: ^1.2.5
   multileveldown: github:Level/multileveldown
   node-fetch: ^3.1.0
@@ -111,6 +112,7 @@ dependencies:
   leveldown: 6.1.0
   levelup: 5.1.1
   lodash: 4.17.21
+  lru-cache: 6.0.0
   multileveldown: github.com/Level/multileveldown/f8d8732e8d9b861c0c3359c548349ca45a055f85
   node-fetch: 3.1.0
   p-queue: 7.1.0
@@ -4220,7 +4222,6 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       yallist: 4.0.0
-    dev: true
 
   /ltgt/2.2.1:
     resolution: {integrity: sha1-81ypHEk/e3PaDgdJUwTxezH4fuU=}
