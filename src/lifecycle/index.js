@@ -42,13 +42,7 @@ const start = async () => {
 
   await setupRpc(context)
 
-  await updateFetcherState(context.query, context.fetchStatus)
   context.genesis = await getGenesis(context.fetchStatus.paraId)
-
-  setInterval(
-    () => updateFetcherState(context.query, context.fetchStatus),
-    1000
-  )
 
   await watchWorkers(context)
 }

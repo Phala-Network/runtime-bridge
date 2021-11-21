@@ -15,8 +15,6 @@ services:
     environment:
       - PHALA_MODULE=fetch
       - NODE_ENV=testing
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
       - PHALA_DB_FETCH_NAMESPACE=fetch
       - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
@@ -39,7 +37,7 @@ services:
       - NODE_ENV=testing
       - PHALA_DB_NAMESPACE=default
       - PHALA_DB_FETCH_NAMESPACE=fetch
-      - PHALA_DB_ENDPOINT=redis://io:9221
+      - PHALA_DB_ENDPOINT=redis://io:6666
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
@@ -69,14 +67,13 @@ services:
 
   io:
     << : *defaults
-    image: pikadb/pika:latest
+    image: kvrocks/kvrocks:latest
     hostname: io
     restart: always
     volumes:
-      - ./pika.conf:/pika/conf/pika.conf
-      - ./data/pika:/var/data
+      - ./data/db:/tmp/kvrocks
     ports:
-      - "9221:9221"
+      - "6666:6666"
 
   redis:
     image: redis:alpine
@@ -112,10 +109,11 @@ services:
       - "4567:4567"
 
   monitor:
-    image: phalanetwork/prb-monitor:latest
+    image: phalanetwork/prb-monitor:next
     hostname: monitor
     environment:
-      - "REDIS_ENDPOINT=redis://redis:6379"
-      - PHALA_NAMESPACE=default
+      - REDIS_ENDPOINT=redis://redis:6379
+      - NS_FETCH=fetch
+      - NEXT_PUBLIC_NS_LIST=default
     ports:
       - "3000:3000"

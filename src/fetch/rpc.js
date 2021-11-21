@@ -1,3 +1,4 @@
+import { DB_BLOCK } from '../io/db'
 import { MessageTarget } from '../message/proto'
 import { createDispatcher, createMessageTunnel } from '../message'
 import env from '../utils/env'
@@ -7,6 +8,7 @@ const setupRpc = async (context) => {
   const tunnelConnection = await createMessageTunnel({
     redisEndpoint: env.redisEndpoint,
     from: MessageTarget.MTG_FETCHER,
+    ns: DB_BLOCK,
   })
 
   const { query, subscribe } = tunnelConnection

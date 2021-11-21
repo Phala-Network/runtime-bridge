@@ -19,14 +19,14 @@ services:
     environment:
       - PHALA_MODULE=fetch
       - NODE_ENV=development
-      - PHALA_DB_HOST=io
-      - PHALA_DB_PORT_BASE=9000
       - PHALA_DB_FETCH_NAMESPACE=fetch
       - PHALA_DB_ENDPOINT=redis://io:9221
       - PHALA_LOGGER_LEVEL=debug
       - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
       - PHALA_CHAIN_ENDPOINT=ws://node:9944
       - PHALA_REDIS_ENDPOINT=redis://redis:6379
+      - PHALA_PARENT_PARALLEL_BLOCKS=15
+      - PHALA_PARA_PARALLEL_BLOCKS=2
 
   lifecycle:
     image: phalanetwork/prb:development
@@ -128,10 +128,11 @@ services:
       - "30334:30334"
 
   monitor:
-    image: phalanetwork/prb-monitor:latest
+    image: phalanetwork/prb-monitor:next
     hostname: monitor
     environment:
-      - "REDIS_ENDPOINT=redis://redis:6379"
-      - PHALA_NAMESPACE=default
+      - REDIS_ENDPOINT=redis://redis:6379
+      - NS_FETCH=fetch
+      - NEXT_PUBLIC_NS_LIST=default
     ports:
       - "3000:3000"
