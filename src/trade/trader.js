@@ -27,6 +27,7 @@ export class TxTimeOutError extends Error {
 }
 
 const poolQueues = {}
+const poolNonces = {}
 
 const getPoolQueue = (pid) => {
   let q = poolQueues[pid]
@@ -91,9 +92,18 @@ const start = async () => {
   const processBatch = async (batch) => {
     const pool = await getPool(batch.pid, __fakeLifecycleContext, true)
     const tx = formTx(pool, batch.calls)
+    let nonce
     try {
+      if (typeof poolNonces[pool.uid] === 'number') {
+        nonce = (
+          await phalaApi.rpc.system.accountNextIndex(pool.ss58Phala)
+        ).toNumber()
+      } else {
+        nonce = poolNonces[pool.uid]
+      }
+      poolNonces[pool.uid] = nonce + 1
       process.send({ action: MA_BATCH_WORKING, payload: { id: batch.id } })
-      const failedCalls = await sendTx(tx, pool)
+      const failedCalls = await sendTx(tx, pool, nonce)
       process.send({
         action: MA_BATCH_FINISHED,
         payload: { id: batch.id, failedCalls },
@@ -120,7 +130,7 @@ const start = async () => {
   })
 }
 
-const sendTx = (tx, pool) =>
+const sendTx = (tx, pool, nonce = -1) =>
   new Promise((resolve, reject) => {
     let unsub
     const doUnsub = (reason) => {
@@ -133,7 +143,8 @@ const sendTx = (tx, pool) =>
       reject(new TxTimeOutError('Timeout!'))
     }, TX_TIMEOUT)
     const clearCurrentTimeout = () => clearTimeout(timeout)
-    tx.signAndSend(pool.pair, (result) => {
+
+    tx.signAndSend(pool.pair, { nonce }, (result) => {
       const { status, dispatchError, events } = result
       logger.debug(
         { hash: tx.hash.toHex() },
