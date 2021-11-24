@@ -1,4 +1,4 @@
-FROM node:lts-buster-slim
+FROM node:14-buster-slim
 
 ENV PYTHONUNBUFFERED=1
 RUN apt-get install apt-transport-https
