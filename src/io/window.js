@@ -101,6 +101,16 @@ export const setDryRange = async (
   const parentStopBlock = _parentStopBlock.number
   const paraStopBlock = _paraStopBlock ? _paraStopBlock.number : -1
 
+  logger.info(
+    {
+      parentStartBlock,
+      parentStopBlock,
+      paraStartBlock,
+      paraStopBlock,
+    },
+    'Start setDryRange'
+  )
+
   const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
   const rangeWrittenMarkKey = `rangeWritten:${keySuffix}`
   const drySyncHeaderReqKey = `drySyncHeader:${keySuffix}`
@@ -279,7 +289,6 @@ export const commitBlobRange = async (ranges, paraRanges) => {
   }
   await batch.exec()
   await windowDb.set(blobRangeCommittedMarkKey, Buffer.from([1]))
-  await setLastCommittedParentBlock(parentStopBlock)
 
   logger.info(
     { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },

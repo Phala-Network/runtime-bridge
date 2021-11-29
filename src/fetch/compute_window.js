@@ -17,6 +17,7 @@ import {
   getWindow,
   setDryParaBlockRange,
   setEmptyWindow,
+  setLastCommittedParentBlock,
   updateWindow,
 } from '../io/window'
 import { getGenesis, waitForParaBlock, waitForParentBlock } from '../io/block'
@@ -51,6 +52,7 @@ const lazyCommitBlobRange = async (
   paraRanges,
   currParentBlockNumber
 ) => {
+  logger.info({ currParentBlockNumber }, 'lazyCommitBlobRange')
   const rangePromises__copy = [...rangePromises]
   const paraRanges__copy = [...paraRanges]
   rangePromises.length = 0
@@ -78,8 +80,8 @@ const walkBlock = async (
   try {
     let nextContext
     let paraNumberMatched = false
-
     const currParentBlock = await waitForParentBlock(parentNumber)
+
     const currParaBlock =
       typeof paraNumberOrBlock === 'object'
         ? paraNumberOrBlock
@@ -122,7 +124,7 @@ const walkBlock = async (
 
     if (ranges.length >= BLOB_MAX_RANGE_COUNT) {
       paraRanges__copy = [...paraRanges]
-      lazyCommitBlobRange(
+      await lazyCommitBlobRange(
         ranges,
         paraRanges,
         currParentBlock.number,
@@ -134,7 +136,7 @@ const walkBlock = async (
     if (currParentBlock.setId > lastParentBlock?.setId) {
       if (!alreadyRequestedCommit) {
         paraRanges__copy = [...paraRanges]
-        lazyCommitBlobRange(
+        await lazyCommitBlobRange(
           ranges,
           paraRanges,
           currParentBlock.number,
@@ -154,7 +156,6 @@ const walkBlock = async (
       }
 
       Object.assign(currentWindow, await updateWindow(currentWindow, updated))
-
       return
     }
 
@@ -242,6 +243,8 @@ const walkWindow = async (windowId = 0, lastWindow = null) => {
     paraRanges,
     lastParentBlockData
   )
+  await setLastCommittedParentBlock(currentWindow.parentStartBlock - 1)
+
   logger.info(currentWindow, `Processed window.`)
   return walkWindow(windowId + 1, currentWindow)
 }

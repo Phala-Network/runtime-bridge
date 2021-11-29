@@ -285,18 +285,36 @@ export const startSyncBlob = (runtime) => {
     // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
     const blobs = await getHeaderBlob(next)
-    const {
-      payload: {
-        relaychain_synced_to: parentSynchedTo,
-        parachain_synced_to: paraSynchedTo,
-      },
-    } = await request('/bin_api/sync_combined_headers', blobs[0])
-    syncStatus.parentHeaderSynchedTo = parentSynchedTo
-    if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
-      syncStatus.paraHeaderSynchedTo = paraSynchedTo
+
+    // const {
+    //   payload: {
+    //     relaychain_synced_to: parentSynchedTo,
+    //     parachain_synced_to: paraSynchedTo,
+    //   },
+    // } = await request('/bin_api/sync_combined_headers', blobs[0])
+    // syncStatus.parentHeaderSynchedTo = parentSynchedTo
+    // if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
+    //   syncStatus.paraHeaderSynchedTo = paraSynchedTo
+    // }
+    // await wait(0)
+    // return headerSync(parentSynchedTo + 1).catch(doReject)
+    try {
+      const {
+        payload: {
+          relaychain_synced_to: parentSynchedTo,
+          parachain_synced_to: paraSynchedTo,
+        },
+      } = await request('/bin_api/sync_combined_headers', blobs[0])
+      syncStatus.parentHeaderSynchedTo = parentSynchedTo
+      if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
+        syncStatus.paraHeaderSynchedTo = paraSynchedTo
+      }
+      await wait(0)
+      return headerSync(parentSynchedTo + 1).catch(doReject)
+    } catch (e) {
+      logger.info(blobs)
+      throw e
     }
-    await wait(0)
-    return headerSync(parentSynchedTo + 1).catch(doReject)
   }
 
   const paraBlockSync = async (_next) => {
