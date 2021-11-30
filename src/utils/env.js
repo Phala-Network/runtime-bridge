@@ -19,6 +19,7 @@ export const ENV_LIST = [
   ['PHALA_ENABLE_KEEP_ALIVE', 'enableKeepAlive'],
   ['PHALA_KEEP_ALIVE_TIMEOUT', 'keepAliveTimeout'],
   ['PHALA_MIN_BENCH_SCORE', 'minBenchScore'],
+  ['PHALA_ENFORCE_MIN_BENCH_SCORE', 'enforceMinBenchScore'],
 ]
 
 const _env = {}
@@ -41,4 +42,5 @@ export const keepAliveTimeout = env.keepAliveTimeout
   ? parseInt(env.keepAliveTimeout)
   : 60000
 export const minBenchScore = parseInt(env.minBenchScore) || 50
+export const enforceMinBenchScore = env.enforceMinBenchScore === 'true'
 export default env
