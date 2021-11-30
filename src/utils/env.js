@@ -21,10 +21,11 @@ export const ENV_LIST = [
   ['PHALA_ENABLE_KEEP_ALIVE', 'enableKeepAlive'],
   ['PHALA_KEEP_ALIVE_TIMEOUT', 'keepAliveTimeout'],
   ['PHALA_MIN_BENCH_SCORE', 'minBenchScore'],
+  ['PHALA_ENFORCE_MIN_BENCH_SCORE', 'enforceMinBenchScore'],
 
   ['PHALA_LRU_CACHE_SIZE', 'lruCacheSize'],
   ['PHALA_LRU_CACHE_MAX_AGE', 'lruCacheMaxAge'],
-  ['PHALA_LRU_CACHE_DEBUG_LOG_INTERVAL', 'lruCacheDebugLogInterval'],
+  ['PHALA_LRU_CACHE_DBUG_LOG_INTERVAL', 'lruCacheDebugLogInterval'],
 ]
 
 const _env = {}
@@ -47,6 +48,7 @@ export const keepAliveTimeout = env.keepAliveTimeout
   ? parseInt(env.keepAliveTimeout)
   : 60000
 export const minBenchScore = parseInt(env.minBenchScore) || 50
+export const enforceMinBenchScore = env.enforceMinBenchScore === 'true'
 
 export const lruCacheSize = parseInt(env.lruCacheSize) || 5000
 export const lruCacheMaxAge = parseInt(env.lruCacheMaxAge) || 30 * 60 * 1000

@@ -1,7 +1,7 @@
 import { EVENTS } from './state_machine'
 import { createRpcClient } from '../utils/prpc'
+import { enforceMinBenchScore, minBenchScore } from '../utils/env'
 import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
-import { minBenchScore } from '../utils/env'
 import { phalaApi } from '../utils/api'
 import { requestQueue__blob, runtimeRequest } from '../utils/prpc/request'
 import logger from '../utils/logger'
@@ -227,7 +227,10 @@ export const registerWorker = async (runtime) => {
       const onChainWorkerInfo = (
         await phalaApi.query.phalaRegistry.workers(publicKey)
       ).unwrapOrDefault()
-      if (onChainWorkerInfo.initialScore.toJSON() > 0) {
+      if (
+        onChainWorkerInfo.initialScore.toJSON() >
+        (enforceMinBenchScore ? minBenchScore : 0)
+      ) {
         return
       }
       await wait(24000)
