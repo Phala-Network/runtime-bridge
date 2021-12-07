@@ -6,8 +6,11 @@ import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import logger from './logger'
 import phalaTypes from './typedefs'
 import typesChain from '@polkadot/apps-config/api/chain'
+import type { OverrideBundleType } from '@polkadot/types/types'
 
-let _phalaApi, _parentApi
+export type PossibleApiPromise = ApiPromise | undefined
+
+let _phalaApi: PossibleApiPromise, _parentApi: PossibleApiPromise
 
 export const keyring = new Keyring({
   type: 'sr25519',
@@ -47,7 +50,7 @@ const rpc = {
 }
 
 const setupPhalaApi = async (
-  endpoint,
+  endpoint: string,
   useHttp = false,
   forceRecreate = false
 ) => {
@@ -63,11 +66,8 @@ const setupPhalaApi = async (
       ...typesChain,
       ...phalaTypesChain,
     },
-    typesBundle,
+    typesBundle: typesBundle as OverrideBundleType,
     rpc,
-    typesAlias: {
-      ChainId: 'u8',
-    },
   })
 
   phalaApi.on('disconnected', (e) => {
@@ -102,7 +102,7 @@ const setupPhalaApi = async (
   return phalaApi
 }
 
-const setupParentApi = async (endpoint, forceRecreate = false) => {
+const setupParentApi = async (endpoint: string, forceRecreate = false) => {
   if (!forceRecreate && !!_parentApi) {
     throw new Error('Parent API already created!')
   }

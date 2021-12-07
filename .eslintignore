@@ -2,3 +2,5 @@ src/vendor
 .yarn
 .pnp.*
 **/*.generated.**
+dist
+src/utils/phala-types

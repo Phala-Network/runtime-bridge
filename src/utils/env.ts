@@ -1,6 +1,3 @@
-import LevelDOWN from 'leveldown'
-import RocksDB from 'rocksdb'
-
 export const ENV_LIST = [
   ['NODE_ENV', 'nodeEnv'],
   ['PHALA_PARA_PARALLEL_BLOCKS', 'parallelParaBlocks'],
@@ -26,9 +23,26 @@ export const ENV_LIST = [
   ['PHALA_LRU_CACHE_SIZE', 'lruCacheSize'],
   ['PHALA_LRU_CACHE_MAX_AGE', 'lruCacheMaxAge'],
   ['PHALA_LRU_CACHE_DBUG_LOG_INTERVAL', 'lruCacheDebugLogInterval'],
-]
 
-const _env = {}
+  ['PHALA_PEER_ID_PREFIX', 'peerIdPrefix'],
+  ['PHALA_WALKIE_LISTEN_ADDRESSES', 'walkieListenAddresses'],
+  ['PHALA_WALKIE_TRUSTED_DIALERS', 'walkieTrustedDialers'],
+
+  [
+    'PHALA_DATA_PROVIDER_EXTERNAL_LISTEN_ADDRESSES',
+    'dataProviderExternalListenAddress',
+  ],
+  ['PHALA_DATA_PROVIDER_TRUSTED_ORIGINS', 'dataProviderTrustedOrigins'],
+  ['PHALA_DATA_PROVIDER_BOOT_NODES', 'dataProviderBootNodes'],
+] as const
+
+type EnvPair = typeof ENV_LIST[number]
+type EnvPairValue = EnvPair[0] | EnvPair[1]
+type EnvObject = {
+  [key in EnvPairValue]: string
+}
+
+const _env = {} as EnvObject
 
 ENV_LIST.forEach((i) => {
   _env[i[1]] = process.env[i[0]]
@@ -38,9 +52,6 @@ ENV_LIST.forEach((i) => {
 export const env = Object.freeze(_env)
 export const isDev = env.NODE_ENV === 'development'
 export const shouldSkipRa = env.devSkipRa === 'true'
-export const httpKeepAliveEnabled = env.httpKeepAliveEnabled === 'true'
-export const legacySystemMqEnabled = env.enableLegacySystemMq === 'true'
-export const dbType = env.dbType === 'leveldb' ? LevelDOWN : RocksDB
 export const enableKeepAlive = env.enableKeepAlive
   ? env.enableKeepAlive === 'true'
   : false
@@ -54,5 +65,30 @@ export const lruCacheSize = parseInt(env.lruCacheSize) || 5000
 export const lruCacheMaxAge = parseInt(env.lruCacheMaxAge) || 30 * 60 * 1000
 export const lruCacheDebugLogInterval =
   parseInt(env.lruCacheDebugLogInterval) || (isDev ? 3000 : 0)
+
+export const walkieListenAddresses = (
+  env.walkieListenAddresses ?? '/ip4/0.0.0.0/tcp/18888,/ip6/::/tcp/18888'
+)
+  .split(',')
+  .map((i) => i.trim())
+export const walkieTrustedDialers = env.walkieTrustedDialers
+  ? env.walkieTrustedDialers.split(',').map((i) => i.trim())
+  : []
+export const peerIdPrefix = env.peerIdPrefix ?? '/var/data/keys/id'
+
+export const dataProviderExternalListenAddress = (
+  env.dataProviderExternalListenAddress ??
+  '/ip4/0.0.0.0/tcp/28888,/ip6/::/tcp/28889'
+)
+  .split(',')
+  .map((i) => i.trim())
+export const dataProviderTrustedOrigins = env.dataProviderTrustedOrigins
+  ? env.dataProviderTrustedOrigins.split(',').map((i) => i.trim())
+  : []
+export const dataProviderBootNodes = env.dataProviderTrustedOrigins
+  ? env.dataProviderTrustedOrigins.split(',').map((i) => i.trim())
+  : [
+      '/ip4/10.96.89.143/tcp/28888/p2p/12D3KooWErcgYdvMKczb7UbuvKU5wCVd9H5ngbj2WDN8jiSRm2tC',
+    ]
 
 export default env

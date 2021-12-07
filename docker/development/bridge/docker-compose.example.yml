@@ -28,6 +28,25 @@ services:
       - PHALA_PARENT_PARALLEL_BLOCKS=15
       - PHALA_PARA_PARALLEL_BLOCKS=2
 
+  block_provider:
+    image: phalanetwork/prb:development
+    build:
+      context: ../../..
+      dockerfile: docker/development/Dockerfile
+    hostname: data_provider
+    volumes: *default-volume-config
+    environment:
+      - PHALA_MODULE=data_provider
+      - NODE_ENV=development
+      - PHALA_DB_FETCH_NAMESPACE=fetch
+      - PHALA_DB_ENDPOINT=redis://io:9221
+      - PHALA_LOGGER_LEVEL=debug
+      - PHALA_PARENT_CHAIN_ENDPOINT=ws://node:9945
+      - PHALA_CHAIN_ENDPOINT=ws://node:9944
+      - PHALA_REDIS_ENDPOINT=redis://redis:6379
+      - PHALA_PARENT_PARALLEL_BLOCKS=15
+      - PHALA_PARA_PARALLEL_BLOCKS=2
+
   lifecycle:
     image: phalanetwork/prb:development
     hostname: lifecycle
