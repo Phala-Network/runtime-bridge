@@ -7,6 +7,7 @@ import {
   setupParentApi,
   setupPhalaApi,
 } from '../utils/api'
+import { prb } from '@phala/runtime-bridge-walkie'
 import env from '../utils/env'
 import logger from '../utils/logger'
 import setupPtp from './ptp'
@@ -108,6 +109,7 @@ const start = async () => {
   _genesisHash.update(genesis.bridgeGenesisInfo as Buffer)
   const genesisHash = _genesisHash.digest('hex')
   await setupPtp(genesisHash)
+  console.log(prb.data_provider)
 }
 
 export default start

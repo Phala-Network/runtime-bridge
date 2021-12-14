@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/runtime-bridge.iml" filepath="$PROJECT_DIR$/.idea/runtime-bridge.iml" />
       <module fileurl="file://$PROJECT_DIR$/../runtime-bridge-monitor/.idea/runtime-bridge-monitor.iml" filepath="$PROJECT_DIR$/../runtime-bridge-monitor/.idea/runtime-bridge-monitor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../runtime-bridge-walkie/.idea/runtime-bridge-walkie.iml" filepath="$PROJECT_DIR$/../runtime-bridge-walkie/.idea/runtime-bridge-walkie.iml" />
     </modules>
   </component>
 </project>

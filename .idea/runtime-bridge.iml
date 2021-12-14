@@ -9,5 +9,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="runtime-bridge-monitor" />
+    <orderEntry type="module" module-name="runtime-bridge-walkie" />
   </component>
 </module>

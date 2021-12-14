@@ -5,10 +5,10 @@
     <option name="importPathEntries">
       <list>
         <ImportPathEntry>
-          <option name="location" value="jar://$APPLICATION_PLUGINS_DIR$/protoeditor/lib/protoeditor.jar!/protobuf" />
+          <option name="location" value="jar://$APPLICATION_PLUGINS_DIR$/protoeditor/lib/protoeditor.jar!/include" />
         </ImportPathEntry>
         <ImportPathEntry>
-          <option name="location" value="file://$PROJECT_DIR$/src/vendor/proto" />
+          <option name="location" value="file://$PROJECT_DIR$/../runtime-bridge-walkie/src/proto" />
         </ImportPathEntry>
       </list>
     </option>
