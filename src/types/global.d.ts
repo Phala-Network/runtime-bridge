@@ -9,3 +9,10 @@ declare module 'libp2p-mdns' {
   declare const libp2p__mdns: PeerDiscoveryFactory
   export default libp2p__mdns
 }
+
+declare module 'redis-commands' {
+  import type { Commands } from 'ioredis'
+  export type Command = keyof Commands
+  declare const list: Command[]
+  export { list }
+}

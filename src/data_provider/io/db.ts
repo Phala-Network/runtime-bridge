@@ -1,8 +1,10 @@
-import createClient from '../utils/redis'
-import env from '../utils/env'
-import logger from '../utils/logger'
+import createClient from '../../utils/redis'
+import env from '../../utils/env'
+import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
-import wait from '../utils/wait'
+import wait from '../../utils/wait'
+import type { KeyType } from 'ioredis'
+import type { PrbRedisClient } from '../../utils/redis'
 
 const dbMap = new Map()
 
@@ -22,9 +24,7 @@ export const DB_NUMBERS = Object.freeze({
   [DB_WORKER]: DB_NUMBER_POOL,
 })
 
-export const getPort = (dbNum) => (parseInt(env.dbPortBase) || 9000) + dbNum
-
-const checkDb = async (db) => {
+const checkDb = async (db: PrbRedisClient) => {
   let touchedAt
 
   try {
@@ -40,20 +40,20 @@ const checkDb = async (db) => {
   return db
 }
 
-export const setupDb = async (...nss) => {
+export const setupDb = async (...nss: string[]) => {
   const dbs = await Promise.all([...nss.map(getDb)])
   return Promise.all(dbs.map(checkDb))
 }
 
-export const getDb = async (ns) => {
-  let db = dbMap.get(ns)
+export const getDb = async (ns: string) => {
+  const db = dbMap.get(ns)
 
   if (db) {
     return db
   }
 
   const createOptions = {
-    db: DB_NUMBERS[ns] || DB_NUMBER_POOL,
+    db: parseInt(DB_NUMBERS[ns] || DB_NUMBER_POOL),
     keyPrefix: ns + ':',
   }
   const redisClient = await createClient(env.dbEndpoint, createOptions)
@@ -67,9 +67,12 @@ export const getDb = async (ns) => {
 
 export const NOT_FOUND_ERROR = new Error('Not found.')
 
-export const getKeyExistence = async (db, key) => (await db.exists(key)) === 1
+export const getKeyExistence = async (db: PrbRedisClient, key: KeyType) =>
+  (await db.exists(key)) === 1
 
-const _waitFor = async (waitFn) => {
+export type AnyAsyncFn<T> = (...fnArgs: unknown[]) => Promise<T> | T
+
+const _waitFor = async <T>(waitFn: AnyAsyncFn<T>): Promise<T> => {
   try {
     const ret = await waitFn()
     if (!ret) {
@@ -84,10 +87,10 @@ const _waitFor = async (waitFn) => {
     throw e
   }
 }
-export const waitFor = (waitFn) =>
+export const waitFor = <T>(waitFn: AnyAsyncFn<T>): Promise<T> =>
   promiseRetry(
     (retry, retriedTimes) =>
-      _waitFor(waitFn).catch((e) => {
+      _waitFor(waitFn).catch((e: unknown) => {
         logger.error({ retriedTimes }, e)
         return retry(e)
       }),

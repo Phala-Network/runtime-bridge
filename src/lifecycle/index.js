@@ -1,6 +1,6 @@
-import { DB_BLOCK, DB_WINDOW, DB_WORKER, setupDb } from '../io/db'
+import { DB_BLOCK, DB_WINDOW, DB_WORKER, setupDb } from '../data_provider/io/db'
 import { EventEmitter } from 'events'
-import { getGenesis } from '../io/block'
+import { getGenesis } from '../data_provider/io/block'
 import { phalaApi, setupPhalaApi } from '../utils/api'
 import { watchWorkers } from './lifecycle'
 import createTradeQueue from '../trade/trade_queue'

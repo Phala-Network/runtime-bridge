@@ -85,10 +85,10 @@ export const dataProviderExternalListenAddress = (
 export const dataProviderTrustedOrigins = env.dataProviderTrustedOrigins
   ? env.dataProviderTrustedOrigins.split(',').map((i) => i.trim())
   : []
-export const dataProviderBootNodes = env.dataProviderTrustedOrigins
-  ? env.dataProviderTrustedOrigins.split(',').map((i) => i.trim())
+export const dataProviderBootNodes = env.dataProviderBootNodes
+  ? env.dataProviderBootNodes.split(',').map((i) => i.trim())
   : [
-      '/ip4/10.96.89.143/tcp/28888/p2p/12D3KooWErcgYdvMKczb7UbuvKU5wCVd9H5ngbj2WDN8jiSRm2tC',
+      '/ip4/10.87.0.40/tcp/28888/p2p/12D3KooWKJgJyMFFm71uLCjYc7LPMS5WrehSXZr9fetDx3fSc2ih',
     ]
 
 export default env

@@ -1,7 +1,7 @@
 import { EVENTS } from './state_machine'
 import { createRpcClient } from '../utils/prpc'
 import { enforceMinBenchScore, minBenchScore } from '../utils/env'
-import { getHeaderBlob, getParaBlockBlob } from '../io/blob'
+import { getHeaderBlob, getParaBlockBlob } from '../data_provider/io/blob'
 import { phalaApi } from '../utils/api'
 import { requestQueue__blob, runtimeRequest } from '../utils/prpc/request'
 import logger from '../utils/logger'

@@ -4,6 +4,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 
 export const DATA_PROVIDER = Symbol('DATA_PROVIDER')
+export const DATA_PROVIDER_EXT = Symbol('DATA_PROVIDER_EXT')
 export const LIFECYCLE = Symbol('LIFECYCLE')
 export const TRADE = Symbol('TRADE')
 
@@ -11,6 +12,7 @@ export const KEY_SYMBOLS = [DATA_PROVIDER, LIFECYCLE, TRADE] as const
 
 export const KEY_NAMES = {
   [DATA_PROVIDER]: 'DATA_PROVIDER',
+  [DATA_PROVIDER_EXT]: 'DATA_PROVIDER_EXT',
   [LIFECYCLE]: 'LIFECYCLE',
   [TRADE]: 'TRADE',
 }

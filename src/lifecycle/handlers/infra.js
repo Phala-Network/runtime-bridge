@@ -1,4 +1,4 @@
-import { UPool, UWorker } from '../../io/worker'
+import { UPool, UWorker } from '../../data_provider/io/worker'
 import logger from '../../utils/logger'
 import os from 'os'
 

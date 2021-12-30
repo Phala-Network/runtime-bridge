@@ -1,4 +1,4 @@
-import { DB_WORKER } from '../io/db'
+import { DB_WORKER } from '../data_provider/io/db'
 import { MessageTarget } from '../message/proto'
 import { createDispatcher, createMessageTunnel } from '../message'
 import createHandlers from './handlers'

@@ -1,10 +1,9 @@
 import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistence } from './db'
 import { DB_PB_TO_OBJECT_OPTIONS, pbToObject } from './db_encoding'
-import { phalaApi } from '../utils/api'
-import { prb } from '../message/proto.generated'
-import logger from '../utils/logger'
+import { prb } from '../../message/proto.generated'
+import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
-import wait from '../utils/wait'
+import wait from '../../utils/wait'
 
 const { ParaBlock, ParentBlock, Genesis } = prb.db
 
@@ -21,15 +20,6 @@ export const keys__SCALE_TYPES__BLOCK = Object.freeze(
   Object.keys(SCALE_TYPES__BLOCK)
 )
 
-export const decodeBlockScale = (block, shouldCopy = false) => {
-  const ret = shouldCopy ? { ...block } : block
-  for (const key of keys__SCALE_TYPES__BLOCK) {
-    if (Buffer.isBuffer(ret[key])) {
-      ret[key] = phalaApi.createType(SCALE_TYPES__BLOCK[key], ret[key])
-    }
-  }
-  return ret
-}
 export const encodeBlockScale = (block, shouldCopy = false) => {
   const ret = shouldCopy ? { ...block } : block
   for (const key of keys__SCALE_TYPES__BLOCK) {
@@ -40,7 +30,7 @@ export const encodeBlockScale = (block, shouldCopy = false) => {
   return ret
 }
 
-export const getParaBlockExistance = async (number) => {
+export const getParaBlockExistence = async (number) => {
   const db = await getDb(DB_BLOCK)
   return getKeyExistence(db, `para:${number}:written`)
 }
@@ -153,22 +143,6 @@ export const waitForParentBlock = (blockNumber) =>
       maxTimeout: 12000,
     }
   )
-
-export const bindBlock = async (paraNumber, parentNumber) => {
-  const db = await getDb(DB_BLOCK)
-  await db.set(`paraToParent:${paraNumber}`, parentNumber)
-  await db.set(`parentToPara:${parentNumber}`, paraNumber)
-}
-
-export const getParaNumber = async (parentNumber) => {
-  const db = await getDb(DB_BLOCK)
-  return db.get(`parentToPara:${parentNumber}`)
-}
-
-export const getParentNumber = async (paraNumber) => {
-  const db = await getDb(DB_BLOCK)
-  return db.get(`paraToParent:${paraNumber}`)
-}
 
 export const setGenesis = async (genesis) => {
   const db = await getDb(DB_BLOCK)

@@ -1,4 +1,3 @@
-import { DB_ENCODING_JSON } from './db_encoding'
 import { DB_WORKER, getDb } from './db'
 import { pbToObject } from './db_encoding'
 import { v4 as uuid } from 'uuid'

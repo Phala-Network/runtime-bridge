@@ -1,4 +1,4 @@
-import { UPool, UWorker } from '../io/worker'
+import { UPool, UWorker } from '../data_provider/io/worker'
 
 const main = async () => {
   const [workers, pools] = await Promise.all([UWorker.getAll(), UPool.getAll()])

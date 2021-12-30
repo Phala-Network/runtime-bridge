@@ -2,7 +2,7 @@ import {
   BLOB_MAX_PARA_BLOCK_RANGE_COUNT,
   BLOB_MAX_RANGE_COUNT,
 } from '../utils/constants'
-import { DB_BLOCK, DB_WINDOW, setupDb } from '../io/db'
+import { DB_BLOCK, DB_WINDOW, setupDb } from '../data_provider/io/db'
 import {
   SET_PARA_ARCHIVED_HEIGHT,
   SET_PARA_BLOB_HEIGHT,
@@ -19,8 +19,12 @@ import {
   setEmptyWindow,
   setLastCommittedParentBlock,
   updateWindow,
-} from '../io/window'
-import { getGenesis, waitForParaBlock, waitForParentBlock } from '../io/block'
+} from '../data_provider/io/window'
+import {
+  getGenesis,
+  waitForParaBlock,
+  waitForParentBlock,
+} from '../data_provider/io/block'
 import { setupParentApi, setupPhalaApi } from '../utils/api'
 import env from '../utils/env'
 import logger from '../utils/logger'

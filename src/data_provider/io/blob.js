@@ -3,11 +3,11 @@ import {
   lruCacheDebugLogInterval,
   lruCacheMaxAge,
   lruCacheSize,
-} from '../utils/env'
+} from '../../utils/env'
 import { waitForParaBlockRange, waitForRangeByParentNumber } from './window'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
-import logger from '../utils/logger'
+import logger from '../../utils/logger'
 
 const largeBlobQueue = new PQueue({ concurrency: 3 })
 

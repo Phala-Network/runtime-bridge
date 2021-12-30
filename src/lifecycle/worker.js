@@ -1,5 +1,5 @@
 import { BN_1PHA, MINER_V_BASE } from '../utils/constants'
-import { UPool } from '../io/worker'
+import { UPool } from '../data_provider/io/worker'
 import { keyring, phalaApi } from '../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'

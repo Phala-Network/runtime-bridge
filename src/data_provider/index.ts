@@ -1,106 +1,30 @@
-import { GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
+import { DB_BLOCK, setupDb } from './io/db'
 import { createHash } from 'crypto'
-import { getGenesis, setGenesis } from '../io/block'
+import {
+  getLastCommittedParaBlock,
+  getLastCommittedParentBlock,
+} from './io/window'
 import {
   parentApi,
   phalaApi,
   setupParentApi,
   setupPhalaApi,
 } from '../utils/api'
-import { prb } from '@phala/runtime-bridge-walkie'
+
+import { processGenesis, walkParaBlock, walkParentBlock } from './sync_block'
+import PQueue from 'p-queue'
 import env from '../utils/env'
 import logger from '../utils/logger'
 import setupPtp from './ptp'
-import type {
-  AuthorityList,
-  ParaId,
-  PersistedValidationData,
-  StorageData,
-} from '@polkadot/types/interfaces'
-import type { Option } from '@polkadot/types'
+import wait from '../utils/wait'
+import type { BlockHash } from '@polkadot/types/interfaces'
+import type { U32 } from '@polkadot/types'
 
-const _processGenesis = async (paraId: number) => {
-  const paraNumber = 0
-  const parentNumber =
-    ((
-      (await phalaApi.query.parachainSystem.validationData.at(
-        await phalaApi.rpc.chain.getBlockHash(paraNumber + 1)
-      )) as Option<PersistedValidationData>
-    )
-      .unwrapOrDefault()
-      .relayParentNumber.toJSON() as number) - 1
-
-  const parentHash = await parentApi.rpc.chain.getBlockHash(parentNumber)
-  const parentBlock = await parentApi.rpc.chain.getBlock(parentHash)
-  const parentHeader = parentBlock.block.header
-
-  const setIdKey = parentApi.query.grandpa.currentSetId.key()
-  const setId = await parentApi.query.grandpa.currentSetId.at(parentHash)
-
-  const grandpaAuthorities = parentApi.createType(
-    'VersionedAuthorityList',
-    (
-      (await parentApi.rpc.state.getStorage(
-        GRANDPA_AUTHORITIES_KEY,
-        parentHash
-      )) as Option<StorageData>
-    ).value
-  )
-  const grandpaAuthoritiesStorageProof = (
-    await parentApi.rpc.state.getReadProof(
-      [GRANDPA_AUTHORITIES_KEY, setIdKey],
-      parentHash
-    )
-  ).proof
-
-  const bridgeGenesisInfo = Buffer.from(
-    parentApi
-      .createType('GenesisInfo', {
-        header: parentHeader,
-        authoritySet: {
-          authoritySet: (
-            grandpaAuthorities as unknown as { authorityList: AuthorityList }
-          ).authorityList,
-          setId,
-        },
-        proof: grandpaAuthoritiesStorageProof,
-      })
-      .toU8a()
-  )
-
-  const genesisState = Buffer.from(
-    (
-      await phalaApi.rpc.state.getPairs(
-        '',
-        await phalaApi.rpc.chain.getBlockHash(paraNumber)
-      )
-    ).toU8a()
-  )
-
-  return {
-    paraId,
-    paraNumber,
-    parentNumber,
-    bridgeGenesisInfo,
-    genesisState,
-  }
-}
-
-const processGenesis = async () => {
-  const paraId = (
-    (await phalaApi.query.parachainInfo.parachainId()) as ParaId
-  ).toNumber()
-  let genesis = await getGenesis(paraId)
-  if (!genesis) {
-    logger.info('Fetching genesis...')
-    genesis = await setGenesis(await _processGenesis(paraId))
-  } else {
-    logger.info('Got genesis in cache.')
-  }
-  return genesis
-}
+const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 15
+const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 2
 
 const start = async () => {
+  await setupDb(DB_BLOCK)
   await setupParentApi(env.parentChainEndpoint)
   await setupPhalaApi(env.chainEndpoint)
 
@@ -108,8 +32,108 @@ const start = async () => {
   const _genesisHash = createHash('sha256')
   _genesisHash.update(genesis.bridgeGenesisInfo as Buffer)
   const genesisHash = _genesisHash.digest('hex')
+  logger.info('Genesis hash:', genesisHash)
+
   await setupPtp(genesisHash)
-  console.log(prb.data_provider)
+
+  let lastParaFinalizedHeadHash: BlockHash
+  let paraTarget: number
+  let lastParentFinalizedHeadHash: BlockHash
+  let parentTarget: number
+
+  const updateParaTarget = async () => {
+    const newHeadHash = await phalaApi.rpc.chain.getFinalizedHead()
+    if (newHeadHash.eq(lastParaFinalizedHeadHash)) {
+      return false
+    }
+    lastParaFinalizedHeadHash = newHeadHash
+    paraTarget = (
+      (await (
+        await phalaApi.at(lastParaFinalizedHeadHash)
+      ).query.system.number()) as U32
+    ).toNumber()
+  }
+  const updateParentTarget = async () => {
+    const newHeadHash = await parentApi.rpc.chain.getFinalizedHead()
+    if (newHeadHash.eq(lastParentFinalizedHeadHash)) {
+      return false
+    }
+    lastParentFinalizedHeadHash = newHeadHash
+    parentTarget = (
+      (await (
+        await parentApi.at(lastParentFinalizedHeadHash)
+      ).query.system.number()) as U32
+    ).toNumber()
+  }
+  const updateTarget = async (): Promise<void> => {
+    await Promise.all([updateParaTarget(), updateParentTarget()])
+    setTimeout(
+      () =>
+        updateTarget().catch((e) => {
+          logger.error('Failed to update target:', e)
+        }),
+      3000
+    )
+  }
+  await updateTarget()
+
+  const proofKey = parentApi.query.paras.heads.key(genesis.paraId)
+
+  iterate(
+    await getLastCommittedParaBlock(),
+    () => paraTarget,
+    FETCH_PARA_QUEUE_CONCURRENT,
+    async (curr) => {
+      await walkParaBlock(curr)
+    }
+  ).catch((e) => {
+    logger.error(e)
+    process.exit(255)
+  })
+
+  iterate(
+    (await getLastCommittedParentBlock()) || genesis.parentNumber,
+    () => parentTarget,
+    FETCH_PARENT_QUEUE_CONCURRENT,
+    async (curr) => {
+      await walkParentBlock(curr, genesis.paraId, proofKey)
+    }
+  ).catch((e) => {
+    logger.error(e)
+    process.exit(255)
+  })
+}
+
+export const iterate = async (
+  startNum: number,
+  getTarget: () => number,
+  concurrency: number,
+  queueFn: (curr: number) => Promise<void>
+) => {
+  let curr = startNum
+  let errorBoundaryReject: (e: Error) => void
+  const errorBoundary = new Promise((resolve, reject) => {
+    errorBoundaryReject = reject
+  })
+
+  const queue = new PQueue({
+    concurrency,
+  })
+
+  async function* iterable(): AsyncGenerator<number, void, void> {
+    while (true) {
+      if (queue.size <= concurrency * 2 && getTarget() >= curr) {
+        yield curr
+        curr += 1
+      } else {
+        await wait(100)
+      }
+    }
+  }
+  for await (const curr of iterable()) {
+    queue.add(() => queueFn(curr)).catch((e: Error) => errorBoundaryReject(e))
+  }
+  return errorBoundary
 }
 
 export default start

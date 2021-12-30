@@ -1,4 +1,4 @@
-import { UPool, UWorker } from '../../io/worker'
+import { UPool, UWorker } from '../../data_provider/io/worker'
 import { keyring } from '../../utils/api'
 import { prb } from '../../message/proto.generated'
 import { returnAllWorkers } from './infra'

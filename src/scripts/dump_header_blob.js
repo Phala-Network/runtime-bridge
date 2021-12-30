@@ -1,4 +1,4 @@
-import { getHeaderBlob } from '../io/blob'
+import { getHeaderBlob } from '../data_provider/io/blob'
 
 const main = async () => {
   const blob = await getHeaderBlob(parseInt(process.env.NUMBER))

@@ -6,6 +6,7 @@ import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import logger from './logger'
 import phalaTypes from './typedefs'
 import typesChain from '@polkadot/apps-config/api/chain'
+import type { Decorate } from '@polkadot/api/base/Decorate'
 import type { OverrideBundleType } from '@polkadot/types/types'
 
 export type PossibleApiPromise = ApiPromise | undefined
@@ -144,6 +145,10 @@ const setupParentApi = async (endpoint: string, forceRecreate = false) => {
   _parentApi = parentApi
 
   return parentApi
+}
+
+export type MonkeyApiPromise = ApiPromise & {
+  _rpcCore: Decorate<never>['_rpcCore']
 }
 
 export {

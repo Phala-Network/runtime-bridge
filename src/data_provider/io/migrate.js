@@ -2,7 +2,7 @@ import { DB_ENCODING_DEFAULT } from './db_encoding'
 import { getDb, setupDb } from './db'
 import PQueue from 'p-queue'
 import levelup from 'levelup'
-import logger from '../utils/logger'
+import logger from '../../utils/logger'
 import rocksdb from 'rocksdb'
 
 export const migrate = async (newDbNs, oldDbPath) => {

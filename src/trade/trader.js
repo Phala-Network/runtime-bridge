@@ -1,4 +1,4 @@
-import { DB_WORKER, setupDb } from '../io/db'
+import { DB_WORKER, setupDb } from '../data_provider/io/db'
 import {
   TX_DEAD_COUNT_THRESHOLD,
   TX_SEND_QUEUE_SIZE,

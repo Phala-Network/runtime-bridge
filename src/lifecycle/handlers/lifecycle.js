@@ -1,6 +1,6 @@
 import { EVENTS } from '../state_machine'
-import { NotFoundError } from '../../io/updatable'
-import { UWorker } from '../../io/worker'
+import { NotFoundError } from '../../data_provider/io/updatable'
+import { UWorker } from '../../data_provider/io/worker'
 import { addWorker, deleteWorker } from '../lifecycle'
 
 const getWorkerStates = (ids, context) =>

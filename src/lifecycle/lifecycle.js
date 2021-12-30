@@ -1,4 +1,4 @@
-import { UWorker } from '../io/worker'
+import { UWorker } from '../data_provider/io/worker'
 import {
   createWorkerContext,
   destroyWorkerContext,

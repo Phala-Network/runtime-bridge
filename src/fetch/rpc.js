@@ -1,4 +1,4 @@
-import { DB_BLOCK } from '../io/db'
+import { DB_BLOCK } from '../data_provider/io/db'
 import { MessageTarget } from '../message/proto'
 import { createDispatcher, createMessageTunnel } from '../message'
 import env from '../utils/env'

@@ -1,4 +1,4 @@
-import { DB_BLOCK, setupDb } from '../io/db'
+import { DB_BLOCK, setupDb } from '../data_provider/io/db'
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import { SET_GENESIS, SET_PARA_KNOWN_HEIGHT, SET_PARENT_KNOWN_HEIGHT } from '.'
 import {
@@ -9,11 +9,11 @@ import {
   setGenesis,
   setParaBlock,
   setParentBlock,
-} from '../io/block'
+} from '../data_provider/io/block'
 import {
   getLastCommittedParaBlock,
   getLastCommittedParentBlock,
-} from '../io/window'
+} from '../data_provider/io/window'
 import {
   parentApi,
   phalaApi,

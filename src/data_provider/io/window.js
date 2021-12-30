@@ -2,12 +2,12 @@ import { DB_WINDOW, getDb, getKeyExistence, waitFor } from './db'
 import {
   LAST_COMMITTED_PARA_BLOCK,
   LAST_COMMITTED_PARENT_BLOCK,
-} from '../utils/constants'
+} from '../../utils/constants'
 import { getParentBlock } from './block'
 import { pbToObject } from './db_encoding'
-import { phalaApi } from '../utils/api'
-import { prb } from '../message/proto.generated'
-import logger from '../utils/logger'
+import { phalaApi } from '../../utils/api'
+import { prb } from '../../message/proto.generated'
+import logger from '../../utils/logger'
 
 const { Window, RangeMeta } = prb.db
 
