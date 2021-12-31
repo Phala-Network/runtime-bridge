@@ -1,6 +1,6 @@
 import { DB_WORKER } from './db'
 import { createUpdatable } from './updatable'
-import { prb } from '../../message/proto.generated'
+import { prb } from '@phala/runtime-bridge-walkie'
 
 export const UPool = createUpdatable({
   name: 'pool',

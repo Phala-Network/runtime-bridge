@@ -10,12 +10,12 @@ import {
   setupParentApi,
   setupPhalaApi,
 } from '../utils/api'
-
+import { prb } from '@phala/runtime-bridge-walkie'
 import { processGenesis, walkParaBlock, walkParentBlock } from './sync_block'
+import { setupInternalPtp } from './ptp_int'
 import PQueue from 'p-queue'
 import env from '../utils/env'
 import logger from '../utils/logger'
-import setupPtp from './ptp'
 import wait from '../utils/wait'
 import type { BlockHash } from '@polkadot/types/interfaces'
 import type { U32 } from '@polkadot/types'
@@ -34,7 +34,20 @@ const start = async () => {
   const genesisHash = _genesisHash.digest('hex')
   logger.info('Genesis hash:', genesisHash)
 
-  await setupPtp(genesisHash)
+  const info: prb.data_provider.IInfo = {
+    status: prb.data_provider.Status.S_SYHCHING,
+    paraId: -1,
+    parentStartHeader: -1,
+    parentTarget: -1,
+    parentFetchedHeight: -1,
+    parentProcessedHeight: -1,
+    parentCommittedHeight: -1,
+    paraTarget: -1,
+    paraFetchedHeight: -1,
+    paraProcessedHeight: -1,
+    paraCommittedHeight: -1,
+  }
+  await setupInternalPtp(genesisHash, info)
 
   let lastParaFinalizedHeadHash: BlockHash
   let paraTarget: number

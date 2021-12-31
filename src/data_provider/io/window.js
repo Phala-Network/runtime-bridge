@@ -6,7 +6,7 @@ import {
 import { getParentBlock } from './block'
 import { pbToObject } from './db_encoding'
 import { phalaApi } from '../../utils/api'
-import { prb } from '../../message/proto.generated'
+import { prb } from '@phala/runtime-bridge-walkie'
 import logger from '../../utils/logger'
 
 const { Window, RangeMeta } = prb.db

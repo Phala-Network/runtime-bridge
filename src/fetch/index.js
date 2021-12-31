@@ -2,7 +2,7 @@ import { MIN_SYNCHED_DISTANCE } from '../utils/constants'
 import cluster from 'cluster'
 import fork from '../utils/fork'
 import os from 'os'
-import setupPtp from '../data_provider/ptp'
+import setupPtp from '../data_provider/ptp_int'
 import setupRpc from './rpc'
 
 export const SET_GENESIS = 'SET_GENESIS'

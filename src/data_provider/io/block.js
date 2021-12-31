@@ -1,6 +1,6 @@
 import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistence } from './db'
 import { DB_PB_TO_OBJECT_OPTIONS, pbToObject } from './db_encoding'
-import { prb } from '../../message/proto.generated'
+import { prb } from '@phala/runtime-bridge-walkie'
 import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
