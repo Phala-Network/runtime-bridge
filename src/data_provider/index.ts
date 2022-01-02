@@ -20,7 +20,12 @@ const start = async () => {
   logger.info('Genesis hash:', genesisHash)
 
   const info: prb.data_provider.IInfo = {
-    status: prb.data_provider.Status.S_SYHCHING,
+    get status() {
+      return info.paraTarget === info.paraProcessedHeight &&
+        info.parentTarget === info.parentProcessedHeight
+        ? prb.data_provider.Status.S_IDLE
+        : prb.data_provider.Status.S_SYHCHING
+    },
     paraId: genesis.paraId,
     parentStartHeader: genesis.parentNumber,
     parentTarget: -1,
