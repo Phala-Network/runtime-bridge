@@ -5,7 +5,7 @@ import {
   dataProviderExternalListenAddress,
 } from '../utils/env'
 import logger from '../utils/logger'
-import type { WalkieRpcHandler } from '../../../runtime-bridge-walkie/src/rpc'
+import type { WalkieRpcHandler } from '@phala/runtime-bridge-walkie/src/rpc'
 
 export const setupInternalPtp = async (
   chainIdentity: string,
@@ -34,9 +34,8 @@ export const setupInternalPtp = async (
 
 const make_onGetDataProviderInfo =
   (info: prb.data_provider.IInfo): WalkieRpcHandler<'GetDataProviderInfo'> =>
-  () => {
-    return prb.data_provider.Info.create(info)
-  }
+  () =>
+    prb.data_provider.Info.create(info)
 
 const make_onGetBlobByKey =
   (): WalkieRpcHandler<'GetBlobByKey'> => (request) => {

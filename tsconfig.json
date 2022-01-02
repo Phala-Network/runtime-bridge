@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "module": "es2020",
+    "module": "commonjs",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es6",
+    "target": "es2020",
     "noImplicitAny": true,
     "moduleResolution": "node",
     "sourceMap": true,
@@ -16,6 +16,11 @@
     "skipLibCheck": true,
     "stripInternal": true,
     "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "strict": false,
+    "incremental": true,
+    "lib": ["ES2020"],
     "paths": {
       "*": [
         "*",
@@ -26,7 +31,7 @@
     "typeRoots": [
       "node_modules/@types",
       "src/types"
-    ],
+    ]
   },
   "include": [
     "src/**/*",
