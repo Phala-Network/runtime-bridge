@@ -1,4 +1,5 @@
 import { DB_BLOCK, setupDb } from './io/db'
+import { MIN_SYNCHED_DISTANCE } from '../utils/constants'
 import { createHash } from 'crypto'
 import { fork } from './ipc'
 import { prb } from '@phala/runtime-bridge-walkie'
@@ -21,8 +22,9 @@ const start = async () => {
 
   const info: prb.data_provider.IInfo = {
     get status() {
-      return info.paraTarget === info.paraProcessedHeight &&
-        info.parentTarget === info.parentProcessedHeight
+      return info.paraTarget - info.paraProcessedHeight <
+        MIN_SYNCHED_DISTANCE &&
+        info.parentTarget - info.parentProcessedHeight < MIN_SYNCHED_DISTANCE
         ? prb.data_provider.Status.S_IDLE
         : prb.data_provider.Status.S_SYHCHING
     },

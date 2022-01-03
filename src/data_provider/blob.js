@@ -18,18 +18,27 @@ import {
   waitForParentBlock,
 } from '../data_provider/io/block'
 import { send } from './ipc'
+import { throttle } from 'lodash/function'
 import logger from '../utils/logger'
+
+const setParentProcessedHeight = throttle(
+  (num) => send('setParentProcessedHeight', num),
+  1000
+)
+
+const setParaProcessedHeight = throttle(
+  (num) => send('setParaProcessedHeight', num),
+  500
+)
 
 const setDryRange = async (context, latestSetId, setIdChanged) => {
   const { parentStartBlock, paraStartBlock, paraBlocks, parentBlocks } = context
 
-  const _parentStopBlock = parentBlocks[parentBlocks.length - 1]
   const _paraStopBlock = paraBlocks.length
     ? paraBlocks[paraBlocks.length - 1]
     : null
-  const parentStopBlock = _parentStopBlock.number
 
-  const ret = await _setDryRange(
+  return await _setDryRange(
     parentStartBlock,
     _paraStopBlock ? paraStartBlock : -1,
     paraBlocks,
@@ -37,8 +46,6 @@ const setDryRange = async (context, latestSetId, setIdChanged) => {
     latestSetId,
     setIdChanged
   )
-  send('setParentProcessedHeight', parentStopBlock)
-  return ret
 }
 
 const lazyCommitBlobRange = async (
@@ -158,6 +165,8 @@ const walkBlock = async (
       )
     }
 
+    setParentProcessedHeight(currParentBlock.number)
+
     return walkBlock(
       currentWindow,
       lastWindow,
@@ -248,5 +257,5 @@ export const walkParaBlock = async (number, blocks) => {
   const block = await waitForParaBlock(number)
   blocks.push(block)
   await setDryParaBlockRange(block)
-  send('setParaProcessedHeight', number)
+  setParaProcessedHeight(number)
 }
