@@ -64,3 +64,31 @@ export const createIpcFork = <T extends IpcMessageHandlerTable>(
   }
   return { send, fork }
 }
+
+export const setupIpcWorker = <T extends IpcMessageHandlerTable>(
+  handlerTable: T
+) => {
+  type MessageName = keyof T
+
+  if (!cluster.isWorker) {
+    throw new Error('Not a subprocess.')
+  }
+
+  process.on(
+    'message',
+    <M extends MessageName>(data: { method: M; payload: string }) => {
+      handlerTable[data.method](
+        ...(JSON.parse(data.payload) as Parameters<T[M]>)
+      )
+    }
+  )
+
+  const send = <M extends MessageName>(
+    method: M,
+    ...params: Parameters<T[M]>
+  ) => {
+    process.send({ method, payload: JSON.stringify(params) })
+  }
+
+  return { send }
+}

@@ -1,13 +1,11 @@
 import { DB_BLOCK, setupDb } from './io/db'
 import { MIN_SYNCHED_DISTANCE } from '../utils/constants'
-import { createHash } from 'crypto'
 import { fork } from './ipc'
+import { phalaApi, setupParentApi, setupPhalaApi } from '../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { processGenesis } from './block'
 import { setupInternalPtp } from './ptp_int'
-import { setupParentApi, setupPhalaApi } from '../utils/api'
 import env from '../utils/env'
-import logger from '../utils/logger'
 
 const start = async () => {
   await setupDb(DB_BLOCK)
@@ -15,10 +13,7 @@ const start = async () => {
   await setupPhalaApi(env.chainEndpoint)
 
   const genesis = await processGenesis()
-  const _genesisHash = createHash('sha256')
-  _genesisHash.update(genesis.bridgeGenesisInfo as Buffer)
-  const genesisHash = _genesisHash.digest('hex')
-  logger.info('Genesis hash:', genesisHash)
+  const genesisHash = (await phalaApi.rpc.chain.getBlockHash(1)).toHex()
 
   const info: prb.data_provider.IInfo = {
     get status() {
@@ -41,7 +36,12 @@ const start = async () => {
   }
   await setupInternalPtp(genesisHash, info)
 
-  fork('fetch_block', genesis, info)
+  fork('fetch_block', genesis, info, {
+    SYNC_TYPE: 'para',
+  })
+  fork('fetch_block', genesis, info, {
+    SYNC_TYPE: 'parent',
+  })
   fork('make_blob', genesis, info)
 }
 

@@ -21,7 +21,8 @@
         "ignoreMemberSort": false,
         "memberSyntaxSortOrder": ["none", "multiple", "single", "all"]
       }
-    ]
+    ],
+    "@typescript-eslint/consistent-type-imports": "error"
   },
   "globals": {
     "$logger": "writable",

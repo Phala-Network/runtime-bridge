@@ -17,9 +17,9 @@ import logger from '../utils/logger'
 import wait from '../utils/wait'
 import type { BlockHash } from '@polkadot/types/interfaces'
 import type { U32 } from '@polkadot/types'
+import type { prb } from '@phala/runtime-bridge-walkie'
 
 const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 15
-const FETCH_PARA_QUEUE_CONCURRENT = parseInt(env.parallelParaBlocks) || 2
 
 const start = async () => {
   await setupDb(DB_BLOCK)
@@ -60,7 +60,12 @@ const start = async () => {
     send('setParentTarget', parentTarget)
   }
   const updateTarget = async (): Promise<void> => {
-    await Promise.all([updateParaTarget(), updateParentTarget()])
+    if (process.env.SYNC_TYPE === 'para') {
+      await updateParaTarget()
+    }
+    if (process.env.SYNC_TYPE === 'parent') {
+      await updateParentTarget()
+    }
     setTimeout(
       () =>
         updateTarget().catch((e) => {
@@ -74,31 +79,44 @@ const start = async () => {
 
   await updateTarget()
 
-  iterate(
-    await getLastCommittedParaBlock(),
-    () => paraTarget,
-    FETCH_PARA_QUEUE_CONCURRENT,
-    async (curr) => {
-      await walkParaBlock(curr)
-      send('setParaFetchedHeight', curr)
-    }
-  ).catch((e) => {
-    logger.error(e)
-    process.exit(255)
-  })
+  if (process.env.SYNC_TYPE === 'para') {
+    iteratePara().catch((e) => {
+      logger.error(e)
+      process.exit(255)
+    })
+  }
 
-  iterate(
-    (await getLastCommittedParentBlock()) || genesis.parentNumber,
-    () => parentTarget,
-    FETCH_PARENT_QUEUE_CONCURRENT,
-    async (curr) => {
-      await walkParentBlock(curr, genesis.paraId, proofKey)
-      send('setParentFetchedHeight', curr)
+  if (process.env.SYNC_TYPE === 'parent') {
+    iterate(
+      (await getLastCommittedParentBlock()) || genesis.parentNumber,
+      () => parentTarget,
+      FETCH_PARENT_QUEUE_CONCURRENT,
+      async (curr) => {
+        await walkParentBlock(curr, genesis.paraId, proofKey)
+        send('setParentFetchedHeight', curr)
+      }
+    ).catch((e) => {
+      logger.error(e)
+      process.exit(255)
+    })
+  }
+}
+
+const iteratePara = async () => {
+  let i = (await getLastCommittedParaBlock()) - 1
+  let currPromise: Promise<prb.db.IParaBlock> = Promise.resolve({})
+  async function* paraIterable(): AsyncGenerator<number, void, void> {
+    while (true) {
+      await currPromise
+      i += 1
+      yield i
     }
-  ).catch((e) => {
-    logger.error(e)
-    process.exit(255)
-  })
+  }
+  for await (const curr of paraIterable()) {
+    currPromise = walkParaBlock(curr)
+    await currPromise
+    send('setParaFetchedHeight', curr)
+  }
 }
 
 export const iterate = async (
@@ -119,7 +137,7 @@ export const iterate = async (
 
   async function* iterable(): AsyncGenerator<number, void, void> {
     while (true) {
-      if (queue.size <= concurrency * 2 && getTarget() >= curr) {
+      if (queue.size <= concurrency * 10 && getTarget() >= curr) {
         yield curr
         curr += 1
       } else {

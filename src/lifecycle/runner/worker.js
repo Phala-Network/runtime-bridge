@@ -1,12 +1,12 @@
-import { BN_1PHA, MINER_V_BASE } from '../utils/constants'
+import { BN_1PHA, MINER_V_BASE } from '../../utils/constants'
 import { UPool } from '../data_provider/io/worker'
-import { keyring, phalaApi } from '../utils/api'
+import { keyring, phalaApi } from '../../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
-import logger from '../utils/logger'
+import logger from '../../utils/logger'
 
 export const getPool = async (pidStr, context, forceReload = false) => {
   let pool

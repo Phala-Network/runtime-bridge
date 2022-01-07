@@ -4,7 +4,7 @@ import {
   TX_SEND_QUEUE_SIZE,
   TX_TIMEOUT,
 } from '../utils/constants'
-import { getPool } from '../lifecycle/worker'
+import { getPool } from '../lifecycle/runner/worker'
 import { phalaApi, setupPhalaApi } from '../utils/api'
 import PQueue from 'p-queue'
 import env from '../utils/env'

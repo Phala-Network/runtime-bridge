@@ -27,7 +27,8 @@ const updateNumber = <K extends keyof prb.data_provider.IInfo>(
 export const fork = (
   moduleName: string,
   genesis: prb.db.IGenesis,
-  info: prb.data_provider.IInfo
+  info: prb.data_provider.IInfo,
+  env: { [k: string]: string } = {}
 ) => {
   const handlerTable: DataProviderHandlerTable = {
     setParentTarget: (num) => updateNumber('parentTarget', info, num),
@@ -48,6 +49,7 @@ export const fork = (
   const { fork } = createIpcFork(handlerTable)
   fork(moduleName, 'data_provider/' + moduleName, {
     PHALA_PARA_ID: `${genesis.paraId}`,
+    ...env,
   })
 }
 

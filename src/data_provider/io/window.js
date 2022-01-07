@@ -7,6 +7,7 @@ import { getParentBlock } from './block'
 import { pbToObject } from './db_encoding'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
+import { throttle } from 'lodash/function'
 import logger from '../../utils/logger'
 
 const { Window, RangeMeta } = prb.db
@@ -317,6 +318,11 @@ export const setLastCommittedParentBlock = async (number) => {
   const db = await getDb(DB_WINDOW)
   return db.set(LAST_COMMITTED_PARENT_BLOCK, number)
 }
+
+export const t_setLastCommittedParentBlock = throttle(
+  setLastCommittedParentBlock,
+  10000
+)
 
 export const setDryParaBlockRange = async (block) => {
   const db = await getDb(DB_WINDOW)

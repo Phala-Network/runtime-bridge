@@ -1,9 +1,6 @@
 import { DATA_PROVIDER, getMyId } from '../utils/my-id'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
-import {
-  dataProviderBootNodes,
-  dataProviderExternalListenAddress,
-} from '../utils/env'
+import { walkieBootNodes, walkieListenAddresses } from '../utils/env'
 import logger from '../utils/logger'
 import type { WalkieRpcHandler } from '@phala/runtime-bridge-walkie/src/rpc'
 
@@ -19,8 +16,8 @@ export const setupInternalPtp = async (
     role: prb.WalkieRoles.WR_DATA_PROVIDER_INT,
     chainIdentity,
     bridgeIdentity: 'default',
-    listenAddresses: dataProviderExternalListenAddress,
-    bootstrapAddresses: dataProviderBootNodes,
+    listenAddresses: walkieListenAddresses,
+    bootstrapAddresses: walkieBootNodes,
   })
 
   ptpNode.on('GetDataProviderInfo', make_onGetDataProviderInfo(info))

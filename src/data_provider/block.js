@@ -12,7 +12,7 @@ import { parentApi, phalaApi } from '../utils/api'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
-const _processGenesis = async (paraId) => {
+export const _processGenesis = async (paraId) => {
   const paraNumber = 0
   const parentNumber =
     (
@@ -118,14 +118,32 @@ const _walkParaBlock = async (paraBlockNumber) => {
 
 const processParaBlock = (number) =>
   (async () => {
+    const startTime = Date.now()
+
+    const getBlockHashStartTime = Date.now()
     const hash = await phalaApi.rpc.chain.getBlockHash(number)
     const hashHex = hash.toHex()
+
+    const getHeaderStartTime = Date.now()
     const header = await phalaApi.rpc.chain.getHeader(hash)
 
+    const storageChangeStartTime = Date.now()
     const rawStorageChanges = await phalaApi._rpcCore.provider.send(
       'pha_getStorageChangesAt',
       [hashHex],
       false
+    )
+
+    const endTime = Date.now()
+    logger.debug(
+      {
+        getBlockHash: getHeaderStartTime - getBlockHashStartTime,
+        getHeader: storageChangeStartTime - getHeaderStartTime,
+        getStorageChangesAt: endTime - storageChangeStartTime,
+      },
+      `timing: processParaBlock(${number}): fetched from chain using ${
+        endTime - startTime
+      }ms`
     )
 
     const dispatchBlockData = phalaApi.createType('BlockHeaderWithChanges', {

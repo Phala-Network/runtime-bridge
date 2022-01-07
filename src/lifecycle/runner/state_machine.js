@@ -9,14 +9,14 @@ import {
   startSyncBlob,
   startSyncMessage,
 } from './pruntime'
-import { minBenchScore, shouldSkipRa } from '../utils/env'
-import { phalaApi } from '../utils/api'
-import { prb } from '../message/proto'
+import { minBenchScore, shouldSkipRa } from '../../utils/env'
+import { phalaApi } from '../../utils/api'
+import { prb } from '@phala/runtime-bridge-walkie'
 import { serializeError } from 'serialize-error'
 import Finity from 'finity'
-import logger from '../utils/logger'
-import toEnum from '../utils/to_enum'
-import wait from '../utils/wait'
+import logger from '../../utils/logger'
+import toEnum from '../../utils/to_enum'
+import wait from '../../utils/wait'
 const Status = prb.WorkerState.Status
 const StatusEnumValues = toEnum(Object.keys(Status))
 

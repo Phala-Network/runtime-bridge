@@ -10,6 +10,7 @@ import {
   setDryParaBlockRange,
   setEmptyWindow,
   setLastCommittedParentBlock,
+  t_setLastCommittedParentBlock,
   updateWindow,
 } from '../data_provider/io/window'
 import {
@@ -166,6 +167,7 @@ const walkBlock = async (
     }
 
     setParentProcessedHeight(currParentBlock.number)
+    t_setLastCommittedParentBlock(currParentBlock.number)
 
     return walkBlock(
       currentWindow,

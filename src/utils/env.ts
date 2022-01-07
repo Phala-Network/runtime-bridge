@@ -26,7 +26,7 @@ export const ENV_LIST = [
 
   ['PHALA_PEER_ID_PREFIX', 'peerIdPrefix'],
   ['PHALA_WALKIE_LISTEN_ADDRESSES', 'walkieListenAddresses'],
-  ['PHALA_WALKIE_TRUSTED_DIALERS', 'walkieTrustedDialers'],
+  ['PHALA_WALKIE_BOOT_NODES', 'walkieBootNodes'],
 
   [
     'PHALA_DATA_PROVIDER_EXTERNAL_LISTEN_ADDRESSES',
@@ -34,6 +34,8 @@ export const ENV_LIST = [
   ],
   ['PHALA_DATA_PROVIDER_TRUSTED_ORIGINS', 'dataProviderTrustedOrigins'],
   ['PHALA_DATA_PROVIDER_BOOT_NODES', 'dataProviderBootNodes'],
+
+  ['PHALA_LOCAL_DB_PATH', 'localDbPath'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -67,18 +69,18 @@ export const lruCacheDebugLogInterval =
   parseInt(env.lruCacheDebugLogInterval) || (isDev ? 3000 : 0)
 
 export const walkieListenAddresses = (
-  env.walkieListenAddresses ?? '/ip4/0.0.0.0/tcp/18888,/ip6/::/tcp/18888'
+  env.walkieListenAddresses ?? '/ip4/0.0.0.0/tcp/0,/ip6/::/tcp/0'
 )
   .split(',')
   .map((i) => i.trim())
-export const walkieTrustedDialers = env.walkieTrustedDialers
-  ? env.walkieTrustedDialers.split(',').map((i) => i.trim())
-  : []
+export const walkieBootNodes = env.walkieBootNodes
+  ? env.walkieBootNodes.split(',').map((i) => i.trim())
+  : walkieListenAddresses
 export const peerIdPrefix = env.peerIdPrefix ?? '/var/data/keys/id'
 
 export const dataProviderExternalListenAddress = (
   env.dataProviderExternalListenAddress ??
-  '/ip4/0.0.0.0/tcp/28888,/ip6/::/tcp/28889'
+  '/ip4/0.0.0.0/tcp/18888,/ip6/::/tcp/28889'
 )
   .split(',')
   .map((i) => i.trim())
@@ -87,8 +89,6 @@ export const dataProviderTrustedOrigins = env.dataProviderTrustedOrigins
   : []
 export const dataProviderBootNodes = env.dataProviderBootNodes
   ? env.dataProviderBootNodes.split(',').map((i) => i.trim())
-  : [
-      '/ip4/10.87.0.40/tcp/28888/p2p/12D3KooWKJgJyMFFm71uLCjYc7LPMS5WrehSXZr9fetDx3fSc2ih',
-    ]
+  : []
 
 export default env
