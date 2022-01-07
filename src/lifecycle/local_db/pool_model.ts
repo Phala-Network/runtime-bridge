@@ -1,61 +1,132 @@
-import { DataTypes, Model } from 'sequelize'
-import type { HasMany, Sequelize } from 'sequelize'
-import type Worker from './worker_model'
+import {
+  AllowNull,
+  Column,
+  Default,
+  HasMany,
+  IsUUID,
+  Model,
+  PrimaryKey,
+  Table,
+  Unique,
+} from 'sequelize-typescript'
+import { DataTypes } from 'sequelize'
+import { keyring } from '../../utils/api'
+import { privateDecrypt, publicEncrypt } from 'crypto'
+import Worker from './worker_model'
+import type { KeyringPair } from '@polkadot/keyring/types'
+import type { PrbPeerId } from '../../utils/my-id'
+import type { prb } from '@phala/runtime-bridge-walkie'
 
-export class Pool extends Model {
-  static Worker: HasMany<Pool, Worker>
-}
-export const initPoolModel = (db: Sequelize) =>
-  Pool.init(
+@Table({
+  modelName: 'pool',
+  timestamps: true,
+  indexes: [
     {
-      id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        autoIncrement: false,
-        primaryKey: true,
-      },
-      pid: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        unique: true,
-      },
-      name: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        unique: true,
-      },
-      proxiedAccountSs58: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      encryptedOperator: {
-        type: DataTypes.BLOB,
-        allowNull: false,
-      },
-      enabled: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
+      unique: true,
+      fields: ['pid'],
     },
     {
-      sequelize: db,
-      modelName: 'pool',
-      timestamps: true,
-      indexes: [
-        {
-          unique: true,
-          fields: ['pid'],
-        },
-        {
-          unique: true,
-          fields: ['name'],
-        },
-        {
-          fields: ['enabled'],
-        },
-      ],
-    }
-  )
+      unique: true,
+      fields: ['name'],
+    },
+    {
+      fields: ['enabled'],
+    },
+  ],
+})
+class Pool extends Model {
+  @IsUUID(4)
+  @PrimaryKey
+  @Column(DataTypes.UUIDV4)
+  id: string
 
+  @AllowNull(false)
+  @Unique
+  @Column
+  pid: number
+
+  @AllowNull(false)
+  @Unique
+  @Column
+  name: string
+
+  @AllowNull
+  @Column
+  proxiedAccountSs58: string
+
+  @AllowNull(false)
+  @Column
+  encryptedOperator: Buffer
+
+  @Default(true)
+  @Column
+  enabled: boolean
+
+  @HasMany(() => Worker)
+  workers: Worker[]
+
+  #_decryptedOperatorKey: KeyringPair = null
+
+  static myId: PrbPeerId
+
+  decryptOperatorKey() {
+    this.#_decryptedOperatorKey = keyring.addFromJson(
+      JSON.parse(
+        privateDecrypt(Pool.myId.privKeyObj, this.encryptedOperator).toString(
+          'utf-8'
+        )
+      )
+    )
+    return this.#_decryptedOperatorKey
+  }
+
+  get isProxy() {
+    return !!this.proxiedAccountSs58
+  }
+
+  set operatorMnemonic(mnemonic: string) {
+    this.operator = keyring.addFromMnemonic(mnemonic)
+  }
+
+  get operatorMnemonic(): null {
+    throw new Error("Exporting operator's mnemonic is forbidden!")
+  }
+
+  set operator(keyringPair) {
+    this.encryptedOperator = publicEncrypt(
+      Pool.myId.pubKeyObj,
+      Buffer.from(JSON.stringify(keyringPair.toJson()))
+    )
+    this.#_decryptedOperatorKey = keyringPair
+  }
+
+  get operator() {
+    if (!this.#_decryptedOperatorKey) {
+      return this.decryptOperatorKey()
+    }
+    return this.#_decryptedOperatorKey
+  }
+
+  toPbInterface(): prb.db.IPool {
+    return {
+      uuid: this.id,
+      owner: {
+        polkadotJson: this.encryptedOperator.toString('hex'),
+        ss58Phala: this.operator.address,
+        ss58Polkadot: keyring.encodeAddress(this.operator.publicKey, 0),
+      },
+      pid: this.pid,
+      name: this.name,
+      enabled: this.enabled,
+      deleted: false,
+      realPhalaSs58: this.proxiedAccountSs58,
+    }
+  }
+}
+
+export type PoolLookupTable = {
+  [K: number]: Pool
+}
+
+export { Pool }
 export default Pool

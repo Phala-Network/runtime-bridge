@@ -1,60 +1,73 @@
-import { DataTypes, Model } from 'sequelize'
-import type { BelongsTo, Sequelize } from 'sequelize'
-import type Pool from './pool_model'
+import {
+  AllowNull,
+  BelongsTo,
+  Column,
+  Default,
+  ForeignKey,
+  IsUUID,
+  Model,
+  PrimaryKey,
+  Table,
+  Unique,
+} from 'sequelize-typescript'
+import { DataTypes } from 'sequelize'
+import Pool from './pool_model'
+import type { prb } from '@phala/runtime-bridge-walkie'
 
-export class Worker extends Model {
-  static Pool: BelongsTo<Worker, Pool>
-}
-
-export const initWorkerModel = (db: Sequelize) =>
-  Worker.init(
+@Table({
+  modelName: 'worker',
+  timestamps: true,
+  indexes: [
     {
-      id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        autoIncrement: false,
-        primaryKey: true,
-      },
-      pid: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-      },
-      name: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        unique: true,
-      },
-      endpoint: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      stake: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      enabled: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
+      fields: ['poolId'],
     },
     {
-      sequelize: db,
-      modelName: 'worker',
-      timestamps: true,
-      indexes: [
-        {
-          fields: ['pid'],
-        },
-        {
-          unique: true,
-          fields: ['name'],
-        },
-        {
-          fields: ['enabled'],
-        },
-      ],
-    }
-  )
+      unique: true,
+      fields: ['name'],
+    },
+    {
+      fields: ['enabled'],
+    },
+  ],
+})
+class Worker extends Model {
+  @IsUUID(4)
+  @PrimaryKey
+  @Column(DataTypes.UUIDV4)
+  id: string
 
+  @Unique
+  @AllowNull(false)
+  @Column
+  name: string
+
+  @AllowNull(false)
+  @Column
+  endpoint: string
+
+  @AllowNull(false)
+  @Column
+  stake: string
+
+  @Default(true)
+  @Column
+  enabled: boolean
+
+  @ForeignKey(() => Pool) poolId: string
+  @BelongsTo(() => Pool) pool: Pool
+
+  toPbInterface(): prb.db.IWorker {
+    return {
+      uuid: this.id,
+      pid: this.pool.pid,
+      name: this.name,
+      endpoint: this.endpoint,
+      enabled: this.enabled,
+      deleted: false,
+      stake: this.stake,
+    }
+  }
+}
+
+export { Worker }
 export default Worker

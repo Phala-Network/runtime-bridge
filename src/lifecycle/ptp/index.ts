@@ -9,7 +9,7 @@ import type { WalkieRpcHandler } from '@phala/runtime-bridge-walkie/src/rpc'
 const MODULE_LIST = ['./db', './lifecycle'] as const
 
 export type MakeLifecycleManagerPtpHandler<T extends RpcMethodName> = (
-  context: LifecycleManagerContext
+  context?: LifecycleManagerContext
 ) => WalkieRpcHandler<T>
 
 export const setupPtp = async (context: LifecycleManagerContext) => {

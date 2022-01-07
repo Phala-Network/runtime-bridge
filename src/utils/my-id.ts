@@ -1,7 +1,9 @@
+import { createPrivateKey, createPublicKey } from 'crypto'
 import { peerIdPrefix } from './env'
 import PeerId from 'peer-id'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import type { KeyObject } from 'crypto'
 
 export const DATA_PROVIDER = Symbol('DATA_PROVIDER')
 export const DATA_PROVIDER_EXT = Symbol('DATA_PROVIDER_EXT')
@@ -19,11 +21,16 @@ export const KEY_NAMES = {
 
 export type PeerKeySymbol = typeof KEY_SYMBOLS[number]
 
+export type PrbPeerId = PeerId & {
+  privKeyObj: KeyObject
+  pubKeyObj: KeyObject
+}
+
 const createAndWriteMyId = async (sym: PeerKeySymbol) => {
   const fullPath = path.join(peerIdPrefix, KEY_NAMES[sym])
   const key = await PeerId.create({
-    bits: 256,
-    keyType: 'Ed25519',
+    bits: 2048,
+    keyType: 'RSA',
   })
   await fs.mkdir(peerIdPrefix, { recursive: true })
   await fs.writeFile(fullPath, key.marshal(false))
@@ -34,7 +41,7 @@ const readMyId = async (sym: PeerKeySymbol) => {
   const buffer = await fs.readFile(fullPath)
   return PeerId.createFromProtobuf(buffer)
 }
-export const getMyId = (sym: PeerKeySymbol) =>
+const _getMyId = (sym: PeerKeySymbol) =>
   readMyId(sym).catch((e) => {
     if (e.code === 'ENOENT') {
       return createAndWriteMyId(sym)
@@ -42,3 +49,17 @@ export const getMyId = (sym: PeerKeySymbol) =>
       throw e
     }
   })
+
+export const getMyId = async (sym: PeerKeySymbol): Promise<PrbPeerId> => {
+  const raw = await _getMyId(sym)
+  const privKeyObj = createPrivateKey({
+    key: await raw.privKey.export('0'),
+    type: 'pkcs8',
+    passphrase: '0',
+  })
+  const pubKeyObj = createPublicKey(privKeyObj)
+  return Object.assign(raw, {
+    privKeyObj,
+    pubKeyObj,
+  })
+}

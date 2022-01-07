@@ -1,23 +1,22 @@
-import { Sequelize } from 'sequelize'
-import Pool, { initPoolModel } from './pool_model'
-import Worker, { initWorkerModel } from './worker_model'
-import env from '../../utils/env'
+import { Sequelize } from 'sequelize-typescript'
+import Pool from './pool_model'
+import Worker from './worker_model'
+import env, { isDev } from '../../utils/env'
 import logger from '../../utils/logger'
-import type PeerId from 'peer-id'
+import type { PrbPeerId } from '../../utils/my-id'
 
-export const setupLocalDb = async (myId: PeerId) => {
+export const dbLogger = (sql: string) => logger.debug(sql)
+
+export const setupLocalDb = async (myId: PrbPeerId) => {
   const db = new Sequelize({
     dialect: 'sqlite',
     storage: env.localDbPath || '/var/data/local.db',
     dialectModule: (await import('@journeyapps/sqlcipher')).default,
-    logging: (sql) => logger.debug(sql),
+    logging: dbLogger,
+    models: [Pool, Worker],
   })
 
-  initPoolModel(db)
-  initWorkerModel(db)
-
-  Worker.Pool = Worker.belongsTo(Pool)
-  Pool.Worker = Pool.hasMany(Worker)
+  Pool.myId = myId
 
   await db.query('PRAGMA cipher_compatibility = 4')
   await db.query(
@@ -25,10 +24,11 @@ export const setupLocalDb = async (myId: PeerId) => {
       .toString('hex')
       .toUpperCase()}'"`,
     {
-      logging: false,
+      logging: isDev ? dbLogger : false,
     }
   )
 
   await db.sync()
+
   return db
 }
