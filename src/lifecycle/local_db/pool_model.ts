@@ -10,12 +10,30 @@ import {
   Unique,
 } from 'sequelize-typescript'
 import { DataTypes } from 'sequelize'
+import { Field, Type } from 'protobufjs'
+import {
+  createCipheriv,
+  createDecipheriv,
+  privateDecrypt,
+  publicEncrypt,
+  randomBytes,
+} from 'crypto'
 import { keyring } from '../../utils/api'
-import { privateDecrypt, publicEncrypt } from 'crypto'
 import Worker from './worker_model'
 import type { KeyringPair } from '@polkadot/keyring/types'
 import type { PrbPeerId } from '../../utils/my-id'
 import type { prb } from '@phala/runtime-bridge-walkie'
+
+const EncPb = new Type('EncPb')
+  .add(new Field('iv', 1, 'bytes'))
+  .add(new Field('key', 2, 'bytes'))
+  .add(new Field('payload', 3, 'bytes'))
+
+type EncPb = {
+  iv: Buffer
+  key: Buffer
+  payload: Buffer
+}
 
 @Table({
   modelName: 'pool',
@@ -70,9 +88,14 @@ class Pool extends Model {
   static myId: PrbPeerId
 
   decryptOperatorKey() {
+    const pb = EncPb.decode(this.encryptedOperator) as unknown as EncPb
+    const { iv, key, payload } = pb
+    const rawKey = privateDecrypt(Pool.myId.privKeyObj, key)
+
+    const decipher = createDecipheriv('aes-256-cbc', rawKey, iv)
     this.#_decryptedOperatorKey = keyring.addFromJson(
       JSON.parse(
-        privateDecrypt(Pool.myId.privKeyObj, this.encryptedOperator).toString(
+        Buffer.concat([decipher.update(payload), decipher.final()]).toString(
           'utf-8'
         )
       )
@@ -93,10 +116,35 @@ class Pool extends Model {
   }
 
   set operator(keyringPair) {
-    this.encryptedOperator = publicEncrypt(
-      Pool.myId.pubKeyObj,
-      Buffer.from(JSON.stringify(keyringPair.toJson()))
+    const iv = randomBytes(16)
+
+    const rawKey = randomBytes(32)
+    const key = publicEncrypt(
+      {
+        key: Pool.myId.pubKeyObj,
+      },
+      rawKey
     )
+    const cipher = createCipheriv('aes-256-cbc', rawKey, iv)
+
+    const payload = Buffer.concat([
+      cipher.update(Buffer.from(JSON.stringify(keyringPair.toJson()))),
+      cipher.final(),
+    ])
+    const pb = EncPb.create({
+      iv,
+      key,
+      payload,
+    })
+
+    console.log({
+      iv,
+      rawKey,
+      payload,
+      ret: Buffer.from(EncPb.encode(pb).finish()),
+    })
+
+    this.encryptedOperator = Buffer.from(EncPb.encode(pb).finish())
     this.#_decryptedOperatorKey = keyringPair
   }
 
