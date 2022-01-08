@@ -80,7 +80,7 @@ const start = async () => {
   await updateTarget()
 
   if (process.env.SYNC_TYPE === 'para') {
-    iteratePara().catch((e) => {
+    iteratePara(() => paraTarget).catch((e) => {
       logger.error(e)
       process.exit(255)
     })
@@ -102,14 +102,18 @@ const start = async () => {
   }
 }
 
-const iteratePara = async () => {
+const iteratePara = async (getTarget: () => number) => {
   let i = (await getLastCommittedParaBlock()) - 1
   let currPromise: Promise<prb.db.IParaBlock> = Promise.resolve({})
   async function* paraIterable(): AsyncGenerator<number, void, void> {
     while (true) {
       await currPromise
-      i += 1
-      yield i
+      if (getTarget() > i) {
+        i += 1
+        yield i
+      } else {
+        await wait(1000)
+      }
     }
   }
   for await (const curr of paraIterable()) {
@@ -137,7 +141,7 @@ export const iterate = async (
 
   async function* iterable(): AsyncGenerator<number, void, void> {
     while (true) {
-      if (queue.size <= concurrency * 10 && getTarget() >= curr) {
+      if (queue.size <= concurrency * 10 && getTarget() > curr) {
         yield curr
         curr += 1
       } else {

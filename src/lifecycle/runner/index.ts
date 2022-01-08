@@ -17,6 +17,7 @@ import type { Sequelize } from 'sequelize'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import type { WorkerContextMap } from './worker'
 import type { prb } from '@phala/runtime-bridge-walkie'
+import type BeeQueue from 'bee-queue'
 
 export type RunnerContext = {
   localDb: Sequelize
@@ -24,6 +25,9 @@ export type RunnerContext = {
   sendToManager?: ReturnType<typeof setupIpcWorker>['send']
   ptpNode: WalkiePtpNode<prb.WalkieRoles.WR_CLIENT>
   fetchStatus?: prb.data_provider.Info
+  txQueue: BeeQueue
+} & {
+  [k: string]: unknown
 }
 
 const updateDataProviderInfo = async (context: RunnerContext) => {
@@ -55,7 +59,9 @@ const startRunner = async () => {
 
   const workers: WorkerContextMap = {}
 
-  const txQueue = createTradeQueue(env.qRedisEndpoint)
+  const txQueue = createTradeQueue(env.qRedisEndpoint) as BeeQueue & {
+    dispatch: (...args: unknown[]) => unknown
+  }
   await txQueue.ready()
 
   await setupParentApi(env.parentChainEndpoint)
@@ -66,6 +72,8 @@ const startRunner = async () => {
     workers,
     localDb,
     ptpNode,
+    txQueue,
+    _dispatchTx: txQueue.dispatch,
   }
 
   const updateDataProviderInfoLoop = async (): Promise<never> => {

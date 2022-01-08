@@ -1,7 +1,9 @@
 import { DATA_PROVIDER, getMyId } from '../utils/my-id'
+import { DB_BLOCK, getDb } from './io/db'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { walkieBootNodes, walkieListenAddresses } from '../utils/env'
 import logger from '../utils/logger'
+import type { PrbRedisClient } from '../utils/redis'
 import type { WalkieRpcHandler } from '@phala/runtime-bridge-walkie/src/rpc'
 
 export const setupInternalPtp = async (
@@ -20,8 +22,10 @@ export const setupInternalPtp = async (
     bootstrapAddresses: walkieBootNodes,
   })
 
+  const db = await getDb(DB_BLOCK)
+
   ptpNode.on('GetDataProviderInfo', make_onGetDataProviderInfo(info))
-  ptpNode.on('GetBlobByKey', make_onGetBlobByKey())
+  ptpNode.on('GetBlobByKey', make_onGetBlobByKey(db))
 
   await ptpNode.start()
   ptpNode.node.multiaddrs.forEach((ma) => {
@@ -35,6 +39,12 @@ const make_onGetDataProviderInfo =
     prb.data_provider.Info.create(info)
 
 const make_onGetBlobByKey =
-  (): WalkieRpcHandler<'GetBlobByKey'> => (request) => {
-    return prb.data_provider.RawBlob.create()
+  (db: PrbRedisClient): WalkieRpcHandler<'GetBlobByKey'> =>
+  async ({ key }) => {
+    const data = await db.getBuffer(key)
+    return prb.data_provider.RawBlob.create({
+      key,
+      empty: !data,
+      data,
+    })
   }

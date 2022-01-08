@@ -1,10 +1,10 @@
-import { AnyObject, walkParaBlock, walkWindow } from './blob'
 import { DB_BLOCK, setupDb } from './io/db'
 import { getLastCommittedParaBlock } from './io/window'
 import { setupParentApi, setupPhalaApi } from '../utils/api'
+import { walkParaBlock, walkWindow } from './blob'
 import env from '../utils/env'
 import logger from '../utils/logger'
-import type { BlockList } from './blob'
+import type { AnyObject, BlockList } from './blob'
 
 const start = async () => {
   await setupDb(DB_BLOCK)
