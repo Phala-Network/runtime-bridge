@@ -1,9 +1,12 @@
+import { LifecycleHandlerTable } from '../lifecycle/runner_ipc'
 import cluster from 'cluster'
 import logger from '../utils/logger'
 
-export type IpcMessageHandler = (...args: unknown[]) => void | Promise<void>
+export type IpcMessageHandler<T extends unknown[]> = (
+  ...args: T
+) => void | Promise<void>
 export type IpcMessageHandlerTable = {
-  [K: string]: IpcMessageHandler
+  [K: string]: IpcMessageHandler<unknown[]>
 }
 
 export const createIpcFork = <T extends IpcMessageHandlerTable>(
@@ -91,4 +94,18 @@ export const setupIpcWorker = <T extends IpcMessageHandlerTable>(
   }
 
   return { send }
+}
+
+export const handleIpcMessage = <T extends IpcMessageHandlerTable>(
+  handlerTable: T
+) => {
+  type MessageName = keyof T
+  process.on(
+    'message',
+    <M extends MessageName>(data: { method: M; payload: string }) => {
+      handlerTable[data.method](
+        ...(JSON.parse(data.payload) as Parameters<T[M]>)
+      )
+    }
+  )
 }

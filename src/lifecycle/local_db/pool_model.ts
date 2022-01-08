@@ -1,6 +1,7 @@
 import {
   AllowNull,
   Column,
+  DataType,
   Default,
   HasMany,
   IsUUID,
@@ -55,7 +56,8 @@ type EncPb = {
 class Pool extends Model {
   @IsUUID(4)
   @PrimaryKey
-  @Column(DataTypes.UUIDV4)
+  @Default(DataType.UUIDV4)
+  @Column(DataType.UUID)
   id: string
 
   @AllowNull(false)
@@ -135,13 +137,6 @@ class Pool extends Model {
       iv,
       key,
       payload,
-    })
-
-    console.log({
-      iv,
-      rawKey,
-      payload,
-      ret: Buffer.from(EncPb.encode(pb).finish()),
     })
 
     this.encryptedOperator = Buffer.from(EncPb.encode(pb).finish())

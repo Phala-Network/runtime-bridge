@@ -9,7 +9,7 @@ import {
   startSyncBlob,
   startSyncMessage,
 } from './pruntime'
-import { minBenchScore, shouldSkipRa } from '../../utils/env'
+import { minBenchScore, shouldSkipRa } from '../env'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { serializeError } from 'serialize-error'

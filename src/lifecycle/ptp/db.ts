@@ -99,7 +99,7 @@ export const makeUpdatePool: MakeLifecycleManagerPtpHandler<'UpdatePool'> =
 
 export const makeListWorker: MakeLifecycleManagerPtpHandler<'ListWorker'> =
   () => async () => {
-    const workers = await Worker.findAll()
+    const workers = await Worker.findAll({ include: [Pool] })
     return prb.lifecycle.WorkerList.create({
       workers: workers.map((w) => w.toPbInterface()),
     })
@@ -132,6 +132,7 @@ export const makeCreateWorker: MakeLifecycleManagerPtpHandler<'CreateWorker'> =
           endpoint: w.endpoint,
           enabled: w.enabled,
           stake: w.stake,
+          poolId: poolLookupTable[pid].id,
         })
 
         worker.pool = poolLookupTable[pid]
@@ -187,6 +188,7 @@ export const makeUpdateWorker: MakeLifecycleManagerPtpHandler<'UpdateWorker'> =
             )
           }
           ret.pool = poolLookupTable[pid]
+          ret.poolId = poolLookupTable[pid].id
           ret.name = worker.name
           ret.endpoint = worker.endpoint
           ret.enabled = worker.enabled

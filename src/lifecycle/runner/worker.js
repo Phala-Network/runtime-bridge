@@ -1,49 +1,11 @@
 import { BN_1PHA, MINER_V_BASE } from '../../utils/constants'
-import { UPool } from '../data_provider/io/worker'
-import { keyring, phalaApi } from '../../utils/api'
+import { phalaApi } from '../../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../../utils/logger'
-
-export const getPool = async (pidStr, context, forceReload = false) => {
-  let pool
-  if (!forceReload) {
-    pool = context.pools.get(pidStr)
-    if (pool) {
-      return pool
-    }
-  }
-  pool = await UPool.getBy('pid', pidStr)
-  const poolSnapshot = Object.freeze({
-    uuid: pool.uuid,
-    pid: pidStr,
-    ss58Phala: pool.owner.ss58Phala,
-    ss58Polkadot: pool.owner.ss58Polkadot,
-    realPhalaSs58: pool.realPhalaSs58,
-    isProxy: !!pool.realPhalaSs58,
-  })
-  const pair = keyring.addFromJson(JSON.parse(pool.owner.polkadotJson))
-  pair.decodePkcs8()
-  pool = Object.freeze({
-    ...poolSnapshot,
-    pair,
-    poolSnapshot,
-  })
-  context.pools.set(pidStr, pool)
-  return pool
-}
-
-export const getWorkerSnapshot = (worker) =>
-  Object.freeze({
-    uuid: worker.uuid,
-    name: worker.name,
-    endpoint: worker.endpoint,
-    pid: worker.pid.toString(),
-    stake: worker.stake || '0',
-  })
 
 export const createWorkerContext = async (worker, context) => {
   const stakeBn = new BN(worker.stake)
@@ -52,16 +14,16 @@ export const createWorkerContext = async (worker, context) => {
     throw new Error('Stake amount should be at least > 1PHA!')
   }
 
-  const pid = worker.pid.toString() // uint64
-  const pool = await getPool(pid, context, true)
-  const poolSnapshot = pool.poolSnapshot
-  const poolOwner = pool.pair
-  const snapshotBrief = getWorkerSnapshot(worker)
+  const pid = worker.pool.pid.toString() // uint64
+  const pool = worker.pool
+  const poolSnapshot = pool.toPbInterface()
+  const poolOwner = pool.operator
+  const snapshotBrief = worker.toPbInterface()
   const snapshot = Object.freeze({
-    ...snapshotBrief,
     ...poolSnapshot,
+    ...snapshotBrief,
   })
-  const stateMachine = await _stateMachine.start()
+  const stateMachine = _stateMachine.start()
   logger.debug('Starting worker context...', snapshotBrief)
 
   const messages = []
@@ -72,6 +34,7 @@ export const createWorkerContext = async (worker, context) => {
   })
 
   const workerContext = {
+    _worker: worker,
     context,
     appContext: context,
     pid,

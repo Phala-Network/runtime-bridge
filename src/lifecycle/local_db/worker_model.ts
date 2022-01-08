@@ -2,6 +2,7 @@ import {
   AllowNull,
   BelongsTo,
   Column,
+  DataType,
   Default,
   ForeignKey,
   IsUUID,
@@ -33,7 +34,8 @@ import type { prb } from '@phala/runtime-bridge-walkie'
 class Worker extends Model {
   @IsUUID(4)
   @PrimaryKey
-  @Column(DataTypes.UUIDV4)
+  @Default(DataType.UUIDV4)
+  @Column(DataType.UUID)
   id: string
 
   @Unique
