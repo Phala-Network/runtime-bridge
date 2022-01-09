@@ -64,6 +64,9 @@ const startRunner = async () => {
     throw new Error('Runner should be forked with an id!')
   }
 
+  await setupParentApi(env.parentChainEndpoint)
+  await setupPhalaApi(env.chainEndpoint)
+
   const myId = await getMyId(LIFECYCLE)
   const localDb = await setupLocalDb(myId)
   const ptpNode = await setupPtp()
@@ -74,9 +77,6 @@ const startRunner = async () => {
     dispatch: (...args: unknown[]) => unknown
   }
   await txQueue.ready()
-
-  await setupParentApi(env.parentChainEndpoint)
-  await setupPhalaApi(env.chainEndpoint)
 
   const paraId = (
     (await phalaApi.query.parachainInfo.parachainId()) as U8

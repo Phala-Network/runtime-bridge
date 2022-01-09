@@ -13,7 +13,7 @@ import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import RangeMeta = prb.db.RangeMeta
 import IRangeMeta = prb.db.IRangeMeta
 
-const largeBlobQueue = new PQueue({ concurrency: 10 })
+const queue = new PQueue({ concurrency: 30 })
 
 const cache = new LRU({
   max: lruCacheSize,
@@ -36,13 +36,32 @@ const getBuffer = async (
 ) => {
   const dataProvider = await waitForDataProvider(ptpNode)
 
-  const response = await largeBlobQueue.add(async () =>
-    dataProvider.dial('GetBlobByKey', { key })
-  )
+  const response = await dataProvider.dial('GetBlobByKey', { key })
+
   if (response.hasError) {
     throw response.error
   }
   return response.data.empty ? null : response.data.data
+}
+
+const promiseStore: { [k: string]: Promise<Uint8Array> } = {}
+
+const _getCachedBuffer = async (
+  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  key: string
+) => {
+  if (promiseStore[key]) {
+    return promiseStore[key]
+  }
+
+  promiseStore[key] = queue.add(() => getBuffer(ptpNode, key))
+  const ret = await promiseStore[key]
+  delete promiseStore[key]
+
+  if (!ret) {
+    cache.set(key, ret)
+  }
+  return ret
 }
 
 const getCachedBuffer = async (
@@ -54,11 +73,8 @@ const getCachedBuffer = async (
   if (typeof cached !== 'undefined') {
     return cached as Uint8Array
   }
-  const ret = await getBuffer(ptpNode, key)
-  if (!ret) {
-    cache.set(key, ret)
-  }
-  return ret
+
+  return _getCachedBuffer(ptpNode, key)
 }
 
 type WaitFn<T> = (...args: unknown[]) => Promise<T>

@@ -1,4 +1,5 @@
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
+import { phalaApi } from '../../utils/api'
 import { walkieBootNodes } from '../../utils/env'
 import PeerId from 'peer-id'
 import logger from '../../utils/logger'
@@ -12,7 +13,7 @@ export const setupPtp = async () => {
   const ptpNode = await createPtpNode({
     peerId: await PeerId.create(),
     role: prb.WalkieRoles.WR_CLIENT,
-    chainIdentity: '',
+    chainIdentity: (await phalaApi.rpc.chain.getBlockHash(1)).toHex(),
     bridgeIdentity: '',
     listenAddresses: [],
     bootstrapAddresses: walkieBootNodes,
@@ -24,7 +25,9 @@ export const setupPtp = async () => {
 
 export const selectDataProvider = (ptpNode: WalkiePtpNode<prb.WalkieRoles>) => {
   // TODO: support redundancy
-  const candidates = Object.values(ptpNode.peerManager.internalDataProviders)
+  const candidates = Object.values(
+    ptpNode.peerManager.internalDataProviders
+  ).filter((p) => p.chainIdentity === ptpNode.chainIdentity)
   return candidates[0] || null
 }
 
