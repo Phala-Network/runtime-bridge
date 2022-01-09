@@ -1,7 +1,7 @@
 import { EVENTS } from './state_machine'
 import { createRpcClient } from '../../utils/prpc'
 import { enforceMinBenchScore, minBenchScore } from '../env'
-import { getHeaderBlob, getParaBlockBlob } from '../../data_provider/io/blob'
+import { getHeaderBlob, getParaBlockBlob } from './blob'
 import { phalaApi } from '../../utils/api'
 import { requestQueue__blob, runtimeRequest } from '../../utils/prpc/request'
 import logger from '../../utils/logger'
@@ -257,7 +257,7 @@ export const startSyncBlob = (runtime) => {
   const {
     workerContext: {
       workerBrief,
-      appContext: { fetchStatus },
+      appContext: { fetchStatus, ptpNode },
     },
     info,
     request,
@@ -288,7 +288,7 @@ export const startSyncBlob = (runtime) => {
     }
     // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
-    const blobs = await getHeaderBlob(next)
+    const blobs = await getHeaderBlob(ptpNode, next)
 
     // const {
     //   payload: {
@@ -331,7 +331,7 @@ export const startSyncBlob = (runtime) => {
     const { paraHeaderSynchedTo } = syncStatus
 
     if (paraHeaderSynchedTo >= next) {
-      const data = await getParaBlockBlob(next, paraHeaderSynchedTo)
+      const data = await getParaBlockBlob(ptpNode, next, paraHeaderSynchedTo)
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)

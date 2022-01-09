@@ -1,4 +1,4 @@
-FROM node:14-buster-slim
+FROM node:16-buster-slim
 
 ENV PYTHONUNBUFFERED=1
 RUN apt-get install apt-transport-https
@@ -14,18 +14,17 @@ RUN apt-get install -y \
     python \
     git-core
 
-RUN npm i -g pnpm
-
 WORKDIR /opt/app
 
 COPY package.json .
-COPY pnpm-lock.yaml .
+COPY yarn.lock .
 
-RUN pnpm install
+RUN yarn install
 
 COPY . .
 
-RUN pnpm proto:build
-RUN pnpm proto:build_prpc
+RUN yarn install
+RUN yarn proto:build_prpc
+RUN yarn tsc
 
-ENTRYPOINT [ "pnpm", "start_module" ]
+ENTRYPOINT [ "yarn", "start_module" ]

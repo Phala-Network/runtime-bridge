@@ -1,4 +1,4 @@
-import { OPEN_READONLY, OPEN_READWRITE } from 'sqlite3'
+import { OPEN_READONLY } from 'sqlite3'
 import { Sequelize } from 'sequelize-typescript'
 import Pool from './pool_model'
 import Worker from './worker_model'
@@ -15,9 +15,11 @@ export const setupLocalDb = async (myId: PrbPeerId) => {
     storage: env.localDbPath || '/var/data/local.db',
     logging: dbLogger,
     models: [Pool, Worker],
-    dialectOptions: {
-      mode: cluster.isPrimary ? OPEN_READWRITE : OPEN_READONLY,
-    },
+    dialectOptions: cluster.isPrimary
+      ? {}
+      : {
+          mode: OPEN_READONLY,
+        },
   })
   Pool.myId = myId
 

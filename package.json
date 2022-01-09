@@ -8,7 +8,7 @@
     "@chainsafe/libp2p-noise": "^5.0.0",
     "@noble/ed25519": "^1.3.3",
     "@pcan/leveldb-viewer": "^0.1.3",
-    "@phala/runtime-bridge-walkie": "^1.2.1",
+    "@phala/runtime-bridge-walkie": "^1.2.2",
     "@phala/typedefs": "^0.2.30",
     "@polkadot/api": "^7.1.1",
     "@polkadot/apps-config": "^0.100.1",
@@ -87,6 +87,7 @@
     "@types/debug": "^4.1.7",
     "@types/ioredis": "^4.28.5",
     "@types/levelup": "^4.3.3",
+    "@types/lru-cache": "^5.1.1",
     "@types/node": "^17.0.8",
     "@types/promise-retry": "^1.1.3",
     "@types/redis": "^4.0.11",
@@ -118,14 +119,8 @@
   },
   "scripts": {
     "watch-ts": "tsc -w",
-    "proto:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js",
     "proto:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
-    "proto:darwin:build": "pbjs -t static-module --no-beautify -p ./src/vendor/proto -o ./src/message/proto.generated.js -w es6 ./src/vendor/proto/message.proto && gsed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/message/proto.generated.js",
     "proto:darwin:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && gsed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
-    "start_module": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/index",
-    "dump_workers": "node --trace-warnings --experimental-json-modules dist/scripts/dump_workers",
-    "import_workers": "node --trace-warnings --experimental-json-modules dist/scripts/import_workers",
-    "debug_process_para_block": "node --inspect-brk=0.0.0.0:9229 --trace-warnings --experimental-json-modules dist/scripts/debug_process_para_block",
-    "generate_chain_types": "yarn polkadot-types-from-chain --endpoint wss://khala-api.phala.network/ws --output src/utils/phala-types"
+    "start_module": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/index"
   }
 }

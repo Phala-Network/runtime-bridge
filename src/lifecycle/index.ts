@@ -2,6 +2,7 @@ import { LIFECYCLE, getMyId } from '../utils/my-id'
 import { _processGenesis } from '../data_provider/block'
 import { createHash } from 'crypto'
 import { createRunnerManager } from './runner_manager'
+import { isConfigMode } from './env'
 import { phalaApi, setupParentApi, setupPhalaApi } from '../utils/api'
 import { setupLocalDb } from './local_db'
 import { setupPtp } from './ptp'
@@ -37,7 +38,12 @@ const start = async () => {
   }
 
   context.ptpNode = await setupPtp(context)
-  context.runnerManager = await createRunnerManager(context)
+
+  if (isConfigMode) {
+    logger.info("Runners won't start since config mode enabled.")
+  } else {
+    context.runnerManager = await createRunnerManager(context)
+  }
 }
 
 export default start

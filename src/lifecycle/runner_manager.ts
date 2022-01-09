@@ -24,12 +24,12 @@ const intoChunks = (array: unknown[], chunkSize: number) => {
 export type RunnerMeta = {
   id: string
   workerIds: string[]
-  ipcHandle: ReturnType<typeof fork>
+  ipcHandle?: ReturnType<typeof fork>
 }
 export type RunnerMetaMap = { [id: string]: RunnerMeta }
 
 export type WorkerMeta = prb.IWorkerState & {
-  id: string
+  id?: string
   runner?: RunnerMeta
 }
 export type WorkerMetaMap = { [id: string]: WorkerMeta }
@@ -76,7 +76,11 @@ export const createRunnerManager = async (
 
   for (const workerIds of workerIdGroups) {
     const runnerId = randomUUID()
-    const { send } = fork(
+    const runnerMeta: RunnerMeta = {
+      id: runnerId,
+      workerIds,
+    }
+    const forkRet = fork(
       'runner',
       {
         managerShouldInitRunner: (remoteRunnerId) => {
@@ -84,12 +88,15 @@ export const createRunnerManager = async (
             logger.error({ runnerId, remoteRunnerId }, 'Runner id mismatch!')
             process.exit(200)
           }
-          send('runnerShouldInit', workerIds)
+          forkRet.send('runnerShouldInit', workerIds)
         },
         managerShouldUpdateWorkerInfo: (workerInfoMap) => {
           for (const workerId of Object.keys(workerInfoMap)) {
             workers[workerId] = Object.assign(
-              workers[workerId],
+              workers[workerId] || {
+                id: workerId,
+                runner: runnerMeta,
+              },
               workerInfoMap[workerId]
             )
           }
@@ -99,6 +106,8 @@ export const createRunnerManager = async (
         PHALA_RUNNER_ID: runnerId,
       }
     )
+    runnerMeta.ipcHandle = forkRet
+    runners[runnerId] = runnerMeta
   }
 
   return context

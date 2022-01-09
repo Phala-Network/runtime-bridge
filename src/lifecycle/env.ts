@@ -19,6 +19,7 @@ export const ENV_LIST = [
   ['PHALA_LOCAL_DB_PATH', 'localDbPath'],
 
   ['PHALA_RUNNER_MAX_WORKER_NUMBER', 'runnerMaxWorkerNumber'],
+  ['PHALA_LIFECYCLE_CONFIG_MODE', 'configMode'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -47,5 +48,6 @@ export const lruCacheDebugLogInterval =
   parseInt(env.lruCacheDebugLogInterval) || (isDev ? 3000 : 0)
 
 export const runnerMaxWorkerNumber = parseInt(env.runnerMaxWorkerNumber) || 27
+export const isConfigMode = env.configMode === 'true'
 
 export default env

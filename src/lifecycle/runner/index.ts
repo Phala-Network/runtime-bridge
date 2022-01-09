@@ -5,7 +5,11 @@ import {
 import { EVENTS } from './state_machine'
 import { LIFECYCLE, getMyId } from '../../utils/my-id'
 import { Op } from 'sequelize'
-import { createWorkerContext, destroyWorkerContext } from './worker'
+import {
+  createWorkerContext,
+  destroyWorkerContext,
+  getWorkerStates,
+} from './worker'
 import { phalaApi, setupParentApi, setupPhalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { selectDataProvider, setupPtp, waitForDataProvider } from './ptp'
@@ -124,10 +128,22 @@ const startRunner = async () => {
   const { send: sendToManager } = setupIpcWorker({
     runnerShouldInit: (ids) => {
       logger.info(`Initializing runner ${runnerId} with ${ids.length} workers.`)
-      startWorkers(ids, context).catch((e) => {
-        logger.error(e)
-        process.exit(255)
-      })
+      startWorkers(ids, context)
+        .then(() => {
+          const updateStateLoop = async (): Promise<never> => {
+            context.sendToManager(
+              'managerShouldUpdateWorkerInfo',
+              getWorkerStates(ids, context.workers)
+            )
+            await wait(500)
+            return updateStateLoop()
+          }
+          updateStateLoop()
+        })
+        .catch((e) => {
+          logger.error(e)
+          process.exit(255)
+        })
     },
     runnerShouldKickWorker: makeRunnerShouldKickWorker(context),
     runnerShouldRestartWorker: makeRunnerShouldRestartWorker(context),
@@ -181,6 +197,11 @@ export const makeRunnerShouldRestartWorker =
   }
 export const makeRunnerShouldUpdateWorker =
   (context: RunnerContext): LifecycleHandlerTable['runnerShouldUpdateWorker'] =>
-  (ids) => {}
+  (ids) => {
+    context.sendToManager(
+      'managerShouldUpdateWorkerInfo',
+      getWorkerStates(ids, context.workers)
+    )
+  }
 
 export default startRunner

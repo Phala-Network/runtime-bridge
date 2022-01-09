@@ -30,5 +30,10 @@ export const createWorkerContext: (
 
 export const destroyWorkerContext: (
   context: WorkerContext,
-  shouldKick: bool
+  shouldKick: boolean
 ) => Promise<void>
+
+export const getWorkerStates: (
+  ids: string[],
+  workers: WorkerContextMap
+) => { [k: string]: prb.IWorkerState }

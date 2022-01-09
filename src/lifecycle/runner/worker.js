@@ -195,3 +195,28 @@ export const stopMining = async (workerContext) => {
     },
   })
 }
+
+export const getWorkerStates = (ids, workers) => {
+  const ret = {}
+  for (const id of ids) {
+    const w = workers[id]
+    const { runtimeInfo, info, syncStatus } = w?.runtime || {}
+    ret[id] = {
+      status: w?.stateMachineState,
+      initialized: info?.initialized,
+      parentHeaderSynchedTo: syncStatus?.parentHeaderSynchedTo,
+      paraHeaderSynchedTo: syncStatus?.paraHeaderSynchedTo,
+      paraBlockDispatchedTo: syncStatus?.paraBlockDispatchedTo,
+      worker: w?.snapshotBrief,
+      publicKey: runtimeInfo?.publicKey,
+      lastMessage: w?.message,
+      minerAccountId: w?.onChainState?.accountId?.toString(),
+      minerInfoJson: JSON.stringify(
+        w?.onChainState?.minerInfo?.humanReadable || {},
+        null,
+        2
+      ),
+    }
+  }
+  return ret
+}

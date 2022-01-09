@@ -1,6 +1,7 @@
 import { createPrivateKey, createPublicKey } from 'crypto'
 import { peerIdPrefix } from './env'
 import PeerId from 'peer-id'
+import logger from './logger'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import type { KeyObject } from 'crypto'
@@ -52,6 +53,10 @@ const _getMyId = (sym: PeerKeySymbol) =>
 
 export const getMyId = async (sym: PeerKeySymbol): Promise<PrbPeerId> => {
   const raw = await _getMyId(sym)
+  logger.info(
+    { id: raw.toB58String() },
+    `Got my peer id as ${sym.description}.`
+  )
   const privKeyObj = createPrivateKey({
     key: await raw.privKey.export('0'),
     type: 'pkcs8',
