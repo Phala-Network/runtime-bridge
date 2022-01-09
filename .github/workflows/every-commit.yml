@@ -19,9 +19,8 @@ jobs:
           repository: phalanetwork/prb
           tag_with_ref: false
           tag_with_sha: true
-          tags: git
+          tags: git-next
           dockerfile: 'docker/testing/Dockerfile'
-          cache_froms: phalanetwork/prb:git
   push_cn:
     runs-on: ubuntu-18.04
     steps:
@@ -36,6 +35,5 @@ jobs:
           repository: phala/prb
           tag_with_ref: false
           tag_with_sha: true
-          tags: git
+          tags: git-next
           dockerfile: 'docker/testing/Dockerfile'
-          cache_froms: phalanetwork/prb:git

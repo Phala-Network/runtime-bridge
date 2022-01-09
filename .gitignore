@@ -183,3 +183,7 @@ fabric.properties
 
 # *.iml
 # modules.xml
+
+dev.sh
+.vscode
+data

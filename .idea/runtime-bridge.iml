@@ -5,9 +5,12 @@
       <excludeFolder url="file://$MODULE_DIR$/temp" />
       <excludeFolder url="file://$MODULE_DIR$/.tmp" />
       <excludeFolder url="file://$MODULE_DIR$/tmp" />
+      <excludeFolder url="file://$MODULE_DIR$/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/data" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="runtime-bridge-monitor" />
+    <orderEntry type="module" module-name="runtime-bridge-walkie" />
   </component>
 </module>

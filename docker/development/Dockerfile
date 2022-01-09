@@ -1,4 +1,4 @@
-FROM node:lts-buster-slim
+FROM node:16-buster-slim
 
 ENV PYTHONUNBUFFERED=1
 RUN apt-get install apt-transport-https
@@ -12,9 +12,8 @@ RUN apt-get install -y \
     protobuf-compiler \
     curl \
     python \
+    python3 \
     git-core
 
-RUN npm i -g pnpm
-
 WORKDIR /opt/app
-ENTRYPOINT [ "pnpm", "start_module" ]
+ENTRYPOINT [ "yarn", "start_module" ]

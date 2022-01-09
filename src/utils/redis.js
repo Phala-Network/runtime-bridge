@@ -1,11 +1,12 @@
-import { list as redisCommands } from 'redis-commands'
+import { list } from 'redis-commands'
 import PQueue from 'p-queue'
 import Redis from 'ioredis'
+
 import logger from './logger'
 
 const ignoreCommands = ['multi', 'pipeline', 'scanStream']
 
-const createClient = (redisEndpoint, options = {}) =>
+export const createClient = (redisEndpoint, options = {}) =>
   new Promise((resolve) => {
     const queue = new PQueue({
       timeout: 3000,
@@ -14,7 +15,7 @@ const createClient = (redisEndpoint, options = {}) =>
 
     const client = new Redis(redisEndpoint, options)
 
-    redisCommands.forEach((i) => {
+    list.forEach((i) => {
       const command = i.split(' ')[0]
 
       if (ignoreCommands.indexOf(command) > -1) {

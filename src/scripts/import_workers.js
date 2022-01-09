@@ -1,5 +1,5 @@
-import { DB_WORKER, setupDb } from '../io/db'
-import { setWorker, validateWorkerInput } from '../io/worker'
+import { DB_WORKER, setupDb } from '../data_provider/io/db'
+import { setWorker, validateWorkerInput } from '../data_provider/io/worker'
 
 const main = async (data) => {
   await setupDb(DB_WORKER)

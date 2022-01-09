@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2020",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "outDir": "dist",
+    "baseUrl": "./src",
+    "allowJs": true,
+    "checkJs": false,
+    "importsNotUsedAsValues": "error",
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "stripInternal": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "strict": false,
+    "incremental": true,
+    "lib": ["ES2020"],
+    "paths": {
+      "*": [
+        "*",
+        "node_modules/*",
+        "src/types/*"
+      ]
+    },
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ]
+  },
+  "include": [
+    "src/**/*",
+  ],
+}
