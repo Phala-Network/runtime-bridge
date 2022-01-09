@@ -12,6 +12,7 @@ RUN apt-get install -y \
     protobuf-compiler \
     curl \
     python \
+    python3 \
     git-core
 
 WORKDIR /opt/app
