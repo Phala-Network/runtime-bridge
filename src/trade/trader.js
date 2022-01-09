@@ -1,12 +1,13 @@
-import { DB_WORKER, setupDb } from '../data_provider/io/db'
+import { LIFECYCLE, getMyId } from '../utils/my-id'
 import {
   TX_DEAD_COUNT_THRESHOLD,
   TX_SEND_QUEUE_SIZE,
   TX_TIMEOUT,
 } from '../utils/constants'
-import { getPool } from '../lifecycle/runner/worker'
 import { phalaApi, setupPhalaApi } from '../utils/api'
+import { setupLocalDb } from '../lifecycle/local_db'
 import PQueue from 'p-queue'
+import Pool from '../lifecycle/local_db/pool_model'
 import env from '../utils/env'
 import logger from '../utils/logger'
 
@@ -40,10 +41,8 @@ const getPoolQueue = (pid) => {
 }
 
 const start = async () => {
-  await setupDb(DB_WORKER)
+  await setupLocalDb(await getMyId(LIFECYCLE), true)
   await setupPhalaApi(env.chainEndpoint)
-
-  const __fakeLifecycleContext = { pools: new Map() }
 
   let deadCount = 0
 
@@ -90,18 +89,22 @@ const start = async () => {
   }
 
   const processBatch = async (batch) => {
-    const pool = await getPool(batch.pid, __fakeLifecycleContext, true)
+    const pool = await Pool.findOne({
+      where: {
+        pid: parseInt(batch.pid),
+      },
+    })
     const tx = formTx(pool, batch.calls)
     let nonce
     try {
-      if (typeof poolNonces[pool.uid] === 'number') {
+      if (typeof poolNonces[pool.id] === 'number') {
         nonce = (
-          await phalaApi.rpc.system.accountNextIndex(pool.ss58Phala)
+          await phalaApi.rpc.system.accountNextIndex(pool.operator.address)
         ).toNumber()
       } else {
-        nonce = poolNonces[pool.uid]
+        nonce = poolNonces[pool.id]
       }
-      poolNonces[pool.uid] = nonce + 1
+      poolNonces[pool.id] = nonce + 1
       process.send({ action: MA_BATCH_WORKING, payload: { id: batch.id } })
       const failedCalls = await sendTx(tx, pool, nonce)
       process.send({

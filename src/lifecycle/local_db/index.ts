@@ -9,17 +9,18 @@ import type { PrbPeerId } from '../../utils/my-id'
 
 export const dbLogger = (sql: string) => logger.debug(sql)
 
-export const setupLocalDb = async (myId: PrbPeerId) => {
+export const setupLocalDb = async (myId: PrbPeerId, readonly = false) => {
   const db = new Sequelize({
     dialect: 'sqlite',
     storage: env.localDbPath || '/var/data/local.db',
     logging: dbLogger,
     models: [Pool, Worker],
-    dialectOptions: cluster.isPrimary
-      ? {}
-      : {
-          mode: OPEN_READONLY,
-        },
+    dialectOptions:
+      !readonly && cluster.isPrimary
+        ? {}
+        : {
+            mode: OPEN_READONLY,
+          },
   })
   Pool.myId = myId
 
