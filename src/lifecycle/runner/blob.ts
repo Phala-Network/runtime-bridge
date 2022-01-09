@@ -42,7 +42,7 @@ const getBuffer = async (
   if (response.hasError) {
     throw response.error
   }
-  return response.data.data
+  return response.data.empty ? null : response.data.data
 }
 
 const getCachedBuffer = async (

@@ -1,10 +1,10 @@
 import { fork } from './runner_ipc'
+import { prb } from '@phala/runtime-bridge-walkie'
 import { randomUUID } from 'crypto'
 import { runnerMaxWorkerNumber } from './env'
 import Worker from './local_db/worker_model'
 import logger from '../utils/logger'
 import type { LifecycleManagerContext } from './index'
-import type { prb } from '@phala/runtime-bridge-walkie'
 
 const intoChunks = (array: unknown[], chunkSize: number) => {
   const result = []
@@ -97,7 +97,10 @@ export const createRunnerManager = async (
                 id: workerId,
                 runner: runnerMeta,
               },
-              workerInfoMap[workerId]
+              workerInfoMap[workerId],
+              {
+                status: prb.WorkerState.Status[workerInfoMap[workerId].status],
+              }
             )
           }
         },

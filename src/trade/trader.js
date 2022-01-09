@@ -84,7 +84,7 @@ const start = async () => {
     )
     const batchTx = phalaApi.tx.utility.batchTry(txs)
     return pool.isProxy
-      ? phalaApi.tx.proxy.proxy(pool.realPhalaSs58, null, batchTx)
+      ? phalaApi.tx.proxy.proxy(pool.proxiedAccountSs58, null, batchTx)
       : batchTx
   }
 
@@ -94,6 +94,7 @@ const start = async () => {
         pid: parseInt(batch.pid),
       },
     })
+    pool.operator.unlock()
     const tx = formTx(pool, batch.calls)
     let nonce
     try {

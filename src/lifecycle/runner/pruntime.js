@@ -316,7 +316,7 @@ export const startSyncBlob = (runtime) => {
       await wait(0)
       return headerSync(parentSynchedTo + 1).catch(doReject)
     } catch (e) {
-      logger.info(blobs)
+      logger.info({ next, blobs }, 'Failed to sync_combined_headers')
       throw e
     }
   }
@@ -327,7 +327,7 @@ export const startSyncBlob = (runtime) => {
     }
     const next = typeof _next === 'number' ? _next : info.blocknum
 
-    const { paraBlobHeight } = fetchStatus
+    const { paraProcessedHeight } = fetchStatus
     const { paraHeaderSynchedTo } = syncStatus
 
     if (paraHeaderSynchedTo >= next) {
@@ -339,7 +339,7 @@ export const startSyncBlob = (runtime) => {
       syncStatus.paraBlockDispatchedTo = dispatchedTo
 
       if (!synchedToTargetPromiseFinished) {
-        if (dispatchedTo >= paraBlobHeight) {
+        if (dispatchedTo >= paraProcessedHeight) {
           synchedToTargetPromiseFinished = true
           synchedToTargetPromiseResolve(dispatchedTo)
         }

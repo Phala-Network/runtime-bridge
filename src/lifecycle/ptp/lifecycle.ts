@@ -59,7 +59,7 @@ export const makeGetWorkerStatus: MakeLifecycleManagerPtpHandler<
 > =
   (context) =>
   async ({ ids }) => {
-    if (ids) {
+    if (ids?.length) {
       for (const id of ids) {
         const workerObj = await Worker.findByPk(id)
         if (!workerObj) {
@@ -70,10 +70,9 @@ export const makeGetWorkerStatus: MakeLifecycleManagerPtpHandler<
         }
       }
     }
-    const _ids = ids || Object.keys(context.runnerManager.workers)
+    const _ids = ids?.length ? ids : Object.keys(context.runnerManager.workers)
+
     return prb.WorkerStateUpdate.create({
       workerStates: _ids.map((i) => context.runnerManager.workers[i]),
     })
   }
-
-export {}

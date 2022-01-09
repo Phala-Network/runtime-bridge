@@ -90,7 +90,6 @@ const start = async () => {
     iterate(
       (await getLastCommittedParentBlock()) || genesis.parentNumber,
       () => parentTarget,
-      FETCH_PARENT_QUEUE_CONCURRENT,
       async (curr) => {
         await walkParentBlock(curr, genesis.paraId, proofKey)
         send('setParentFetchedHeight', curr)
@@ -126,33 +125,25 @@ const iteratePara = async (getTarget: () => number) => {
 export const iterate = async (
   startNum: number,
   getTarget: () => number,
-  concurrency: number,
   queueFn: (curr: number) => Promise<void>
 ) => {
-  let curr = startNum
-  let errorBoundaryReject: (e: Error) => void
-  const errorBoundary = new Promise((resolve, reject) => {
-    errorBoundaryReject = reject
-  })
-
-  const queue = new PQueue({
-    concurrency,
-  })
+  let curr = startNum - 1
+  let currentPromise = Promise.resolve()
 
   async function* iterable(): AsyncGenerator<number, void, void> {
     while (true) {
-      if (queue.size <= concurrency * 10 && getTarget() > curr) {
-        yield curr
+      await currentPromise
+      if (getTarget() > curr) {
         curr += 1
+        yield curr
       } else {
-        await wait(100)
+        await wait(1000)
       }
     }
   }
   for await (const curr of iterable()) {
-    queue.add(() => queueFn(curr)).catch((e: Error) => errorBoundaryReject(e))
+    currentPromise = queueFn(curr)
   }
-  return errorBoundary
 }
 
 export default start
