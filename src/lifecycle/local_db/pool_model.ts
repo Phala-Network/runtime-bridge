@@ -150,6 +150,10 @@ class Pool extends Model {
     return this.#_decryptedOperatorKey
   }
 
+  get pair() {
+    return this.operator
+  }
+
   toPbInterface(): prb.db.IPool {
     return {
       uuid: this.id,

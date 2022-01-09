@@ -12,7 +12,6 @@ import {
 import { minBenchScore, shouldSkipRa } from '../env'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
-import { serializeError } from 'serialize-error'
 import Finity from 'finity'
 import logger from '../../utils/logger'
 import toEnum from '../../utils/to_enum'
@@ -163,7 +162,7 @@ const onMining = async (fromState, toState, context) => {
 const onError = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.message = JSON.stringify(
     context.eventPayload instanceof Error
-      ? serializeError(context.eventPayload)
+      ? context.eventPayload.toString()
       : context.eventPayload?.message || context.eventPayload
   )
 
@@ -181,7 +180,7 @@ const onError = async (fromState, toState, context) => {
   logger.error(snapshotBrief, context.eventPayload)
   context.stateMachine.rootStateMachine.workerContext.message = JSON.stringify(
     context.eventPayload instanceof Error
-      ? serializeError(context.eventPayload)
+      ? context.eventPayload.toString()
       : context.eventPayload?.message || context.eventPayload
   )
 }

@@ -1,11 +1,16 @@
+import {
+  DB_PB_TO_OBJECT_OPTIONS,
+  pbToObject,
+} from '../../data_provider/io/db_encoding'
 import { EVENTS } from './state_machine'
 import { LIFECYCLE, getMyId } from '../../utils/my-id'
 import { Op } from 'sequelize'
 import { createWorkerContext, destroyWorkerContext } from './worker'
-import { selectDataProvider, setupPtp } from './ptp'
+import { phalaApi, setupParentApi, setupPhalaApi } from '../../utils/api'
+import { prb } from '@phala/runtime-bridge-walkie'
+import { selectDataProvider, setupPtp, waitForDataProvider } from './ptp'
 import { setupIpcWorker } from '../../utils/ipc'
 import { setupLocalDb } from '../local_db'
-import { setupParentApi, setupPhalaApi } from '../../utils/api'
 import Pool from '../local_db/pool_model'
 import Worker from '../local_db/worker_model'
 import createTradeQueue from '../../trade/trade_queue'
@@ -13,10 +18,11 @@ import env from '../../utils/env'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 import type { LifecycleHandlerTable } from '../runner_ipc'
+import type { Message } from 'protobufjs'
 import type { Sequelize } from 'sequelize'
+import type { U8 } from '@polkadot/types'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import type { WorkerContextMap } from './worker'
-import type { prb } from '@phala/runtime-bridge-walkie'
 import type BeeQueue from 'bee-queue'
 
 export type RunnerContext = {
@@ -56,6 +62,7 @@ const startRunner = async () => {
 
   const myId = await getMyId(LIFECYCLE)
   const localDb = await setupLocalDb(myId)
+  const ptpNode = await setupPtp()
 
   const workers: WorkerContextMap = {}
 
@@ -66,23 +73,46 @@ const startRunner = async () => {
 
   await setupParentApi(env.parentChainEndpoint)
   await setupPhalaApi(env.chainEndpoint)
-  const ptpNode = await setupPtp()
+
+  const paraId = (
+    (await phalaApi.query.parachainInfo.parachainId()) as U8
+  ).toNumber()
+  const genesisResponse = await (
+    await waitForDataProvider(ptpNode)
+  ).dial('GetBlobByKey', {
+    key: `genesis:${paraId}:pb`,
+  })
+
+  if (genesisResponse.hasError) {
+    throw genesisResponse.error
+  }
+
+  if (genesisResponse.data.empty) {
+    throw new Error('Genesis not found from data provider!')
+  }
 
   const context: RunnerContext = {
     workers,
     localDb,
     ptpNode,
     txQueue,
+    genesis: pbToObject(
+      prb.db.Genesis.decode(
+        genesisResponse.data.data
+      ) as unknown as Message<prb.db.IGenesis>,
+      DB_PB_TO_OBJECT_OPTIONS
+    ),
     _dispatchTx: txQueue.dispatch,
   }
 
   const updateDataProviderInfoLoop = async (): Promise<never> => {
     const info = await updateDataProviderInfo(context)
+
     if (info) {
       if (context.fetchStatus) {
-        context.fetchStatus = info
-      } else {
         Object.assign(context.fetchStatus, info)
+      } else {
+        context.fetchStatus = info
       }
     }
     await wait(3000)

@@ -33,7 +33,7 @@
     "end-of-stream": "^1.4.4",
     "esm": "^3.2.25",
     "finity": "^0.5.4",
-    "got": "^12.0.0",
+    "got": "11",
     "ioredis": "^4.28.2",
     "length-prefixed-stream": "^2.0.0",
     "level": "^7.0.1",

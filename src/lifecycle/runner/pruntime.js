@@ -120,6 +120,7 @@ export const initRuntime = async (
       logger.debug(workerBrief, 'Already initialized.', res)
     } else {
       const { genesisState, bridgeGenesisInfo } = appContext.genesis
+
       const initRequestPayload = {
         skipRa: false,
         encodedGenesisState: genesisState,
