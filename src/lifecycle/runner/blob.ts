@@ -58,7 +58,7 @@ const _getCachedBuffer = async (
   const ret = await promiseStore[key]
   delete promiseStore[key]
 
-  if (!ret) {
+  if (ret) {
     cache.set(key, ret)
   }
   return ret
