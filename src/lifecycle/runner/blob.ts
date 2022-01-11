@@ -13,7 +13,7 @@ import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import RangeMeta = prb.db.RangeMeta
 import IRangeMeta = prb.db.IRangeMeta
 
-const queue = new PQueue({ concurrency: 30 })
+const queue = new PQueue({ concurrency: 65535 })
 
 const cache = new LRU({
   max: lruCacheSize,
