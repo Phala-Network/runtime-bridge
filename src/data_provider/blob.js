@@ -198,6 +198,8 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
   if (currentWindow) {
     parentStartBlock = currentWindow.parentStartBlock
     paraStartBlock = currentWindow.paraStartBlock
+    send('setParentCommittedHeight', parentStartBlock - 1)
+    send('setParaCommittedHeight', paraStartBlock - 1)
   } else {
     if (windowId === 0) {
       const paraId = process.env.PHALA_PARA_ID

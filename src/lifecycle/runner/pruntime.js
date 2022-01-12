@@ -288,7 +288,11 @@ export const startSyncBlob = (runtime) => {
     }
     // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
-    const blobs = await getHeaderBlob(ptpNode, next)
+    const blobs = await getHeaderBlob(
+      ptpNode,
+      next,
+      fetchStatus.parentCommittedHeight
+    )
 
     // const {
     //   payload: {
@@ -331,7 +335,12 @@ export const startSyncBlob = (runtime) => {
     const { paraHeaderSynchedTo } = syncStatus
 
     if (paraHeaderSynchedTo >= next) {
-      const data = await getParaBlockBlob(ptpNode, next, paraHeaderSynchedTo)
+      const data = await getParaBlockBlob(
+        ptpNode,
+        next,
+        paraHeaderSynchedTo,
+        fetchStatus.paraCommittedHeight
+      )
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)

@@ -1,4 +1,4 @@
-import Redis, { RedisOptions } from 'ioredis'
+import type Redis, { RedisOptions } from 'ioredis'
 
 export type PrbRedisClient = Redis.Redis & {
   put: Redis.Redis['set']

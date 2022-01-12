@@ -1,4 +1,6 @@
 import { NOT_FOUND_ERROR } from '../../data_provider/io/db'
+import { bool } from '@polkadot/types'
+import { concatBuffer, intoChunks } from '../../data_provider/ptp_int'
 import { lruCacheDebugLogInterval, lruCacheMaxAge, lruCacheSize } from '../env'
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
@@ -12,7 +14,9 @@ import type { Message } from 'protobufjs'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import RangeMeta = prb.db.RangeMeta
 import IRangeMeta = prb.db.IRangeMeta
+import pipe from 'it-pipe'
 
+const CHUNK_SIZE = 10485760
 const queue = new PQueue({ concurrency: 65535 })
 
 const cache = new LRU({
@@ -36,12 +40,24 @@ const getBuffer = async (
 ) => {
   const dataProvider = await waitForDataProvider(ptpNode)
 
-  const response = await dataProvider.dial('GetBlobByKey', { key })
+  const t1 = Date.now()
+  const { stream } = await ptpNode.node.dialProtocol(
+    dataProvider.peerId,
+    '/blob'
+  )
 
-  if (response.hasError) {
-    throw response.error
-  }
-  return response.data.empty ? null : response.data.data
+  const response = Buffer.concat(
+    (await pipe(intoChunks(Buffer.from(key), CHUNK_SIZE), stream, concatBuffer))
+      ._bufs
+  )
+  const t2 = Date.now()
+
+  logger.debug(
+    { key, responseSize: response.length, timing: t2 - t1 },
+    'getBuffer'
+  )
+
+  return response?.length ? response : null
 }
 
 const promiseStore: { [k: string]: Promise<Uint8Array> } = {}
@@ -109,7 +125,7 @@ const waitFor = <T>(waitFn: WaitFn<T>) =>
     }
   )
 
-const waitForCachedBuffer = async (
+export const waitForCachedBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
   key: string
 ): Promise<Uint8Array> => {
@@ -123,10 +139,14 @@ const waitForCachedBuffer = async (
 
 const waitForRangeByParentNumber = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  number: number
+  number: number,
+  cached: boolean
 ) =>
   waitFor(async () => {
-    const buffer = await getBuffer(ptpNode, `rangeByParentBlock:${number}:pb`)
+    const buffer = await (cached ? getCachedBuffer : getBuffer)(
+      ptpNode,
+      `rangeByParentBlock:${number}:pb`
+    )
     if (!buffer) {
       return null
     }
@@ -136,10 +156,14 @@ const waitForRangeByParentNumber = async (
 
 const waitForParaBlockRange = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  number: number
+  number: number,
+  cached: boolean
 ) =>
   waitFor(async () => {
-    const buffer = await getBuffer(ptpNode, `rangeParaBlock:key:${number}`)
+    const buffer = await (cached ? getCachedBuffer : getBuffer)(
+      ptpNode,
+      `rangeParaBlock:key:${number}`
+    )
     if (!buffer) {
       return null
     }
@@ -151,9 +175,14 @@ type Uint8ArrayListWithMeta = Uint8Array[] & { meta?: { [k: string]: unknown } }
 
 export const getHeaderBlob = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  blockNumber: number
+  blockNumber: number,
+  currentCommittedNumber: number
 ) => {
-  const meta = await waitForRangeByParentNumber(ptpNode, blockNumber)
+  const meta = await waitForRangeByParentNumber(
+    ptpNode,
+    blockNumber,
+    blockNumber < currentCommittedNumber
+  )
   const ret: Uint8ArrayListWithMeta = []
   if (blockNumber === meta.parentStartBlock) {
     ret.push(
@@ -172,9 +201,15 @@ export const getHeaderBlob = async (
 export const getParaBlockBlob = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
   blockNumber: number,
-  headerSynchedTo: number
+  headerSynchedTo: number,
+  currentCommittedNumber: number
 ) => {
-  const meta = await waitForParaBlockRange(ptpNode, blockNumber)
+  const meta = await waitForParaBlockRange(
+    ptpNode,
+    blockNumber,
+    blockNumber < currentCommittedNumber &&
+      headerSynchedTo < currentCommittedNumber
+  )
   const dryKey = `dryParaBlock:${blockNumber}`
   const retKey =
     meta.bufferKey && headerSynchedTo >= meta.lastBlockNumber

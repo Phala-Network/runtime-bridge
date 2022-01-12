@@ -4,14 +4,9 @@ export const ENV_LIST = [
   ['PHALA_PARENT_PARALLEL_BLOCKS', 'parallelParentBlocks'],
   ['PHALA_LOGGER_LEVEL', 'loggerLevel'],
   ['PHALA_MODULE', 'moduleName'],
-  ['PHALA_DB_PREFIX', 'dbPrefix'],
   ['PHALA_PARENT_CHAIN_ENDPOINT', 'parentChainEndpoint'],
   ['PHALA_CHAIN_ENDPOINT', 'chainEndpoint'],
   ['PHALA_Q_REDIS_ENDPOINT', 'qRedisEndpoint'],
-
-  ['PHALA_DB_ENDPOINT', 'dbEndpoint'],
-  ['PHALA_DB_NAMESPACE', 'dbNamespace'],
-  ['PHALA_DB_FETCH_NAMESPACE', 'dbFetchNamespace'],
 
   ['PHALA_PEER_ID_PREFIX', 'peerIdPrefix'],
   ['PHALA_WALKIE_LISTEN_ADDRESSES', 'walkieListenAddresses'],
