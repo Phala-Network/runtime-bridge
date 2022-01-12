@@ -1,7 +1,11 @@
 import { NOT_FOUND_ERROR } from '../../data_provider/io/db'
-import { bool } from '@polkadot/types'
+import {
+  blobQueueSize,
+  lruCacheDebugLogInterval,
+  lruCacheMaxAge,
+  lruCacheSize,
+} from '../env'
 import { concatBuffer, intoChunks } from '../../data_provider/ptp_int'
-import { lruCacheDebugLogInterval, lruCacheMaxAge, lruCacheSize } from '../env'
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
@@ -17,7 +21,10 @@ import IRangeMeta = prb.db.IRangeMeta
 import pipe from 'it-pipe'
 
 const CHUNK_SIZE = 10485760
-const queue = new PQueue({ concurrency: 65535 })
+const queue = new PQueue({ concurrency: blobQueueSize })
+
+type PromiseStore<T> = { [k: string]: Promise<T | null> }
+const promiseStore: PromiseStore<Buffer | Uint8Array> = {}
 
 const cache = new LRU({
   max: lruCacheSize,
@@ -38,41 +45,48 @@ const getBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
   key: string
 ) => {
-  const dataProvider = await waitForDataProvider(ptpNode)
+  if (promiseStore[key]) {
+    return await promiseStore[key]
+  }
 
-  const t1 = Date.now()
-  const { stream } = await ptpNode.node.dialProtocol(
-    dataProvider.peerId,
-    '/blob'
-  )
+  promiseStore[key] = queue.add(async () => {
+    const dataProvider = await waitForDataProvider(ptpNode)
 
-  const response = Buffer.concat(
-    (await pipe(intoChunks(Buffer.from(key), CHUNK_SIZE), stream, concatBuffer))
-      ._bufs
-  )
-  const t2 = Date.now()
+    const t1 = Date.now()
+    const { stream } = await ptpNode.node.dialProtocol(
+      dataProvider.peerId,
+      '/blob'
+    )
 
-  logger.debug(
-    { key, responseSize: response.length, timing: t2 - t1 },
-    'getBuffer'
-  )
+    const response = Buffer.concat(
+      (
+        await pipe(
+          intoChunks(Buffer.from(key), CHUNK_SIZE),
+          stream,
+          concatBuffer
+        )
+      )._bufs
+    )
+    const t2 = Date.now()
 
-  return response?.length ? response : null
+    logger.debug(
+      { key, responseSize: response.length, timing: t2 - t1 },
+      'getBuffer'
+    )
+
+    return response?.length ? response : null
+  })
+
+  const ret = await promiseStore[key]
+  delete promiseStore[key]
+  return ret
 }
-
-const promiseStore: { [k: string]: Promise<Uint8Array> } = {}
 
 const _getCachedBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
   key: string
 ) => {
-  if (promiseStore[key]) {
-    return promiseStore[key]
-  }
-
-  promiseStore[key] = queue.add(() => getBuffer(ptpNode, key))
-  const ret = await promiseStore[key]
-  delete promiseStore[key]
+  const ret = await getBuffer(ptpNode, key)
 
   if (ret) {
     cache.set(key, ret)
