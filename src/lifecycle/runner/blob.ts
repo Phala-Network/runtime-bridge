@@ -9,6 +9,7 @@ import { concatBuffer, intoChunks } from '../../data_provider/ptp_int'
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
+import BufferListStream from 'bl'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
 import logger from '../../utils/logger'
@@ -16,6 +17,8 @@ import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
 import type { Message } from 'protobufjs'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
+import type { _BufferList } from '../../data_provider/ptp_int'
+import type BufferList from 'bl'
 import RangeMeta = prb.db.RangeMeta
 import IRangeMeta = prb.db.IRangeMeta
 import pipe from 'it-pipe'
@@ -58,19 +61,25 @@ const getBuffer = async (
       '/blob'
     )
 
-    const response = Buffer.concat(
-      (
-        await pipe(
-          intoChunks(Buffer.from(key), CHUNK_SIZE),
-          stream,
-          concatBuffer
-        )
-      )._bufs
+    const response = await pipe(
+      [key],
+      stream,
+      async (source: AsyncIterable<BufferList>) => {
+        let bl: BufferList
+        for await (const buf of source) {
+          if (bl) {
+            bl.append(buf)
+          } else {
+            bl = buf
+          }
+        }
+        return Buffer.concat((bl as _BufferList)?._bufs)
+      }
     )
-    const t2 = Date.now()
 
+    const t2 = Date.now()
     logger.debug(
-      { key, responseSize: response.length, timing: t2 - t1 },
+      { key, responseSize: response?.length, timing: t2 - t1 },
       'getBuffer'
     )
 

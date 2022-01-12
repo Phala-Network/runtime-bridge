@@ -2,6 +2,7 @@ import { DATA_PROVIDER, getMyId } from '../utils/my-id'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { getDb } from './io/db'
 import { walkieBootNodes, walkieListenAddresses } from '../utils/env'
+import PQueue from 'p-queue'
 import concat from 'it-concat'
 import logger from '../utils/logger'
 import pipe from 'it-pipe'
@@ -54,23 +55,30 @@ export const setupInternalPtp = async (
   ptpNode.on('GetDataProviderInfo', make_onGetDataProviderInfo(info))
   ptpNode.on('GetBlobByKey', make_onGetBlobByKey(db))
 
+  const readQueue = new PQueue({ concurrency: 10 })
+
   ptpNode.node.handle('/blob', ({ stream }) => {
     pipe(
       stream.source,
-      concatBuffer,
       async (source) => {
         try {
-          const key = Buffer.concat(
-            ((await source) as _BufferList)._bufs
-          ).toString('utf-8')
-          if (!key) {
-            return Buffer.from([])
+          let bl: BufferList
+          for await (const buf of source) {
+            if (bl) {
+              bl.append(buf as BufferList)
+            } else {
+              bl = buf as BufferList
+            }
           }
-          const data = await db.getBuffer(key)
-          return data?.length ? intoChunks(data, CHUNK_SIZE) : Buffer.from([])
+          const key = Buffer.concat((bl as _BufferList)._bufs).toString('utf-8')
+          if (!key) {
+            return ['']
+          }
+          const data = await readQueue.add(() => db.getBuffer(key))
+          return data?.length ? [data] : ['']
         } catch (e) {
           logger.error('handling /blob', e)
-          return Buffer.from([])
+          return ['']
         }
       },
       stream.sink
