@@ -1,33 +1,28 @@
 import { NOT_FOUND_ERROR } from '../../data_provider/io/db'
-import { Readable, Writable } from 'stream'
 import {
   blobQueueSize,
   lruCacheDebugLogInterval,
   lruCacheMaxAge,
   lruCacheSize,
 } from '../env'
-import { concatBuffer, intoChunks } from '../../data_provider/ptp_int'
 import { pbToObject } from '../../data_provider/io/db_encoding'
-import { pipeline } from 'stream/promises'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
-import BufferListStream from 'bl'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
-import duplexify from 'duplexify'
 import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
 import type { Message } from 'protobufjs'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
-import type { _BufferList } from '../../data_provider/ptp_int'
-import type BufferList from 'bl'
 import RangeMeta = prb.db.RangeMeta
 import IRangeMeta = prb.db.IRangeMeta
-import pipe from 'it-pipe'
 
-const CHUNK_SIZE = 10485760
 const queue = new PQueue({ concurrency: blobQueueSize })
+
+const PRIORITY_META = 10
+const PRIORITY_HEADER_BLOB = 100
+const PRIORITY_PARA_BLOB = 110
 
 type PromiseStore<T> = { [k: string]: Promise<T | null> }
 const promiseStore: PromiseStore<Buffer | Uint8Array> = {}
@@ -49,42 +44,46 @@ if (lruCacheDebugLogInterval > 0) {
 
 const getBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  key: string
+  key: string,
+  priority: number
 ) => {
   if (promiseStore[key]) {
     return await promiseStore[key]
   }
 
-  promiseStore[key] = queue.add(async () => {
-    const t1 = Date.now()
-    const response: Buffer = await new Promise((resolve, reject) => {
-      ;(async () => {
-        const ret: Buffer[] = []
-        const dataProvider = await waitForDataProvider(ptpNode)
-        const socket = dataProvider.socket
-        socket.on('data', (data) => {
-          ret.push(data)
-        })
-        socket.on('end', () => {
-          resolve(Buffer.concat(ret))
-        })
-        socket.on('error', (err) => {
-          reject(err)
-        })
-        socket.on('close', () => {
-          socket.destroy()
-        })
-        socket.write(key)
-      })().catch((e) => reject(e))
-    })
-    const t2 = Date.now()
-    logger.info(
-      { key, responseSize: response?.length, timing: t2 - t1 },
-      'getBuffer'
-    )
+  promiseStore[key] = queue.add(
+    async () => {
+      const t1 = Date.now()
+      const response: Buffer = await new Promise((resolve, reject) => {
+        ;(async () => {
+          const ret: Buffer[] = []
+          const dataProvider = await waitForDataProvider(ptpNode)
+          const socket = dataProvider.socket
+          socket.on('data', (data) => {
+            ret.push(data)
+          })
+          socket.on('end', () => {
+            resolve(Buffer.concat(ret))
+          })
+          socket.on('error', (err) => {
+            reject(err)
+          })
+          socket.on('close', () => {
+            socket.destroy()
+          })
+          socket.write(key)
+        })().catch((e) => reject(e))
+      })
+      const t2 = Date.now()
+      logger.info(
+        { key, responseSize: response?.length, timing: t2 - t1 },
+        'getBuffer'
+      )
 
-    return response?.length ? response : null
-  })
+      return response?.length ? response : null
+    },
+    { priority }
+  )
 
   const ret = await promiseStore[key]
   delete promiseStore[key]
@@ -93,9 +92,10 @@ const getBuffer = async (
 
 const _getCachedBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  key: string
+  key: string,
+  priority: number
 ) => {
-  const ret = await getBuffer(ptpNode, key)
+  const ret = await getBuffer(ptpNode, key, priority)
 
   if (ret) {
     cache.set(key, ret)
@@ -105,7 +105,8 @@ const _getCachedBuffer = async (
 
 const getCachedBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  key: string
+  key: string,
+  priority: number
 ) => {
   const cached = cache.get(key)
 
@@ -113,7 +114,7 @@ const getCachedBuffer = async (
     return cached as Uint8Array
   }
 
-  return _getCachedBuffer(ptpNode, key)
+  return _getCachedBuffer(ptpNode, key, priority)
 }
 
 type WaitFn<T> = (...args: unknown[]) => Promise<T>
@@ -150,25 +151,28 @@ const waitFor = <T>(waitFn: WaitFn<T>) =>
 
 export const waitForCachedBuffer = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
-  key: string
+  key: string,
+  priority: number
 ): Promise<Uint8Array> => {
-  const buffer = await getCachedBuffer(ptpNode, key)
+  const buffer = await getCachedBuffer(ptpNode, key, priority)
   if (buffer) {
     return buffer
   }
   await wait(1000)
-  return waitForCachedBuffer(ptpNode, key)
+  return waitForCachedBuffer(ptpNode, key, priority)
 }
 
 const waitForRangeByParentNumber = async (
   ptpNode: WalkiePtpNode<prb.WalkieRoles>,
   number: number,
-  cached: boolean
+  cached: boolean,
+  priority: number
 ) =>
   waitFor(async () => {
     const buffer = await (cached ? getCachedBuffer : getBuffer)(
       ptpNode,
-      `rangeByParentBlock:${number}:pb`
+      `rangeByParentBlock:${number}:pb`,
+      priority
     )
     if (!buffer) {
       return null
@@ -185,7 +189,8 @@ const waitForParaBlockRange = async (
   waitFor(async () => {
     const buffer = await (cached ? getCachedBuffer : getBuffer)(
       ptpNode,
-      `rangeParaBlock:key:${number}`
+      `rangeParaBlock:key:${number}`,
+      PRIORITY_META
     )
     if (!buffer) {
       return null
@@ -204,18 +209,26 @@ export const getHeaderBlob = async (
   const meta = await waitForRangeByParentNumber(
     ptpNode,
     blockNumber,
-    blockNumber < currentCommittedNumber
+    blockNumber < currentCommittedNumber,
+    PRIORITY_META
   )
   const ret: Uint8ArrayListWithMeta = []
   if (blockNumber === meta.parentStartBlock) {
     ret.push(
       await getCachedBuffer(
         ptpNode,
-        meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey
+        meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey,
+        PRIORITY_HEADER_BLOB
       )
     )
   } else {
-    ret.push(await getCachedBuffer(ptpNode, meta.drySyncHeaderReqKey))
+    ret.push(
+      await getCachedBuffer(
+        ptpNode,
+        meta.drySyncHeaderReqKey,
+        PRIORITY_HEADER_BLOB
+      )
+    )
   }
   ret.meta = meta
   return ret
@@ -239,7 +252,11 @@ export const getParaBlockBlob = async (
       ? meta.bufferKey || dryKey
       : dryKey
 
-  const ret = (await getCachedBuffer(ptpNode, retKey)) as Uint8ArrayWithMeta
+  const ret = (await getCachedBuffer(
+    ptpNode,
+    retKey,
+    PRIORITY_PARA_BLOB
+  )) as Uint8ArrayWithMeta
   ret.meta = meta
   return ret
 }
