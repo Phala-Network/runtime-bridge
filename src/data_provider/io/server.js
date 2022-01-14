@@ -1,5 +1,5 @@
 import { NotFoundError } from 'level-errors'
-import { blobServerSessionMaxMemory } from '../../lifecycle/env'
+import { blobServerSessionMaxMemory } from '../../utils/env'
 import { dataProviderLocalServerPort } from '../../utils/env'
 import { dbListenPath, dbPath } from './db'
 import { server as multileveldownServer } from 'multileveldown'
@@ -8,40 +8,31 @@ import EncodingDown from 'encoding-down'
 import LevelUp from 'levelup'
 import crc32 from 'crc/calculators/crc32'
 import fs from 'fs/promises'
-import http2 from 'http2'
+import http from 'http'
 import logger from '../../utils/logger'
 import net from 'net'
 import rocksdb from 'rocksdb'
 
 const setupLocalServer = (db) =>
   new Promise((resolve) => {
-    const server = http2.createServer({
-      maxSessionMemory: blobServerSessionMaxMemory,
-    })
-    server.on('stream', async (stream, headers) => {
-      const key = headers['prb-key']
+    const server = http.createServer()
+    server.on('request', async (request, response) => {
+      const key = request.headers['prb-key']
       if (!key) {
-        stream.respond({
-          ':status': 404,
-        })
-        stream.end('', () => stream.destroy())
+        response.writeHead(404)
+        response.end('')
       } else {
         try {
           const ret = await db.get(key)
           const crc = crc32(ret).toString(16)
-          stream.respond({
-            ':status': 200,
-            'prb-crc': crc,
-          })
-          stream.end(ret?.length ? ret : '', () => stream.destroy())
+          response.writeHead(200, { 'prb-crc': crc })
+          response.end(ret?.length ? ret : '')
         } catch (e) {
           if (!(e instanceof NotFoundError)) {
             logger.error(e)
           }
-          stream.respond({
-            ':status': 500,
-          })
-          stream.end('', () => stream.destroy())
+          response.writeHead(500)
+          response.end('')
         }
       }
     })

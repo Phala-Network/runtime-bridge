@@ -1,14 +1,14 @@
-import { URL } from 'url'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
 import { walkieBootNodes } from '../../utils/env'
 import PeerId from 'peer-id'
-import http2 from 'http2'
+import http from 'http'
 import logger from '../../utils/logger'
-import net from 'net'
 import wait from '../../utils/wait'
 import type { WalkiePeer } from '@phala/runtime-bridge-walkie/src/peer'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
+
+export const keepAliveAgent = new http.Agent({ keepAlive: true })
 
 export const setupPtp = async () => {
   setLogger(logger)
@@ -28,7 +28,8 @@ export const setupPtp = async () => {
 
 export type BlobServerContext = {
   peer: WalkiePeer
-  session: http2.ClientHttp2Session
+  hostname: string
+  port: number
 }
 
 const dataProviderBlobSessionTable: { [k: string]: BlobServerContext } = {}
@@ -48,39 +49,15 @@ export const connectToBlobServer = async (
       if (!port) {
         return null
       }
-      const url = new URL('http://localhost')
-      url.hostname = peer.multiaddr.nodeAddress().address
-      url.protocol = 'http'
-      url.port = `${port}`
 
-      const session = http2.connect(url)
       const context: BlobServerContext = {
         peer,
-        session,
+        port,
+        hostname: peer.multiaddr.nodeAddress().address,
       }
 
-      return new Promise((resolve, reject) => {
-        session.on('error', (err) => {
-          logger.error(
-            `remote blob server connection(${peer.peerId.toB58String()}):`,
-            err
-          )
-          reject(err)
-        })
-
-        session.on('close', (err) => {
-          logger.debug(
-            `remote blob server connection(${peer.peerId.toB58String()}):`,
-            err
-          )
-          delete dataProviderBlobSessionTable[peer.peerId.toB58String()]
-        })
-
-        session.on('connect', () => {
-          dataProviderBlobSessionTable[peer.peerId.toB58String()] = context
-          resolve(context)
-        })
-      })
+      dataProviderBlobSessionTable[peer.peerId.toB58String()] = context
+      return context
     }
   } catch (e) {
     logger.warn(e)

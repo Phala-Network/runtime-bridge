@@ -5,13 +5,13 @@ import {
   lruCacheMaxAge,
   lruCacheSize,
 } from '../env'
-import { isDev } from '../../utils/env'
+import { keepAliveAgent, waitForDataProvider } from './ptp'
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
-import { waitForDataProvider } from './ptp'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
 import crc32 from 'crc/calculators/crc32'
+import http from 'http'
 import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
@@ -62,10 +62,14 @@ const getBuffer = async (
           const ret: Buffer[] = []
           let remoteCrc: string
           const dataProvider = await waitForDataProvider(ptpNode)
-          const session = dataProvider.session
-          const req = session.request({ ':path': '/', 'prb-key': key })
-          req.on('response', (headers) => {
-            remoteCrc = headers['prb-crc'] as string
+          const req = http.get({
+            agent: keepAliveAgent,
+            host: dataProvider.hostname,
+            port: dataProvider.port,
+            headers: { 'prb-key': key, Connection: 'keep-alive' },
+          })
+          req.on('response', (res) => {
+            remoteCrc = res.headers['prb-crc'] as string
           })
           req.on('error', (err) => {
             reject(err)
@@ -78,7 +82,6 @@ const getBuffer = async (
               return
             }
             const localCrc = crc32(buf).toString(16)
-
             if (localCrc === remoteCrc) {
               resolve(buf)
             } else {
@@ -90,7 +93,7 @@ const getBuffer = async (
       })
       const t2 = Date.now()
 
-      logger.debug(
+      logger.info(
         { key, responseSize: response?.length, timing: t2 - t1 },
         'getBuffer'
       )

@@ -21,6 +21,11 @@ export const ENV_LIST = [
 
   ['PHALA_LOCAL_DB_PATH', 'localDbPath'],
   ['PHALA_DATA_PROVIDER_LOCAL_SERVER', 'dataProviderLocalServerPort'],
+
+  [
+    'PHALA_LIFECYCLE_BLOB_SERVER_SESSION_MAX_MEMORY',
+    'blobServerSessionMaxMemory',
+  ],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -64,5 +69,8 @@ export const dataProviderBootNodes = env.dataProviderBootNodes
 
 export const dataProviderLocalServerPort =
   parseInt(env.dataProviderLocalServerPort) || 8012
+
+export const blobServerSessionMaxMemory =
+  parseInt(env.blobServerSessionMaxMemory) || 64
 
 export default env
