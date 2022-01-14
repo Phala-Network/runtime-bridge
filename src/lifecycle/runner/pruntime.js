@@ -325,7 +325,7 @@ export const startSyncBlob = (runtime) => {
       }
       return headerSync(parentSynchedTo + 1).catch(doReject)
     } catch (e) {
-      logger.info({ next, blobs }, 'Failed to sync_combined_headers')
+      logger.info({ next }, 'Failed to sync_combined_headers')
       throw e
     }
   }
