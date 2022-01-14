@@ -1,4 +1,3 @@
-import { DB_BLOCK, setupDb } from './io/db'
 import {
   getLastCommittedParaBlock,
   getLastCommittedParentBlock,
@@ -11,7 +10,7 @@ import {
 } from '../utils/api'
 import { processGenesis, walkParaBlock, walkParentBlock } from './block'
 import { send } from './ipc'
-import PQueue from 'p-queue'
+import { setupDb } from './io/db'
 import env from '../utils/env'
 import logger from '../utils/logger'
 import wait from '../utils/wait'
@@ -19,10 +18,8 @@ import type { BlockHash } from '@polkadot/types/interfaces'
 import type { U32 } from '@polkadot/types'
 import type { prb } from '@phala/runtime-bridge-walkie'
 
-const FETCH_PARENT_QUEUE_CONCURRENT = parseInt(env.parallelParentBlocks) || 15
-
 const start = async () => {
-  await setupDb(DB_BLOCK)
+  await setupDb()
   await setupParentApi(env.parentChainEndpoint)
   await setupPhalaApi(env.chainEndpoint)
 

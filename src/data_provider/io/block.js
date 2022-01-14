@@ -1,5 +1,5 @@
-import { DB_BLOCK, NOT_FOUND_ERROR, getDb, getKeyExistence } from './db'
 import { DB_PB_TO_OBJECT_OPTIONS, pbToObject } from './db_encoding'
+import { NOT_FOUND_ERROR, getDb, getKeyExistence } from './db'
 import { prb } from '@phala/runtime-bridge-walkie'
 import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
@@ -31,20 +31,20 @@ export const encodeBlockScale = (block, shouldCopy = false) => {
 }
 
 export const getParaBlockExistence = async (number) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   return getKeyExistence(db, `para:${number}:written`)
 }
 
 export const setParaBlock = async (number, block) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   const blockPb = ParaBlock.create(block)
-  await db.set(`para:${number}:pb`, ParaBlock.encode(blockPb).finish())
-  await db.set(`para:${number}:written`, Buffer.from([1]))
+  await db.setBuffer(`para:${number}:pb`, ParaBlock.encode(blockPb).finish())
+  await db.setBuffer(`para:${number}:written`, Buffer.from([1]))
   return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getParaBlock = async (number) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   const buffer = await db.getBuffer(`para:${number}:pb`)
   if (!buffer) {
     return buffer
@@ -88,20 +88,23 @@ export const waitForParaBlock = (blockNumber) =>
   )
 
 export const getParentBlockExistance = async (number) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   return getKeyExistence(db, `parent:${number}:written`)
 }
 
 export const setParentBlock = async (number, block) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   const blockPb = ParentBlock.create(block)
-  await db.set(`parent:${number}:pb`, ParentBlock.encode(blockPb).finish())
-  await db.set(`parent:${number}:written`, Buffer.from([1]))
+  await db.setBuffer(
+    `parent:${number}:pb`,
+    ParentBlock.encode(blockPb).finish()
+  )
+  await db.setBuffer(`parent:${number}:written`, Buffer.from([1]))
   return pbToObject(blockPb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getParentBlock = async (number) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   const buffer = await db.getBuffer(`parent:${number}:pb`)
   if (!buffer) {
     return buffer
@@ -145,15 +148,18 @@ export const waitForParentBlock = (blockNumber) =>
   )
 
 export const setGenesis = async (genesis) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   const pb = Genesis.create(genesis)
-  await db.set(`genesis:${genesis.paraId}:pb`, Genesis.encode(pb).finish())
-  await db.set(`genesis:${genesis.paraId}:written`, Buffer.from([1]))
+  await db.setBuffer(
+    `genesis:${genesis.paraId}:pb`,
+    Genesis.encode(pb).finish()
+  )
+  await db.setBuffer(`genesis:${genesis.paraId}:written`, Buffer.from([1]))
   return pbToObject(pb, DB_PB_TO_OBJECT_OPTIONS)
 }
 
 export const getGenesis = async (paraId) => {
-  const db = await getDb(DB_BLOCK)
+  const db = await getDb()
   const buffer = await db.getBuffer(`genesis:${paraId}:pb`)
   if (!buffer) {
     return null

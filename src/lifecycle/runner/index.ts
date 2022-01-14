@@ -42,14 +42,14 @@ export type RunnerContext = {
 
 const updateDataProviderInfo = async (context: RunnerContext) => {
   const { ptpNode } = context
-  const peer = selectDataProvider(ptpNode)
+  const peer = await selectDataProvider(ptpNode)
 
   if (!peer) {
     logger.info('Data provider not found, Waiting...')
     return null
   }
 
-  const response = await peer.dial('GetDataProviderInfo', {})
+  const response = await peer.peer.dial('GetDataProviderInfo', {})
   if (response.hasError) {
     logger.warn('Error while updating data provider info:', response.error)
     return null
@@ -64,6 +64,9 @@ const startRunner = async () => {
     throw new Error('Runner should be forked with an id!')
   }
 
+  await setupParentApi(env.parentChainEndpoint)
+  await setupPhalaApi(env.chainEndpoint)
+
   const myId = await getMyId(LIFECYCLE)
   const localDb = await setupLocalDb(myId)
   const ptpNode = await setupPtp()
@@ -75,15 +78,12 @@ const startRunner = async () => {
   }
   await txQueue.ready()
 
-  await setupParentApi(env.parentChainEndpoint)
-  await setupPhalaApi(env.chainEndpoint)
-
   const paraId = (
     (await phalaApi.query.parachainInfo.parachainId()) as U8
   ).toNumber()
   const genesisResponse = await (
     await waitForDataProvider(ptpNode)
-  ).dial('GetBlobByKey', {
+  ).peer.dial('GetBlobByKey', {
     key: `genesis:${paraId}:pb`,
   })
 

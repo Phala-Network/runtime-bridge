@@ -16,3 +16,14 @@ declare module 'redis-commands' {
   declare const list: Command[]
   export { list }
 }
+
+declare module 'multileveldown' {
+  import type { LevelUp } from 'levelup'
+  import type duplexify from 'duplexify'
+
+  export type MultiLevelDownClient = LevelUp & {
+    connect: (opts?: { [k: string]: unknown }, proxy?: duplexify) => duplexify
+  }
+
+  export const client: (opts: { [k: string]: unknown }) => MultiLevelDownClient
+}

@@ -1,74 +1,158 @@
-import createClient from '../../utils/redis'
+import { NotFoundError } from 'level-errors'
+import { client as multileveldownClient } from 'multileveldown'
+import { pipeline } from 'stream'
+import cluster from 'cluster'
 import env from '../../utils/env'
+import fork from '../../utils/fork'
 import logger from '../../utils/logger'
+import net from 'net'
+import path from 'path'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
 import type { KeyType } from 'ioredis'
-import type { PrbRedisClient } from '../../utils/redis'
+import type { MultiLevelDownClient } from 'multileveldown'
 
-const dbMap = new Map()
-
-export const DB_TOUCHED_AT = 'DB_TOUCHED_AT'
-
-export const DB_BLOCK = env.dbFetchNamespace ?? 'prb_fetch'
-export const DB_WINDOW = env.dbFetchNamespace ?? 'prb_fetch'
-export const DB_WORKER = env.dbNamespace ?? 'prb_default'
-
-export const DB_NUMBER_FETCH = '0'
-export const DB_NUMBER_POOL = '1'
-
-export const DB_KEYS = Object.freeze([DB_BLOCK, DB_WORKER])
-export const DB_NUMBERS = Object.freeze({
-  [DB_BLOCK]: DB_NUMBER_FETCH,
-  [DB_WINDOW]: DB_NUMBER_FETCH,
-  [DB_WORKER]: DB_NUMBER_POOL,
-})
-
-const checkDb = async (db: PrbRedisClient) => {
-  let touchedAt
-
-  try {
-    touchedAt = parseInt(await db.get('DB_TOUCHED_AT'))
-  } catch (error) {
-    logger.error(error)
-  }
-
-  if (!(touchedAt > 0)) {
-    throw new Error('DB not initialized, did IO service start correctly?')
-  }
-
-  return db
+export type PrbLevelDownClient = MultiLevelDownClient & {
+  getJson?: (key: string) => ReturnType<MultiLevelDownClient['get']>
+  getBuffer?: (key: string) => ReturnType<MultiLevelDownClient['get']>
+  setJson?: (
+    key: string,
+    value: unknown
+  ) => ReturnType<MultiLevelDownClient['put']>
+  setBuffer?: (
+    key: string,
+    value: unknown
+  ) => ReturnType<MultiLevelDownClient['put']>
 }
 
-export const setupDb = async (...nss: string[]) => {
-  const dbs = await Promise.all([...nss.map(getDb)])
-  return Promise.all(dbs.map(checkDb))
+let _db: MultiLevelDownClient = null
+
+export const dbPath = env.localDbPath || '/var/data/0'
+export const dbListenPath = path.join(dbPath, './conn.sock')
+
+export const setupDb = async () => {
+  if (cluster.isPrimary) {
+    await forkDb()
+  }
+  return getDb()
 }
 
-export const getDb = async (ns: string) => {
-  const db = dbMap.get(ns)
+const forkDb = (): Promise<void> =>
+  new Promise((resolve) => {
+    const worker = fork('rocksdb', 'data_provider/io/server')
+    worker.on('message', (msg) => {
+      if (msg === 'ok') {
+        resolve()
+      }
+    })
+  })
 
-  if (db) {
-    return db
+export const getDb = (): Promise<PrbLevelDownClient> => {
+  if (_db) {
+    return Promise.resolve(_db)
   }
 
-  const createOptions = {
-    db: parseInt(DB_NUMBERS[ns] || DB_NUMBER_POOL),
-    keyPrefix: ns + ':',
+  const rawDb = multileveldownClient({
+    retry: true,
+    keyEncoding: 'utf8',
+    valueEncoding: 'binary',
+  }) as PrbLevelDownClient
+
+  const socket = net.connect(dbListenPath)
+  const remote = rawDb.connect()
+
+  const _get = rawDb.get.bind(rawDb)
+
+  const patchedGet = async (key: unknown, options: unknown) => {
+    try {
+      return await _get(key, options)
+    } catch (e) {
+      if (e instanceof NotFoundError) {
+        return null
+      }
+      throw e
+    }
   }
-  const redisClient = await createClient(env.dbEndpoint, createOptions)
 
-  await redisClient.set(DB_TOUCHED_AT, Date.now())
-  logger.info(createOptions, 'Connecting DB...')
+  rawDb.get = patchedGet
 
-  dbMap.set(ns, redisClient)
-  return redisClient
+  rawDb.getJson = (key) =>
+    patchedGet(key, {
+      keyEncoding: 'utf8',
+      valueEncoding: 'json',
+    })
+  rawDb.getBuffer = (key) =>
+    patchedGet(key, {
+      keyEncoding: 'utf8',
+      valueEncoding: 'binary',
+    })
+
+  rawDb.setJson = (key, value) =>
+    rawDb.put(key, value, {
+      keyEncoding: 'utf8',
+      valueEncoding: 'json',
+    })
+  rawDb.setBuffer = (key, value) =>
+    rawDb.put(key, value, {
+      keyEncoding: 'utf8',
+      valueEncoding: 'binary',
+    })
+
+  pipeline(socket, remote, socket, (err) => {
+    logger.warn('db ipc:', err)
+  })
+
+  const connect = (): Promise<PrbLevelDownClient> =>
+    new Promise((resolve) => {
+      socket.on('error', (err) => {
+        logger.error('db ipc connection:', err)
+      })
+
+      socket.on('close', (err) => {
+        logger.error('db ipc connection:', err)
+        remote.destroy()
+      })
+
+      socket.on('connect', () => {
+        _db = rawDb
+        logger.info(`Connected to local db.`)
+        resolve(_db)
+      })
+    })
+  return connect()
 }
 
 export const NOT_FOUND_ERROR = new Error('Not found.')
 
-export const getKeyExistence = async (db: PrbRedisClient, key: KeyType) =>
-  (await db.exists(key)) === 1
+export const getKeyExistence = (
+  db: MultiLevelDownClient,
+  key: KeyType
+): Promise<boolean> =>
+  new Promise((resolve, reject) => {
+    let resolved = false
+    db.createKeyStream({
+      limit: 1,
+      gte: key,
+      lte: key,
+    })
+      .on('data', () => {
+        resolved = true
+        resolve(true)
+      })
+      .on('error', reject)
+      .on('end', () => {
+        if (!resolved) {
+          resolve(false)
+          resolved = true
+        }
+      })
+      .on('close', () => {
+        if (!resolved) {
+          resolve(false)
+          resolved = true
+        }
+      })
+  })
 
 export type AnyAsyncFn<T> = (...fnArgs: unknown[]) => Promise<T> | T
 

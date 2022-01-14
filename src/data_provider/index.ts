@@ -1,14 +1,14 @@
-import { DB_BLOCK, setupDb } from './io/db'
 import { MIN_SYNCHED_DISTANCE } from '../utils/constants'
 import { fork } from './ipc'
 import { phalaApi, setupParentApi, setupPhalaApi } from '../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { processGenesis } from './block'
+import { setupDb } from './io/db'
 import { setupInternalPtp } from './ptp_int'
-import env from '../utils/env'
+import env, { dataProviderLocalServerPort } from '../utils/env'
 
 const start = async () => {
-  await setupDb(DB_BLOCK)
+  await setupDb()
   await setupParentApi(env.parentChainEndpoint)
   await setupPhalaApi(env.chainEndpoint)
 
@@ -33,6 +33,7 @@ const start = async () => {
     paraFetchedHeight: -1,
     paraProcessedHeight: -1,
     paraCommittedHeight: -1,
+    blobServerPort: dataProviderLocalServerPort,
   }
   await setupInternalPtp(genesisHash, info)
 

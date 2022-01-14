@@ -1,7 +1,7 @@
 import { fork } from './runner_ipc'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { randomUUID } from 'crypto'
-import { runnerMaxWorkerNumber } from './env'
+import Pool from './local_db/pool_model'
 import Worker from './local_db/worker_model'
 import logger from '../utils/logger'
 import type { LifecycleManagerContext } from './index'
@@ -52,33 +52,43 @@ export const createRunnerManager = async (
     workers,
   }
 
-  const allWorkersIds = (
-    await Worker.findAll({
-      where: { enabled: true },
-      attributes: ['id'],
-    })
-  ).map((i) => i.id)
+  const allPools = await Pool.findAll({
+    where: { enabled: true },
+    attributes: ['id', 'pid'],
+  })
 
-  if (!allWorkersIds.length) {
+  const workerIdGroups = (
+    await Promise.all(
+      allPools.map(async (p) => ({
+        pid: p.pid,
+        workers: (
+          await Worker.findAll({
+            where: {
+              poolId: p.id,
+              enabled: true,
+            },
+            attributes: ['id'],
+          })
+        ).map((i) => i.id),
+      }))
+    )
+  ).filter((i) => i.workers.length)
+
+  if (!workerIdGroups.length) {
     logger.warn(
-      'No worker found, please add workers and restart lifecycle manager.'
+      'No valid worker found, please add workers and restart lifecycle manager.'
     )
     return context
   }
 
-  const workerIdGroups = intoChunks(
-    allWorkersIds,
-    runnerMaxWorkerNumber
-  ) as string[][]
-  console.log(
-    `Starting ${workerIdGroups.length} runners for ${allWorkersIds.length}`
-  )
-
-  for (const workerIds of workerIdGroups) {
+  for (const pool of workerIdGroups) {
+    logger.info(
+      `Starting runner for pid #${pool.pid} with ${pool.workers.length} workers.`
+    )
     const runnerId = randomUUID()
     const runnerMeta: RunnerMeta = {
       id: runnerId,
-      workerIds,
+      workerIds: pool.workers,
     }
     const forkRet = fork(
       'runner',
@@ -88,7 +98,7 @@ export const createRunnerManager = async (
             logger.error({ runnerId, remoteRunnerId }, 'Runner id mismatch!')
             process.exit(200)
           }
-          forkRet.send('runnerShouldInit', workerIds)
+          forkRet.send('runnerShouldInit', pool.workers)
         },
         managerShouldUpdateWorkerInfo: (workerInfoMap) => {
           for (const workerId of Object.keys(workerInfoMap)) {

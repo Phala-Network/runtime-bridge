@@ -288,7 +288,17 @@ export const startSyncBlob = (runtime) => {
     }
     // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
-    const blobs = await getHeaderBlob(ptpNode, next)
+
+    if (fetchStatus.parentProcessedHeight < next) {
+      await wait(1000)
+      return headerSync(next).catch(doReject)
+    }
+
+    const blobs = await getHeaderBlob(
+      ptpNode,
+      next,
+      fetchStatus.parentCommittedHeight
+    )
 
     // const {
     //   payload: {
@@ -313,7 +323,6 @@ export const startSyncBlob = (runtime) => {
       if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
         syncStatus.paraHeaderSynchedTo = paraSynchedTo
       }
-      await wait(0)
       return headerSync(parentSynchedTo + 1).catch(doReject)
     } catch (e) {
       logger.info({ next, blobs }, 'Failed to sync_combined_headers')
@@ -331,7 +340,12 @@ export const startSyncBlob = (runtime) => {
     const { paraHeaderSynchedTo } = syncStatus
 
     if (paraHeaderSynchedTo >= next) {
-      const data = await getParaBlockBlob(ptpNode, next, paraHeaderSynchedTo)
+      const data = await getParaBlockBlob(
+        ptpNode,
+        next,
+        paraHeaderSynchedTo,
+        fetchStatus.paraCommittedHeight
+      )
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)
