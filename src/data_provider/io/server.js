@@ -14,7 +14,9 @@ import rocksdb from 'rocksdb'
 
 const setupLocalServer = (db) =>
   new Promise((resolve) => {
-    const server = http2.createServer()
+    const server = http2.createServer({
+      maxSessionMemory: 1024,
+    })
     server.on('stream', async (stream, headers) => {
       const key = headers['prb-key']
       if (!key) {

@@ -64,7 +64,7 @@ const getBuffer = async (
           const dataProvider = await waitForDataProvider(ptpNode)
           const session = dataProvider.session
           const req = session.request({ ':path': '/', 'prb-key': key })
-          req.on('response', (headers, flags) => {
+          req.on('response', (headers) => {
             remoteCrc = headers['prb-crc'] as string
           })
           req.on('data', (chunk) => ret.push(chunk))
