@@ -5,6 +5,7 @@ import {
   lruCacheMaxAge,
   lruCacheSize,
 } from '../env'
+import { isDev } from '../../utils/env'
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
@@ -21,8 +22,9 @@ import IRangeMeta = prb.db.IRangeMeta
 const queue = new PQueue({ concurrency: blobQueueSize })
 
 const PRIORITY_META = 10
+// const PRIORITY_META_HURRY = 20
 const PRIORITY_HEADER_BLOB = 100
-const PRIORITY_PARA_BLOB = 110
+const PRIORITY_PARA_BLOB = 100
 
 type PromiseStore<T> = { [k: string]: Promise<T | null> }
 const promiseStore: PromiseStore<Buffer | Uint8Array> = {}
@@ -75,7 +77,8 @@ const getBuffer = async (
         })().catch((e) => reject(e))
       })
       const t2 = Date.now()
-      logger.info(
+
+      ;(isDev ? logger.info : logger.debug)(
         { key, responseSize: response?.length, timing: t2 - t1 },
         'getBuffer'
       )

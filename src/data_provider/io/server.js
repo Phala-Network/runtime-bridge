@@ -16,7 +16,7 @@ const setupLocalServer = (db) =>
       socket.on('error', (err) => {
         logger.error('Socket error!', err)
       })
-      socket.on('close', (err) => {
+      socket.on('close', () => {
         socket.destroy()
       })
       socket.on('data', async (data) => {

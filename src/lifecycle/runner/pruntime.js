@@ -288,6 +288,12 @@ export const startSyncBlob = (runtime) => {
     }
     // TODO: use protobuf api
     const next = typeof _next === 'number' ? _next : info.headernum
+
+    if (fetchStatus.parentProcessedHeight < next) {
+      await wait(1000)
+      return headerSync(next).catch(doReject)
+    }
+
     const blobs = await getHeaderBlob(
       ptpNode,
       next,
@@ -317,7 +323,6 @@ export const startSyncBlob = (runtime) => {
       if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
         syncStatus.paraHeaderSynchedTo = paraSynchedTo
       }
-      await wait(0)
       return headerSync(parentSynchedTo + 1).catch(doReject)
     } catch (e) {
       logger.info({ next, blobs }, 'Failed to sync_combined_headers')
