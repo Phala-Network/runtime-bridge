@@ -23,7 +23,7 @@ const setupLocalServer = (db) =>
         stream.respond({
           ':status': 404,
         })
-        stream.end('')
+        stream.end('', () => stream.destroy())
       } else {
         try {
           const ret = await db.get(key)
@@ -32,7 +32,7 @@ const setupLocalServer = (db) =>
             ':status': 200,
             'prb-crc': crc,
           })
-          stream.end(ret?.length ? ret : '')
+          stream.end(ret?.length ? ret : '', () => stream.destroy())
         } catch (e) {
           if (!(e instanceof NotFoundError)) {
             logger.error(e)
@@ -40,7 +40,7 @@ const setupLocalServer = (db) =>
           stream.respond({
             ':status': 500,
           })
-          stream.end('')
+          stream.end('', () => stream.destroy())
         }
       }
     })
