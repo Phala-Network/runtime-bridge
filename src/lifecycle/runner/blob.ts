@@ -70,30 +70,30 @@ const getBuffer = async (
           })
           req.on('response', (res) => {
             remoteCrc = res.headers['prb-crc'] as string
+            res.on('data', (chunk) => ret.push(chunk))
+            res.on('end', () => {
+              const buf = Buffer.concat(ret)
+              if (!buf.length) {
+                resolve(null)
+                return
+              }
+              const localCrc = crc32(buf).toString(16)
+              if (localCrc === remoteCrc) {
+                resolve(buf)
+              } else {
+                reject(new Error('CRC mismatch!'))
+              }
+            })
           })
           req.on('error', (err) => {
             reject(err)
-          })
-          req.on('data', (chunk) => ret.push(chunk))
-          req.on('end', () => {
-            const buf = Buffer.concat(ret)
-            if (!buf.length) {
-              resolve(null)
-              return
-            }
-            const localCrc = crc32(buf).toString(16)
-            if (localCrc === remoteCrc) {
-              resolve(buf)
-            } else {
-              reject(new Error('CRC mismatch!'))
-            }
           })
           req.end()
         })().catch((e) => reject(e))
       })
       const t2 = Date.now()
 
-      logger.info(
+      logger.debug(
         { key, responseSize: response?.length, timing: t2 - t1 },
         'getBuffer'
       )
