@@ -1,4 +1,5 @@
 import { NotFoundError } from 'level-errors'
+import { blobServerSessionMaxMemory } from '../../lifecycle/env'
 import { dataProviderLocalServerPort } from '../../utils/env'
 import { dbListenPath, dbPath } from './db'
 import { server as multileveldownServer } from 'multileveldown'
@@ -15,7 +16,7 @@ import rocksdb from 'rocksdb'
 const setupLocalServer = (db) =>
   new Promise((resolve) => {
     const server = http2.createServer({
-      maxSessionMemory: 1024,
+      maxSessionMemory: blobServerSessionMaxMemory,
     })
     server.on('stream', async (stream, headers) => {
       const key = headers['prb-key']
