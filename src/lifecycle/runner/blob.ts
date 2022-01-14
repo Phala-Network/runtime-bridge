@@ -11,6 +11,7 @@ import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
+import crc32 from 'crc/calculators/crc32'
 import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
@@ -59,26 +60,34 @@ const getBuffer = async (
       const response: Buffer = await new Promise((resolve, reject) => {
         ;(async () => {
           const ret: Buffer[] = []
+          let remoteCrc: string
           const dataProvider = await waitForDataProvider(ptpNode)
-          const socket = dataProvider.socket
-          socket.on('data', (data) => {
-            ret.push(data)
+          const session = dataProvider.session
+          const req = session.request({ ':path': '/', 'prb-key': key })
+          req.on('response', (headers, flags) => {
+            remoteCrc = headers['prb-crc'] as string
           })
-          socket.on('end', () => {
-            resolve(Buffer.concat(ret))
+          req.on('data', (chunk) => ret.push(chunk))
+          req.on('end', () => {
+            const buf = Buffer.concat(ret)
+            if (!buf.length) {
+              resolve(null)
+              return
+            }
+            const localCrc = crc32(buf).toString(16)
+
+            if (localCrc === remoteCrc) {
+              resolve(buf)
+            } else {
+              reject(new Error('CRC mismatch!'))
+            }
           })
-          socket.on('error', (err) => {
-            reject(err)
-          })
-          socket.on('close', () => {
-            socket.destroy()
-          })
-          socket.write(key)
+          req.end()
         })().catch((e) => reject(e))
       })
       const t2 = Date.now()
 
-      ;(isDev ? logger.info : logger.debug)(
+      logger.debug(
         { key, responseSize: response?.length, timing: t2 - t1 },
         'getBuffer'
       )

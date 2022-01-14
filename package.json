@@ -26,6 +26,7 @@
     "byte-base64": "^1.1.0",
     "commander": "^8.3.0",
     "core-js": "^3.20.1",
+    "crc": "^4.1.0",
     "datagram-stream": "^1.1.1",
     "dayjs": "^1.10.7",
     "decimal.js": "^10.3.1",
