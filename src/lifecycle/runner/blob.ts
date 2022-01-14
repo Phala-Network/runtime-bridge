@@ -67,6 +67,9 @@ const getBuffer = async (
           req.on('response', (headers) => {
             remoteCrc = headers['prb-crc'] as string
           })
+          req.on('error', (err) => {
+            reject(err)
+          })
           req.on('data', (chunk) => ret.push(chunk))
           req.on('end', () => {
             const buf = Buffer.concat(ret)

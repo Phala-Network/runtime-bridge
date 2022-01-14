@@ -45,43 +45,14 @@ const setupLocalServer = (db) =>
       }
     })
 
+    server.on('error', (err) => {
+      logger.error(err)
+    })
+
     server.listen(dataProviderLocalServerPort, () => {
       resolve()
     })
   })
-
-// const setupLocalServer = (db) =>
-//   new Promise((resolve) => {
-//     const server = net.createServer((socket) => {
-//       socket.on('error', (err) => {
-//         logger.error('Socket error!', err)
-//       })
-//       socket.on('close', () => {
-//         socket.destroy()
-//       })
-//       socket.on('data', async (data) => {
-//         const key = data.toString('utf8').trim()
-//         if (!key) {
-//           socket.write('')
-//         } else {
-//           try {
-//             const ret = await db.get(key)
-//             socket.write(ret?.length ? ret : '')
-//           } catch (e) {
-//             if (!(e instanceof NotFoundError)) {
-//               logger.error(e)
-//             }
-//             socket.write('')
-//           }
-//         }
-//         socket.end()
-//       })
-//     })
-//
-//     server.listen(dataProviderLocalServerPort, () => {
-//       resolve()
-//     })
-//   })
 
 const start = async () => {
   await fs.mkdir(dbPath, { recursive: true })
@@ -113,6 +84,10 @@ const start = async () => {
         logger.error('Pipeline error!', err)
       }
     })
+  })
+
+  ipcServer.on('error', (err) => {
+    logger.error('Socket error!', err)
   })
 
   ipcServer.listen(dbListenPath, () => {
