@@ -20,6 +20,7 @@ export const ENV_LIST = [
   ['PHALA_DATA_PROVIDER_BOOT_NODES', 'dataProviderBootNodes'],
 
   ['PHALA_LOCAL_DB_PATH', 'localDbPath'],
+  ['PHALA_DATA_PROVIDER_LOCAL_SERVER', 'dataProviderLocalServerPort'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -60,5 +61,8 @@ export const dataProviderTrustedOrigins = env.dataProviderTrustedOrigins
 export const dataProviderBootNodes = env.dataProviderBootNodes
   ? env.dataProviderBootNodes.split(',').map((i) => i.trim())
   : []
+
+export const dataProviderLocalServerPort =
+  parseInt(env.dataProviderLocalServerPort) || 8012
 
 export default env

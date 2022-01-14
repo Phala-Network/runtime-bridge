@@ -42,14 +42,14 @@ export type RunnerContext = {
 
 const updateDataProviderInfo = async (context: RunnerContext) => {
   const { ptpNode } = context
-  const peer = selectDataProvider(ptpNode)
+  const peer = await selectDataProvider(ptpNode)
 
   if (!peer) {
     logger.info('Data provider not found, Waiting...')
     return null
   }
 
-  const response = await peer.dial('GetDataProviderInfo', {})
+  const response = await peer.peer.dial('GetDataProviderInfo', {})
   if (response.hasError) {
     logger.warn('Error while updating data provider info:', response.error)
     return null
@@ -83,7 +83,7 @@ const startRunner = async () => {
   ).toNumber()
   const genesisResponse = await (
     await waitForDataProvider(ptpNode)
-  ).dial('GetBlobByKey', {
+  ).peer.dial('GetBlobByKey', {
     key: `genesis:${paraId}:pb`,
   })
 

@@ -1,4 +1,5 @@
 import { NOT_FOUND_ERROR } from '../../data_provider/io/db'
+import { Readable, Writable } from 'stream'
 import {
   blobQueueSize,
   lruCacheDebugLogInterval,
@@ -7,11 +8,13 @@ import {
 } from '../env'
 import { concatBuffer, intoChunks } from '../../data_provider/ptp_int'
 import { pbToObject } from '../../data_provider/io/db_encoding'
+import { pipeline } from 'stream/promises'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
 import BufferListStream from 'bl'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
+import duplexify from 'duplexify'
 import logger from '../../utils/logger'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
@@ -53,32 +56,29 @@ const getBuffer = async (
   }
 
   promiseStore[key] = queue.add(async () => {
-    const dataProvider = await waitForDataProvider(ptpNode)
-
     const t1 = Date.now()
-    const { stream } = await ptpNode.node.dialProtocol(
-      dataProvider.peerId,
-      '/blob'
-    )
-
-    const response = await pipe(
-      [key],
-      stream,
-      async (source: AsyncIterable<BufferList>) => {
-        let bl: BufferList
-        for await (const buf of source) {
-          if (bl) {
-            bl.append(buf)
-          } else {
-            bl = buf
-          }
-        }
-        return Buffer.concat((bl as _BufferList)?._bufs)
-      }
-    )
-
+    const response: Buffer = await new Promise((resolve, reject) => {
+      ;(async () => {
+        const ret: Buffer[] = []
+        const dataProvider = await waitForDataProvider(ptpNode)
+        const socket = dataProvider.socket
+        socket.on('data', (data) => {
+          ret.push(data)
+        })
+        socket.on('end', () => {
+          resolve(Buffer.concat(ret))
+        })
+        socket.on('error', (err) => {
+          reject(err)
+        })
+        socket.on('close', () => {
+          socket.destroy()
+        })
+        socket.write(key)
+      })().catch((e) => reject(e))
+    })
     const t2 = Date.now()
-    logger.debug(
+    logger.info(
       { key, responseSize: response?.length, timing: t2 - t1 },
       'getBuffer'
     )

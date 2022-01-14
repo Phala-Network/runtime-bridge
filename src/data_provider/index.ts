@@ -5,7 +5,7 @@ import { prb } from '@phala/runtime-bridge-walkie'
 import { processGenesis } from './block'
 import { setupDb } from './io/db'
 import { setupInternalPtp } from './ptp_int'
-import env from '../utils/env'
+import env, { dataProviderLocalServerPort } from '../utils/env'
 
 const start = async () => {
   await setupDb()
@@ -33,6 +33,7 @@ const start = async () => {
     paraFetchedHeight: -1,
     paraProcessedHeight: -1,
     paraCommittedHeight: -1,
+    blobServerPort: dataProviderLocalServerPort,
   }
   await setupInternalPtp(genesisHash, info)
 
