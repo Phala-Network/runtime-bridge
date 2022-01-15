@@ -52,27 +52,38 @@ export const createRunnerManager = async (
     workers,
   }
 
-  const allPools = await Pool.findAll({
-    where: { enabled: true },
-    attributes: ['id', 'pid'],
-  })
+  // const allPools = await Pool.findAll({
+  //   where: { enabled: true },
+  //   attributes: ['id', 'pid'],
+  // })
 
-  const workerIdGroups = (
-    await Promise.all(
-      allPools.map(async (p) => ({
-        pid: p.pid,
-        workers: (
-          await Worker.findAll({
-            where: {
-              poolId: p.id,
-              enabled: true,
-            },
-            attributes: ['id'],
-          })
-        ).map((i) => i.id),
-      }))
-    )
-  ).filter((i) => i.workers.length)
+  // const workerIdGroups = (
+  //   await Promise.all(
+  //     allPools.map(async (p) => ({
+  //       pid: p.pid,
+  //       workers: (
+  //         await Worker.findAll({
+  //           where: {
+  //             poolId: p.id,
+  //             enabled: true,
+  //           },
+  //           attributes: ['id'],
+  //         })
+  //       ).map((i) => i.id),
+  //     }))
+  //   )
+  // ).filter((i) => i.workers.length)
+
+  const workerIdGroups = [
+    (
+      await Worker.findAll({
+        where: {
+          enabled: true,
+        },
+        attributes: ['id'],
+      })
+    ).map((i) => i.id),
+  ].filter((i) => i.length)
 
   if (!workerIdGroups.length) {
     logger.warn(
@@ -81,14 +92,12 @@ export const createRunnerManager = async (
     return context
   }
 
-  for (const pool of workerIdGroups) {
-    logger.info(
-      `Starting runner for pid #${pool.pid} with ${pool.workers.length} workers.`
-    )
+  for (const ids of workerIdGroups) {
+    logger.info(`Starting runner for ${ids.length} workers.`)
     const runnerId = randomUUID()
     const runnerMeta: RunnerMeta = {
       id: runnerId,
-      workerIds: pool.workers,
+      workerIds: ids,
     }
     const forkRet = fork(
       'runner',
@@ -98,7 +107,7 @@ export const createRunnerManager = async (
             logger.error({ runnerId, remoteRunnerId }, 'Runner id mismatch!')
             process.exit(200)
           }
-          forkRet.send('runnerShouldInit', pool.workers)
+          forkRet.send('runnerShouldInit', ids)
         },
         managerShouldUpdateWorkerInfo: (workerInfoMap) => {
           for (const workerId of Object.keys(workerInfoMap)) {

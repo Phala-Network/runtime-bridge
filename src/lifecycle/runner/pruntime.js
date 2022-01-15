@@ -300,6 +300,11 @@ export const startSyncBlob = (runtime) => {
       fetchStatus.parentCommittedHeight
     )
 
+    if (!blobs[0]) {
+      await wait(1000)
+      return headerSync(next).catch(doReject)
+    }
+
     // const {
     //   payload: {
     //     relaychain_synced_to: parentSynchedTo,
@@ -325,7 +330,7 @@ export const startSyncBlob = (runtime) => {
       }
       return headerSync(parentSynchedTo + 1).catch(doReject)
     } catch (e) {
-      logger.info({ next, blobs }, 'Failed to sync_combined_headers')
+      logger.info({ next, e }, 'Failed to sync_combined_headers')
       throw e
     }
   }
@@ -346,6 +351,12 @@ export const startSyncBlob = (runtime) => {
         paraHeaderSynchedTo,
         fetchStatus.paraCommittedHeight
       )
+
+      if (!data) {
+        await wait(1000)
+        return paraBlockSync(next).catch(doReject)
+      }
+
       const {
         payload: { dispatched_to: dispatchedTo },
       } = await request('/bin_api/dispatch_block', data)

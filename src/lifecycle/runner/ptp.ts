@@ -2,11 +2,13 @@ import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
 import { walkieBootNodes } from '../../utils/env'
 import PeerId from 'peer-id'
+import http from 'http'
 import logger from '../../utils/logger'
-import net from 'net'
 import wait from '../../utils/wait'
 import type { WalkiePeer } from '@phala/runtime-bridge-walkie/src/peer'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
+
+export const keepAliveAgent = new http.Agent({ keepAlive: true })
 
 export const setupPtp = async () => {
   setLogger(logger)
@@ -26,64 +28,41 @@ export const setupPtp = async () => {
 
 export type BlobServerContext = {
   peer: WalkiePeer
-  open: boolean
-  socket: net.Socket
+  hostname: string
+  port: number
 }
 
-const dataProviderBlobServerPortTable: { [k: string]: number } = {}
+const dataProviderBlobSessionTable: { [k: string]: BlobServerContext } = {}
 
 export const connectToBlobServer = async (
   peer: WalkiePeer
 ): Promise<BlobServerContext> => {
-  let port = dataProviderBlobServerPortTable[peer.peerId.toB58String()]
+  const session = dataProviderBlobSessionTable[peer.peerId.toB58String()]
 
   try {
-    if (!port) {
+    if (session) {
+      return session
+    } else {
       const info = await peer.dial('GetDataProviderInfo', {})
-      port = info.data.blobServerPort
-      dataProviderBlobServerPortTable[peer.peerId.toB58String()] = port
+      const port = info.data.blobServerPort
+
+      if (!port) {
+        return null
+      }
+
+      const context: BlobServerContext = {
+        peer,
+        port,
+        hostname: peer.multiaddr.nodeAddress().address,
+      }
+
+      dataProviderBlobSessionTable[peer.peerId.toB58String()] = context
+      return context
     }
   } catch (e) {
     logger.warn(e)
     return null
   }
-
-  if (!port) {
-    return null
-  }
-
-  const socket = net.createConnection({
-    family: peer.multiaddr.nodeAddress().family,
-    port,
-    host: peer.multiaddr.nodeAddress().address,
-  })
-
-  const context: BlobServerContext = {
-    peer,
-    open: false,
-    socket,
-  }
-
-  return new Promise((resolve) => {
-    socket.on('error', (err) => {
-      logger.error(
-        `remote blob server connection(${peer.peerId.toB58String()}):`,
-        err
-      )
-    })
-
-    socket.on('close', (err) => {
-      logger.debug(
-        `remote blob server connection(${peer.peerId.toB58String()}):`,
-        err
-      )
-      context.open = false
-    })
-
-    socket.on('connect', () => {
-      resolve(context)
-    })
-  })
 }
 
 export const selectDataProvider = (ptpNode: WalkiePtpNode<prb.WalkieRoles>) => {

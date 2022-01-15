@@ -1144,6 +1144,90 @@
   resolved "https://registry.yarnpkg.com/@node-redis/time-series/-/time-series-1.0.0.tgz#3db4caa63d7c158f0b73ab6cd46bd6c9c187dfaf"
   integrity sha512-QcaCIL/DlYJXedSfmjF+IRxKJbBUXBrjA5Gv0IiPlXXFFOkRnbPGKq6hmwBAAWyk1U03wyBHDFKVS3/9GnZV8g==
 
+"@node-rs/crc32-android-arm-eabi@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm-eabi/-/crc32-android-arm-eabi-1.4.2.tgz#b732e7142db6fe1a2cbb6dbc06d9ef40763ff214"
+  integrity sha512-vmWKrawf5t+ri7trFT+QFDrjoi6G+k6H30j/lEdKFdVe2guGhb7oea3VSz7KFBZgCCVQmwn+X16YtS7BV9cB0A==
+
+"@node-rs/crc32-android-arm64@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.4.2.tgz#f37382a55abe87a6955007d7f245b9c1ba773ae4"
+  integrity sha512-q7crlDI148cp1LA4RYVznLdTMknGdGuSORoicJ5RQmQinv0vC0lfKJIv431SvUWnt9MUJasRrPSq87ozBxi7CQ==
+
+"@node-rs/crc32-darwin-arm64@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.4.2.tgz#0ad384b58055013092dea63f861ecbd779cbfc8c"
+  integrity sha512-rdw0i7ZAowAdAd02dXaH8UYT1eIjsFQRCE9dn+R9yIByyBG0W5TBeWv5gO1xNiKOP3Q1Eow2MB9VAErcA429AQ==
+
+"@node-rs/crc32-darwin-x64@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.4.2.tgz#a42f1e2052f6fae9b1cf7a82c89bc911319cc068"
+  integrity sha512-UJuLEbO5NuVss5IKzG9mHBbXSvkzfaLjZWt4zUwD3dpOMffa7gl15qTf5f500tVL99z4JRVOCKbzQ3/cpNUUqg==
+
+"@node-rs/crc32-freebsd-x64@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-freebsd-x64/-/crc32-freebsd-x64-1.4.2.tgz#04ac96f804754f9ba4fdb386f739a7f01b2acfc4"
+  integrity sha512-WzyfxNGQHEclNtbE3LFURhgbFdca+ihzv9VFdnfb+ksFC45OFAU1ybjdCTYXQzprwmpADBN9H3816THHqoNxkQ==
+
+"@node-rs/crc32-linux-arm-gnueabihf@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.4.2.tgz#8c49571c0a0bf6d390979190b2dff3fbe5be0606"
+  integrity sha512-R7Vj8be6CnimGS0C+eiKd4HSft69vr58BSP5YRN39eNlUPlGsjgbWFUAAzJFRjpHBVa+YyIbtNQ4JWO1dPEiHQ==
+
+"@node-rs/crc32-linux-arm64-gnu@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.4.2.tgz#e8dd8d40a359c709970d37ad4517b3b53137d952"
+  integrity sha512-wTm1KpcDHm6zIVQD7YLIrnh3snoef6XhqNA0IZS5qaRcgKFcv/aIdj4fcIAgNmzbbS8Mh/jAXZcSGniNJZ4Baw==
+
+"@node-rs/crc32-linux-arm64-musl@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-musl/-/crc32-linux-arm64-musl-1.4.2.tgz#89cd75289db02a863ce7ea8c179bccbf461fe015"
+  integrity sha512-vDgGWDg6KXjNSaYAJtCwJOJbeDktavPrfzX6zzY3dB2++FsNKj6gnTYeuJfqnFWp+3CqGYs/YJ5XoLFLWWbyaw==
+
+"@node-rs/crc32-linux-x64-gnu@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.4.2.tgz#1a609fc6e65cbda2ac54e30fbe4533d000ba6f43"
+  integrity sha512-h1l8QGsout4chtBUrur5+SDll+E9TQhHs+Eq2mLZgvMNuhP2RKC2lY/rhojwTQ2ZBEIsSMVb27QZXRtj4q2N9g==
+
+"@node-rs/crc32-linux-x64-musl@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.4.2.tgz#fd40be5c0d90c135764daa2ccb0b1bc8e8d00311"
+  integrity sha512-KxEIH1V+lNNDADmd20NZbHt3YICbxgtLY98tsMG2h5NeeFQgHs2szGpQbkaV/ILdr1d6AqCo1B/tYLjO8Jk8mg==
+
+"@node-rs/crc32-win32-arm64-msvc@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-arm64-msvc/-/crc32-win32-arm64-msvc-1.4.2.tgz#78d8ffaa30762c31fbb00d3e628528a87ed70a30"
+  integrity sha512-NM8i/ypjQdL0N4tjBuQGJhMj5btlRZsUJxyvLz465xI3qxHjHUK87wkgF2TeJZraEXJE0m3hW6WT6iV4P5wPNA==
+
+"@node-rs/crc32-win32-ia32-msvc@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-ia32-msvc/-/crc32-win32-ia32-msvc-1.4.2.tgz#fbb45abacbd9db32045bb488bd3ef135a36e0ca6"
+  integrity sha512-mth9QVOR7VzCyTq9au2y7vLYwy0Hvt3uA0n+EtB+cvFZTPf4XusfauRtNRqCYDLaSiKRBs7G20nxOaOn9NQd9g==
+
+"@node-rs/crc32-win32-x64-msvc@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.4.2.tgz#9c9c7eff77332f826534cb757d0cc50ec45ddd61"
+  integrity sha512-HT41a7tTQTu35oMVJNrO2i7eI/Oq5HXCHOg3L9zyVab0Vx+H/Bm5PTFHnFr+1HBFjK0IkPY3WduTZFN3njlsyQ==
+
+"@node-rs/crc32@^1.4.2":
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32/-/crc32-1.4.2.tgz#4c5fd05480357ea0e8c1c2c2d0301ed784c099b2"
+  integrity sha512-GYbXAgLhWW51sQMb9L5RR2UmyCMp+UxGPtJV3eL1dC+ce9wKMpBFOnTD6sAAmKjaS35bg9F7cKh1FRSNhUesRQ==
+  optionalDependencies:
+    "@node-rs/crc32-android-arm-eabi" "1.4.2"
+    "@node-rs/crc32-android-arm64" "1.4.2"
+    "@node-rs/crc32-darwin-arm64" "1.4.2"
+    "@node-rs/crc32-darwin-x64" "1.4.2"
+    "@node-rs/crc32-freebsd-x64" "1.4.2"
+    "@node-rs/crc32-linux-arm-gnueabihf" "1.4.2"
+    "@node-rs/crc32-linux-arm64-gnu" "1.4.2"
+    "@node-rs/crc32-linux-arm64-musl" "1.4.2"
+    "@node-rs/crc32-linux-x64-gnu" "1.4.2"
+    "@node-rs/crc32-linux-x64-musl" "1.4.2"
+    "@node-rs/crc32-win32-arm64-msvc" "1.4.2"
+    "@node-rs/crc32-win32-ia32-msvc" "1.4.2"
+    "@node-rs/crc32-win32-x64-msvc" "1.4.2"
+
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
   resolved "https://registry.yarnpkg.com/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz#7619c2eb21b25483f6d167548b4cfd5a7488c3d5"
