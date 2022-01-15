@@ -5,14 +5,16 @@ import {
   lruCacheMaxAge,
   lruCacheSize,
 } from '../env'
-import { keepAliveAgent, waitForDataProvider } from './ptp'
+import { crc32cBuffer } from '../../utils/crc'
+import { isDev } from '../../utils/env'
+
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
+import { waitForDataProvider } from './ptp'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
-import crc32 from 'crc/calculators/crc32'
-import http from 'http'
 import logger from '../../utils/logger'
+import net from 'net'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
 import type { Message } from 'protobufjs'
@@ -57,44 +59,61 @@ const getBuffer = async (
   promiseStore[key] = queue.add(
     async () => {
       const t1 = Date.now()
+
+      let t3 = 0
+      let t4 = 0
       const response: Buffer = await new Promise((resolve, reject) => {
         ;(async () => {
-          const ret: Buffer[] = []
-          let remoteCrc: string
+          const bufs: Buffer[] = []
+          let remoteCrc: Buffer
           const dataProvider = await waitForDataProvider(ptpNode)
-          const req = http.get({
-            agent: keepAliveAgent,
-            host: dataProvider.hostname,
+          const socket = net.createConnection({
             port: dataProvider.port,
-            headers: { 'prb-key': key, Connection: 'keep-alive' },
+            host: dataProvider.hostname,
           })
-          req.on('response', (res) => {
-            remoteCrc = res.headers['prb-crc'] as string
-            res.on('data', (chunk) => ret.push(chunk))
-            res.on('end', () => {
-              const buf = Buffer.concat(ret)
-              if (!buf.length) {
-                resolve(null)
-                return
-              }
-              const localCrc = crc32(buf).toString(16)
-              if (localCrc === remoteCrc) {
-                resolve(buf)
-              } else {
-                reject(new Error('CRC mismatch!'))
-              }
-            })
+          setTimeout(() => reject(new Error('Timeout!')), 60000)
+          socket.on('connect', () => {
+            socket.write(key)
           })
-          req.on('error', (err) => {
-            reject(err)
+          socket.on('data', (buf) => {
+            if (buf.length >= 8 && !remoteCrc) {
+              remoteCrc = buf.slice(0, 8)
+              bufs.push(buf.slice(8))
+            } else {
+              bufs.push(buf)
+            }
           })
-          req.end()
+          socket.on('error', (e) => {
+            reject(e)
+          })
+          socket.on('end', () => {
+            t3 = Date.now()
+            const buf = bufs.length > 1 ? Buffer.concat(bufs) : bufs[0]
+            if (!buf.length) {
+              resolve(null)
+              return
+            }
+            const localCrc = crc32cBuffer(buf)
+            if (remoteCrc.compare(localCrc) !== 0) {
+              reject(new Error('CRC Mismatch!'))
+              return
+            }
+            t4 = Date.now()
+            resolve(buf)
+          })
         })().catch((e) => reject(e))
       })
       const t2 = Date.now()
 
-      logger.debug(
-        { key, responseSize: response?.length, timing: t2 - t1 },
+      ;(isDev ? console.log : logger.debug)(
+        'getBuffer',
+        {
+          key,
+          responseSize: response?.length,
+          timing: t2 - t1,
+          timingFetch: t3 - t1,
+          timingProcess: t4 - t3,
+        },
         'getBuffer'
       )
 
