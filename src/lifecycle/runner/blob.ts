@@ -61,7 +61,6 @@ const getBuffer = async (
       const t1 = Date.now()
 
       let t3 = 0
-      let t4 = 0
       const response: Buffer = await new Promise((resolve, reject) => {
         ;(async () => {
           const bufs: Buffer[] = []
@@ -98,7 +97,6 @@ const getBuffer = async (
               reject(new Error('CRC Mismatch!'))
               return
             }
-            t4 = Date.now()
             resolve(buf)
           })
         })().catch((e) => reject(e))
@@ -109,10 +107,9 @@ const getBuffer = async (
         'getBuffer',
         {
           key,
-          responseSize: response?.length,
+          responseSize: response?.length || 0,
           timing: t2 - t1,
           timingFetch: t3 - t1,
-          timingProcess: t4 - t3,
         },
         'getBuffer'
       )
