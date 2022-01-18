@@ -92,7 +92,7 @@ export const startSync = (runtime) => {
       syncStatus.paraHeaderSynchedTo,
       fetchStatus.paraCommittedHeight
     )
-    if (!data) {
+    if (!data?.length) {
       await wait(2000)
       return
     }
