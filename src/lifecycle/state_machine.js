@@ -98,7 +98,7 @@ const onSynched = async (fromState, toState, context) => {
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const { runtime, onChainState } =
+  const { pid, runtime, onChainState, worker } =
     context.stateMachine.rootStateMachine.workerContext
   const { info, initInfo, rpcClient } = runtime
   const publicKey = '0x' + info.publicKey
@@ -146,9 +146,20 @@ const onPreMining = async (fromState, toState, context) => {
       return await waitUntilWorkerReady()
     }
     await waitUntilWorkerReady()
-    context.stateMachine.rootStateMachine.workerContext.message =
-      'Starting mining on chain...'
-    await startMining(context.stateMachine.rootStateMachine.workerContext)
+    
+    const freeStake = (await phalaApi.query.phalaStakePool.stakePools(pid))
+      .unwrapOrDefault()
+      .freeStake
+    if (worker.stake <= freeStake) {
+      context.stateMachine.rootStateMachine.workerContext.message =
+        'Starting mining on chain...'
+      await startMining(context.stateMachine.rootStateMachine.workerContext)
+    }
+    else {
+      context.stateMachine.rootStateMachine.workerContext.message =
+        'Not enough stake to start mining'
+      return
+    }
   }
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
