@@ -3,15 +3,11 @@ import {
   startMining,
   subscribeOnChainState,
 } from './worker'
-import {
-  initRuntime,
-  registerWorker,
-  startSyncBlob,
-  startSyncMessage,
-} from './pruntime'
+import { initRuntime, registerWorker, startSyncMessage } from './pruntime'
 import { minBenchScore, shouldSkipRa } from '../env'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
+import { startSync } from './sync'
 import Finity from 'finity'
 import logger from '../../utils/logger'
 import toEnum from '../../utils/to_enum'
@@ -73,7 +69,7 @@ const onSynching = async (fromState, toState, context) => {
   const { runtime, workerBrief } =
     context.stateMachine.rootStateMachine.workerContext
 
-  const waitUntilSynched = await startSyncBlob(runtime)
+  const waitUntilSynched = await startSync(runtime)
   context.stateMachine.rootStateMachine.workerContext.message =
     'Synching block data...'
   logger.debug(workerBrief, 'Synching block data...')

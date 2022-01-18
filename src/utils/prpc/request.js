@@ -22,9 +22,9 @@ const RUNTIME_REQUEST_BASE_OPTIONS = Object.freeze({
   headers: {
     'Content-Type': 'application/octet-stream',
   },
-  timeout: 30000,
+  timeout: 10000,
   retry: {
-    limit: 5,
+    limit: 2,
     methods: ['POST'],
     errorCodes: [
       'ETIMEDOUT',

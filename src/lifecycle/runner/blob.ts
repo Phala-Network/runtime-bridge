@@ -89,7 +89,7 @@ const getBuffer = async (
           socket.on('end', () => {
             t3 = Date.now()
             const buf = bufs.length > 1 ? Buffer.concat(bufs) : bufs[0]
-            if (!buf.length) {
+            if (!buf?.length) {
               resolve(null)
               return
             }
