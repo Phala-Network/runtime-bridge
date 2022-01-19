@@ -2,7 +2,9 @@ import { getHeaderBlob, getParaBlockBlob } from './blob'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 
-const asyncNoop = (ret) => Promise.resolve(ret)
+export const asyncNoop = (ret) => Promise.resolve(ret)
+
+const WAIT_ON_ERROR = 18000
 
 export const startSync = (runtime) => {
   const {
@@ -131,7 +133,7 @@ export const startSync = (runtime) => {
           'Error while synching combined headers:',
           e
         )
-        await wait(6000)
+        await wait(WAIT_ON_ERROR)
         headerSyncNumber = (await runtime.updateInfo()).headernum
       },
       async (e) => {
@@ -152,7 +154,7 @@ export const startSync = (runtime) => {
           'Error while dispatching block:',
           e
         )
-        await wait(6000)
+        await wait(WAIT_ON_ERROR)
         paraBlockSyncNumber = (await runtime.updateInfo()).blocknum
       },
       async (e) => {
@@ -172,17 +174,25 @@ export const startSync = (runtime) => {
   return () => synchedToTargetPromise
 }
 
-const iterate = async (iterator, processError, throwFatal) => {
+export const iterate = async (iterator, processError, throwFatal) => {
   let attempt = 0
+  let shouldIgnoreError = false
+  const setShouldIgnoreError = () => {
+    shouldIgnoreError = true
+  }
   for await (const fn of iterator()) {
     attempt = 0
+    shouldIgnoreError = false
     const process = async () => {
       try {
         await fn()
       } catch (e) {
-        if (attempt <= 3) {
+        if (attempt <= 5) {
           try {
-            await processError(e, attempt)
+            await processError(e, attempt, setShouldIgnoreError)
+            if (shouldIgnoreError) {
+              return
+            }
           } catch (e) {
             logger.warn(e)
           }

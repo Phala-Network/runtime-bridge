@@ -1,21 +1,10 @@
 import { PRPC_QUEUE_SIZE } from '../constants'
-import { enableKeepAlive, keepAliveTimeout } from '../env'
-import HttpAgent from 'agentkeepalive'
 import Queue from 'promise-queue'
 import got from 'got'
 import logger from '../logger'
 
 export const requestQueue = new Queue(PRPC_QUEUE_SIZE, Infinity)
 export const requestQueue__blob = new Queue(PRPC_QUEUE_SIZE, Infinity)
-
-const keepAliveOptions = {
-  keepAlive: enableKeepAlive,
-  maxFreeSockets: 65535,
-  freeSocketTimeout: keepAliveTimeout,
-}
-logger.info(keepAliveOptions, 'keepAliveOptions')
-
-export const keepaliveAgent = new HttpAgent(keepAliveOptions)
 
 const RUNTIME_REQUEST_BASE_OPTIONS = Object.freeze({
   method: 'POST',
@@ -36,9 +25,6 @@ const RUNTIME_REQUEST_BASE_OPTIONS = Object.freeze({
       'ENETUNREACH',
       'EAI_AGAIN',
     ],
-  },
-  agent: {
-    http: keepaliveAgent,
   },
   hooks: {
     beforeRetry: [

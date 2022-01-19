@@ -1,7 +1,6 @@
 import { EVENTS } from './state_machine'
 import { createRpcClient } from '../../utils/prpc'
 import { enforceMinBenchScore, minBenchScore } from '../env'
-import { getHeaderBlob, getParaBlockBlob } from './blob'
 import { phalaApi } from '../../utils/api'
 import { requestQueue__blob, runtimeRequest } from '../../utils/prpc/request'
 import logger from '../../utils/logger'
@@ -251,106 +250,4 @@ export const registerWorker = async (runtime) => {
       },
     })
   }
-}
-
-export const startSyncMessage = (runtime) => {
-  const {
-    workerContext: { pid, workerBrief, dispatchTx },
-    rpcClient,
-  } = runtime
-
-  let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
-  let synchedToTargetPromiseFinished = false
-  let shouldStop = false
-  let loopPromise
-
-  const synchedToTargetPromise = new Promise((resolve, reject) => {
-    synchedToTargetPromiseResolve = resolve
-    synchedToTargetPromiseReject = reject
-  })
-
-  runtime.stopSyncMessage = () => {
-    shouldStop = true
-    runtime.stopSyncMessage = null
-    runtime.shouldStopUpdateInfo = true
-
-    synchedToTargetPromiseFinished = true
-    synchedToTargetPromiseReject(null)
-  }
-
-  const startSyncMqEgress = async () => {
-    if (shouldStop) {
-      synchedToTargetPromiseFinished = true
-      synchedToTargetPromiseReject(null)
-      return true
-    }
-
-    const messages = phalaApi.createType(
-      'EgressMessages',
-      (await rpcClient.getEgressMessages({})).encodedMessages
-    )
-
-    const ret = []
-    for (const m of messages) {
-      const origin = m[0]
-      const onChainSequence = (
-        await phalaApi.query.phalaMq.offchainIngress(origin)
-      ).unwrapOrDefault()
-      const innerMessages = m[1]
-      for (const _m of innerMessages) {
-        if (_m.sequence.lt(onChainSequence)) {
-          logger.debug(
-            `${_m.sequence.toJSON()} has been submitted. Skipping...`
-          )
-        } else {
-          ret.push(_m.toHex())
-        }
-      }
-    }
-
-    if (ret.length) {
-      await dispatchTx({
-        action: 'BATCH_SYNC_MQ_MESSAGE',
-        payload: {
-          pid,
-          messages: ret,
-        },
-      })
-      logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)
-    } else {
-      if (!synchedToTargetPromiseFinished) {
-        synchedToTargetPromiseFinished = true
-        synchedToTargetPromiseResolve()
-      }
-    }
-
-    return false
-  }
-
-  const _startSyncMqEgress = async (_attempt = 0) => {
-    const attempt = _attempt + 1
-    logger.debug({ loopPromise, attempt, ...workerBrief }, 'Synching mq...')
-
-    try {
-      const _shouldStop = await startSyncMqEgress()
-      if (_shouldStop) {
-        return
-      }
-      await wait(36000)
-      return await _startSyncMqEgress(attempt)
-    } catch (e) {
-      if (synchedToTargetPromiseFinished) {
-        logger.warn(workerBrief, 'Unexpected rejection.', e)
-        return await _startSyncMqEgress(attempt)
-      } else {
-        logger.warn(workerBrief, 'Error occurred when synching mq...', e)
-        await wait(12000)
-        return await _startSyncMqEgress(attempt)
-      }
-    }
-  }
-
-  loopPromise = _startSyncMqEgress() // avoid GC
-
-  return () => synchedToTargetPromise
 }

@@ -277,8 +277,8 @@ export const getParaBlockBlob = async (
   const meta = await waitForParaBlockRange(
     ptpNode,
     blockNumber,
-    blockNumber < currentCommittedNumber &&
-      headerSynchedTo < currentCommittedNumber
+    currentCommittedNumber - blockNumber > 300 &&
+      currentCommittedNumber - headerSynchedTo > 300
   )
   const dryKey = `dryParaBlock:${blockNumber}`
   const retKey =
