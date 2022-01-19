@@ -169,7 +169,7 @@ export const initRuntime = async (
 
 export const registerWorker = async (runtime) => {
   const { initInfo, info, workerContext } = runtime
-  const { pid, dispatchTx, pool } = workerContext
+  const { pid, dispatchTx, pool, poolSnapshot } = workerContext
 
   const publicKey = '0x' + info.publicKey
 
@@ -192,7 +192,7 @@ export const registerWorker = async (runtime) => {
     !(workerInfo.initialScore.toJSON() > minBenchScore) ||
     !(
       workerInfo.operator.toString() ===
-      (pool.isProxy ? pool.realPhalaSs58 : pool.ss58Phala)
+      (pool.isProxy ? pool.proxiedAccountSs58 : poolSnapshot.owner.ss58Phala)
     )
 
   if (shouldRegister) {
