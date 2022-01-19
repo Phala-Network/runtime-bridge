@@ -115,7 +115,7 @@ export const startSync = (runtime) => {
       if (shouldStop) {
         return asyncNoop
       }
-      if (fetchStatus.paraHeaderSynchedTo < paraBlockSyncNumber) {
+      if (syncStatus.paraHeaderSynchedTo < paraBlockSyncNumber) {
         await wait(2000)
         yield asyncNoop
       } else {
