@@ -17,8 +17,8 @@ import logger from '../../utils/logger'
 import net from 'net'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
+import type { LifecycleRunnerPtpNode } from './ptp'
 import type { Message } from 'protobufjs'
-import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import RangeMeta = prb.db.RangeMeta
 import IRangeMeta = prb.db.IRangeMeta
 
@@ -48,7 +48,7 @@ if (lruCacheDebugLogInterval > 0) {
 }
 
 const getBuffer = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   key: string,
   priority: number
 ) => {
@@ -66,6 +66,7 @@ const getBuffer = async (
           const bufs: Buffer[] = []
           let remoteCrc: Buffer
           const dataProvider = await waitForDataProvider(ptpNode)
+
           const socket = net.createConnection({
             port: dataProvider.port,
             host: dataProvider.hostname,
@@ -103,29 +104,30 @@ const getBuffer = async (
       })
       const t2 = Date.now()
 
-      ;(isDev ? console.log : logger.debug)(
-        'getBuffer',
-        {
-          key,
-          responseSize: response?.length || 0,
-          timing: t2 - t1,
-          timingFetch: t3 - t1,
-        },
-        'getBuffer'
-      )
+      ;(isDev ? console.log : logger.debug)('getBuffer', {
+        key,
+        responseSize: response?.length || 0,
+        timing: t2 - t1,
+        timingFetch: t3 - t1,
+      })
 
       return response?.length ? response : null
     },
     { priority }
   )
 
-  const ret = await promiseStore[key]
-  delete promiseStore[key]
-  return ret
+  try {
+    const ret = await promiseStore[key]
+    delete promiseStore[key]
+    return ret
+  } catch (e) {
+    delete promiseStore[key]
+    throw e
+  }
 }
 
 const _getCachedBuffer = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   key: string,
   priority: number
 ) => {
@@ -138,7 +140,7 @@ const _getCachedBuffer = async (
 }
 
 const getCachedBuffer = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   key: string,
   priority: number
 ) => {
@@ -184,7 +186,7 @@ const waitFor = <T>(waitFn: WaitFn<T>) =>
   )
 
 export const waitForCachedBuffer = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   key: string,
   priority: number
 ): Promise<Uint8Array> => {
@@ -197,7 +199,7 @@ export const waitForCachedBuffer = async (
 }
 
 const waitForRangeByParentNumber = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   number: number,
   cached: boolean,
   priority: number
@@ -216,7 +218,7 @@ const waitForRangeByParentNumber = async (
   })
 
 const waitForParaBlockRange = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   number: number,
   cached: boolean
 ) =>
@@ -236,7 +238,7 @@ type Uint8ArrayWithMeta = Uint8Array & { meta?: { [k: string]: unknown } }
 type Uint8ArrayListWithMeta = Uint8Array[] & { meta?: { [k: string]: unknown } }
 
 export const getHeaderBlob = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   blockNumber: number,
   currentCommittedNumber: number
 ) => {
@@ -269,7 +271,7 @@ export const getHeaderBlob = async (
 }
 
 export const getParaBlockBlob = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>,
+  ptpNode: LifecycleRunnerPtpNode,
   blockNumber: number,
   headerSynchedTo: number,
   currentCommittedNumber: number

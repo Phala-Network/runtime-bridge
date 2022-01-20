@@ -90,6 +90,7 @@
     "@types/ioredis": "^4.28.5",
     "@types/level-errors": "^3.0.0",
     "@types/levelup": "^5.1.0",
+    "@types/lodash": "^4.14.178",
     "@types/lru-cache": "^5.1.1",
     "@types/node": "^17.0.8",
     "@types/promise-retry": "^1.1.3",

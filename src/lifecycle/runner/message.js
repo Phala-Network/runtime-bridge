@@ -7,10 +7,8 @@ const TIMEOUT_WAIT_AFTER_FINISH = 3000
 const TIMEOUT_WAIT_ON_ERROR = 3000
 
 export const startSyncMessage = (runtime) => {
-  const {
-    workerContext: { pid, workerBrief, dispatchTx },
-    rpcClient,
-  } = runtime
+  const { workerContext, rpcClient } = runtime
+  const { pid, workerBrief, dispatchTx } = workerContext
   let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
   let synchedToTargetPromiseFinished = false
   let shouldStop = false
@@ -36,6 +34,7 @@ export const startSyncMessage = (runtime) => {
         'Error while synching mq egress:',
         e
       )
+      workerContext.message = 'Error while synching mq egress: ' + e.toString()
       await wait(TIMEOUT_WAIT_ON_ERROR)
       setShouldIgnoreError()
     },

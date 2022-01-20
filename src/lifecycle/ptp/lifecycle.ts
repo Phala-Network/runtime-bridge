@@ -4,30 +4,31 @@ import type { MakeLifecycleManagerPtpHandler } from '.'
 
 export const makeRestartWorker: MakeLifecycleManagerPtpHandler<
   'RestartWorker'
-> =
-  (context) =>
-  async ({ ids }) => {
-    for (const id of ids) {
-      const workerObj = await Worker.findByPk(id)
-      if (!workerObj) {
-        throw new PrbError(
-          prb.error.ResponseErrorType.NOT_FOUND,
-          `Worker ${id} not found!`
-        )
-      }
-    }
-
-    for (const id of ids) {
-      context.runnerManager.workers[id].runner.ipcHandle.send(
-        'runnerShouldRestartWorker',
-        [id]
+> = (context) => async (request) => {
+  const ids = request.ids
+  for (const id of ids) {
+    const workerObj = await Worker.findByPk(id)
+    if (!workerObj) {
+      throw new PrbError(
+        prb.error.ResponseErrorType.NOT_FOUND,
+        `Worker ${id} not found!`
       )
     }
-
-    return prb.WorkerStateUpdate.create({
-      workerStates: ids.map((i) => context.runnerManager.workers[i]),
-    })
   }
+
+  console.log(1111111, request, ids)
+
+  for (const id of ids) {
+    context.runnerManager.workers[id].runner.ipcHandle.send(
+      'runnerShouldRestartWorker',
+      [id]
+    )
+  }
+
+  return prb.WorkerStateUpdate.create({
+    workerStates: ids.map((i) => context.runnerManager.workers[i]),
+  })
+}
 
 export const makeKickWorker: MakeLifecycleManagerPtpHandler<'KickWorker'> =
   (context) =>
