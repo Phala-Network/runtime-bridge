@@ -129,12 +129,25 @@ export const startSync = (runtime) => {
       headerSyncIterator,
       async (e, attempt) => {
         logger.warn(
-          { attempt, paraBlockSyncNumber, ...workerBrief },
+          { attempt, headerSyncNumber, ...workerBrief },
           'Error while synching combined headers:',
           e
         )
         await wait(WAIT_ON_ERROR)
-        headerSyncNumber = (await runtime.updateInfo()).headernum
+        const beforeHeaderSyncNumber = headerSyncNumber
+        const info = await runtime.updateInfo()
+        const _headerSyncNumber = info.headernum
+        logger.warn(
+          {
+            attempt,
+            beforeHeaderSyncNumber,
+            newHeaderSyncNumber: _headerSyncNumber,
+            info,
+            ...workerBrief,
+          },
+          'Got new target from pruntime...'
+        )
+        headerSyncNumber = _headerSyncNumber
       },
       async (e) => {
         logger.warn(
@@ -155,7 +168,19 @@ export const startSync = (runtime) => {
           e
         )
         await wait(WAIT_ON_ERROR)
-        paraBlockSyncNumber = (await runtime.updateInfo()).blocknum
+        const beforeParaBlockSyncNumber = paraBlockSyncNumber
+        const info = await runtime.updateInfo()
+        const _paraBlockSyncNumber = info.blocknum
+        logger.warn(
+          {
+            attempt,
+            beforeParaBlockSyncNumber,
+            newParaBlockSyncNumber: _paraBlockSyncNumber,
+            ...workerBrief,
+          },
+          'Got new target from pruntime...'
+        )
+        paraBlockSyncNumber = _paraBlockSyncNumber
       },
       async (e) => {
         logger.warn(

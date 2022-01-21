@@ -40,16 +40,13 @@ const wrapRequest = (endpoint) => async (resource, body) => {
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, rpcClient } = runtime
   const res = await rpcClient.getInfo({})
-  Object.assign(
-    runtimeInfo,
-    res.constructor.toObject(res, {
-      defaults: true,
-      enums: String,
-      longs: Number,
-    })
-  )
-  // TODO: broadcast runtime info update
-  return runtimeInfo
+  const ret = res.constructor.toObject(res, {
+    defaults: true,
+    enums: String,
+    longs: Number,
+  })
+  Object.assign(runtimeInfo, ret)
+  return ret
 }
 
 export const setupRuntime = (workerContext) => {

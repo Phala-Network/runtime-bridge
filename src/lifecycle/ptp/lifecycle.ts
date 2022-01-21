@@ -16,8 +16,6 @@ export const makeRestartWorker: MakeLifecycleManagerPtpHandler<
     }
   }
 
-  console.log(1111111, request, ids)
-
   for (const id of ids) {
     context.runnerManager.workers[id].runner.ipcHandle.send(
       'runnerShouldRestartWorker',

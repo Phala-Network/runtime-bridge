@@ -1,25 +1,9 @@
 import { fork } from './runner_ipc'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { randomUUID } from 'crypto'
-import Pool from './local_db/pool_model'
 import Worker from './local_db/worker_model'
 import logger from '../utils/logger'
 import type { LifecycleManagerContext } from './index'
-
-const intoChunks = (array: unknown[], chunkSize: number) => {
-  const result = []
-  const len = array.length
-
-  if (len <= chunkSize) {
-    return [array]
-  }
-
-  let i = 0
-  while (i < len) {
-    result.push(array.slice(i, (i += chunkSize)))
-  }
-  return result
-}
 
 export type RunnerMeta = {
   id: string

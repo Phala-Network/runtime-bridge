@@ -245,7 +245,7 @@ export const getHeaderBlob = async (
   const meta = await waitForRangeByParentNumber(
     ptpNode,
     blockNumber,
-    blockNumber < currentCommittedNumber,
+    currentCommittedNumber - blockNumber > 600,
     PRIORITY_META
   )
   const ret: Uint8ArrayListWithMeta = []
