@@ -10,7 +10,6 @@ import {
   Table,
   Unique,
 } from 'sequelize-typescript'
-import { DataTypes } from 'sequelize'
 import { Field, Type } from 'protobufjs'
 import {
   createCipheriv,
@@ -111,10 +110,6 @@ class Pool extends Model {
 
   set operatorMnemonic(mnemonic: string) {
     this.operator = keyring.addFromMnemonic(mnemonic)
-  }
-
-  get operatorMnemonic(): null {
-    throw new Error("Exporting operator's mnemonic is forbidden!")
   }
 
   set operator(keyringPair) {

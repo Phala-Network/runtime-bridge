@@ -5,10 +5,10 @@
     <option name="importPathEntries">
       <list>
         <ImportPathEntry>
-          <option name="location" value="jar://$APPLICATION_PLUGINS_DIR$/protoeditor/lib/protoeditor.jar!/include" />
+          <option name="location" value="file://$PROJECT_DIR$/../runtime-bridge-walkie/src/proto" />
         </ImportPathEntry>
         <ImportPathEntry>
-          <option name="location" value="file://$PROJECT_DIR$/../runtime-bridge-walkie/src/proto" />
+          <option name="location" value="file://$USER_HOME$/Library/Caches/JetBrains/WebStorm2021.3/protoeditor" />
         </ImportPathEntry>
       </list>
     </option>

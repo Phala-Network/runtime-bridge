@@ -8,7 +8,6 @@ import wait from '../../utils/wait'
 
 const wrapRequest = (endpoint) => async (resource, body) => {
   const url = `${endpoint}${resource}`
-  logger.debug({ url }, 'Sending HTTP request...')
   const res = await runtimeRequest(
     url,
     {
@@ -22,7 +21,6 @@ const wrapRequest = (endpoint) => async (resource, body) => {
   const payload = JSON.parse(data.payload)
 
   if (data.status === 'ok') {
-    logger.debug({ url }, 'Receiving...')
     return {
       ...data,
       payload,

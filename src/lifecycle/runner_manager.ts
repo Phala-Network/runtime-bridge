@@ -1,8 +1,10 @@
 import { fork } from './runner_ipc'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { randomUUID } from 'crypto'
+import { runnerMaxWorkerNumber } from './env'
 import Worker from './local_db/worker_model'
 import logger from '../utils/logger'
+import sequelize from 'sequelize'
 import type { LifecycleManagerContext } from './index'
 
 export type RunnerMeta = {
@@ -36,38 +38,31 @@ export const createRunnerManager = async (
     workers,
   }
 
-  // const allPools = await Pool.findAll({
-  //   where: { enabled: true },
-  //   attributes: ['id', 'pid'],
-  // })
+  const allWorkers = (
+    await Worker.findAll({
+      order: sequelize.fn('RANDOM'),
+      where: {
+        enabled: true,
+      },
+      attributes: ['id'],
+    })
+  ).map((i) => i.id)
 
-  // const workerIdGroups = (
-  //   await Promise.all(
-  //     allPools.map(async (p) => ({
-  //       pid: p.pid,
-  //       workers: (
-  //         await Worker.findAll({
-  //           where: {
-  //             poolId: p.id,
-  //             enabled: true,
-  //           },
-  //           attributes: ['id'],
-  //         })
-  //       ).map((i) => i.id),
-  //     }))
-  //   )
-  // ).filter((i) => i.workers.length)
+  const perChunk = runnerMaxWorkerNumber
 
-  const workerIdGroups = [
-    (
-      await Worker.findAll({
-        where: {
-          enabled: true,
-        },
-        attributes: ['id'],
-      })
-    ).map((i) => i.id),
-  ].filter((i) => i.length)
+  const workerIdGroups: string[][] = allWorkers
+    .reduce((resultArray, item, index) => {
+      const chunkIndex = Math.floor(index / perChunk)
+
+      if (!resultArray[chunkIndex]) {
+        resultArray[chunkIndex] = [] // start a new chunk
+      }
+
+      resultArray[chunkIndex].push(item)
+
+      return resultArray
+    }, [])
+    .filter((i) => i.length)
 
   if (!workerIdGroups.length) {
     logger.warn(
