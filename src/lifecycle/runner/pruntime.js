@@ -1,7 +1,6 @@
 import { EVENTS } from './state_machine'
 import { createRpcClient } from '../../utils/prpc'
 import { enforceMinBenchScore, minBenchScore } from '../env'
-import { getHeaderBlob, getParaBlockBlob } from './blob'
 import { phalaApi } from '../../utils/api'
 import { requestQueue__blob, runtimeRequest } from '../../utils/prpc/request'
 import logger from '../../utils/logger'
@@ -9,7 +8,6 @@ import wait from '../../utils/wait'
 
 const wrapRequest = (endpoint) => async (resource, body) => {
   const url = `${endpoint}${resource}`
-  logger.debug({ url }, 'Sending HTTP request...')
   const res = await runtimeRequest(
     url,
     {
@@ -23,7 +21,6 @@ const wrapRequest = (endpoint) => async (resource, body) => {
   const payload = JSON.parse(data.payload)
 
   if (data.status === 'ok') {
-    logger.debug({ url }, 'Receiving...')
     return {
       ...data,
       payload,
@@ -41,16 +38,13 @@ const wrapRequest = (endpoint) => async (resource, body) => {
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, rpcClient } = runtime
   const res = await rpcClient.getInfo({})
-  Object.assign(
-    runtimeInfo,
-    res.constructor.toObject(res, {
-      defaults: true,
-      enums: String,
-      longs: Number,
-    })
-  )
-  // TODO: broadcast runtime info update
-  return runtimeInfo
+  const ret = res.constructor.toObject(res, {
+    defaults: true,
+    enums: String,
+    longs: Number,
+  })
+  Object.assign(runtimeInfo, ret)
+  return ret
 }
 
 export const setupRuntime = (workerContext) => {
@@ -170,7 +164,7 @@ export const initRuntime = async (
 
 export const registerWorker = async (runtime) => {
   const { initInfo, info, workerContext } = runtime
-  const { pid, dispatchTx, pool } = workerContext
+  const { pid, dispatchTx, pool, poolSnapshot } = workerContext
 
   const publicKey = '0x' + info.publicKey
 
@@ -193,7 +187,7 @@ export const registerWorker = async (runtime) => {
     !(workerInfo.initialScore.toJSON() > minBenchScore) ||
     !(
       workerInfo.operator.toString() ===
-      (pool.isProxy ? pool.realPhalaSs58 : pool.ss58Phala)
+      (pool.isProxy ? pool.proxiedAccountSs58 : poolSnapshot.owner.ss58Phala)
     )
 
   if (shouldRegister) {
@@ -251,256 +245,4 @@ export const registerWorker = async (runtime) => {
       },
     })
   }
-}
-
-export const startSyncBlob = (runtime) => {
-  const {
-    workerContext: {
-      workerBrief,
-      appContext: { fetchStatus, ptpNode },
-    },
-    info,
-    request,
-  } = runtime
-  let shouldStop = false
-
-  const syncStatus = {
-    parentHeaderSynchedTo: -1,
-    paraHeaderSynchedTo: -1,
-    paraBlockDispatchedTo: -1,
-  }
-  runtime.syncStatus = syncStatus
-
-  let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
-  let synchedToTargetPromiseFinished = false
-  const synchedToTargetPromise = new Promise((resolve, reject) => {
-    synchedToTargetPromiseResolve = resolve
-    synchedToTargetPromiseReject = reject
-  })
-
-  // headernum => nextParentHeaderNumber
-  // paraHeadernum => nextParaHeaderNumber
-  // blocknum => nextParaBlockNumber
-
-  const headerSync = async (_next) => {
-    if (shouldStop) {
-      return
-    }
-    // TODO: use protobuf api
-    const next = typeof _next === 'number' ? _next : info.headernum
-
-    if (fetchStatus.parentProcessedHeight < next) {
-      await wait(1000)
-      return headerSync(next).catch(doReject)
-    }
-
-    const blobs = await getHeaderBlob(
-      ptpNode,
-      next,
-      fetchStatus.parentCommittedHeight
-    )
-
-    if (!blobs[0]) {
-      await wait(1000)
-      return headerSync(next).catch(doReject)
-    }
-
-    // const {
-    //   payload: {
-    //     relaychain_synced_to: parentSynchedTo,
-    //     parachain_synced_to: paraSynchedTo,
-    //   },
-    // } = await request('/bin_api/sync_combined_headers', blobs[0])
-    // syncStatus.parentHeaderSynchedTo = parentSynchedTo
-    // if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
-    //   syncStatus.paraHeaderSynchedTo = paraSynchedTo
-    // }
-    // await wait(0)
-    // return headerSync(parentSynchedTo + 1).catch(doReject)
-    try {
-      const {
-        payload: {
-          relaychain_synced_to: parentSynchedTo,
-          parachain_synced_to: paraSynchedTo,
-        },
-      } = await request('/bin_api/sync_combined_headers', blobs[0])
-      syncStatus.parentHeaderSynchedTo = parentSynchedTo
-      if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
-        syncStatus.paraHeaderSynchedTo = paraSynchedTo
-      }
-      return headerSync(parentSynchedTo + 1).catch(doReject)
-    } catch (e) {
-      logger.info({ next, e }, 'Failed to sync_combined_headers')
-      throw e
-    }
-  }
-
-  const paraBlockSync = async (_next) => {
-    if (shouldStop) {
-      return
-    }
-    const next = typeof _next === 'number' ? _next : info.blocknum
-
-    const { paraProcessedHeight } = fetchStatus
-    const { paraHeaderSynchedTo } = syncStatus
-
-    if (paraHeaderSynchedTo >= next) {
-      const data = await getParaBlockBlob(
-        ptpNode,
-        next,
-        paraHeaderSynchedTo,
-        fetchStatus.paraCommittedHeight
-      )
-
-      if (!data) {
-        await wait(1000)
-        return paraBlockSync(next).catch(doReject)
-      }
-
-      const {
-        payload: { dispatched_to: dispatchedTo },
-      } = await request('/bin_api/dispatch_block', data)
-
-      syncStatus.paraBlockDispatchedTo = dispatchedTo
-
-      if (!synchedToTargetPromiseFinished) {
-        if (dispatchedTo >= paraProcessedHeight) {
-          synchedToTargetPromiseFinished = true
-          synchedToTargetPromiseResolve(dispatchedTo)
-        }
-      }
-
-      return paraBlockSync(dispatchedTo + 1).catch(doReject)
-    }
-
-    await wait(6000)
-    return paraBlockSync(next).catch(doReject)
-  }
-
-  runtime.stopSync = () => {
-    shouldStop = true
-    runtime.stopSync = null
-    runtime.syncPromise = null
-    logger.warn(workerBrief, 'Stopping synching...')
-  }
-
-  const doReject = (error) => {
-    if (synchedToTargetPromiseFinished) {
-      logger.warn('Unexpected rejection.', error)
-      return
-    }
-    runtime.shouldStopUpdateInfo = true
-    runtime.stopSync?.()
-    synchedToTargetPromiseFinished = true
-    synchedToTargetPromiseReject(error)
-  }
-
-  runtime.syncPromise = Promise.all([
-    headerSync().catch(doReject),
-    paraBlockSync().catch(doReject),
-  ])
-
-  return () => synchedToTargetPromise
-}
-
-export const startSyncMessage = (runtime) => {
-  const {
-    workerContext: { pid, workerBrief, dispatchTx },
-    rpcClient,
-  } = runtime
-
-  let synchedToTargetPromiseResolve, synchedToTargetPromiseReject
-  let synchedToTargetPromiseFinished = false
-  let shouldStop = false
-  let loopPromise
-
-  const synchedToTargetPromise = new Promise((resolve, reject) => {
-    synchedToTargetPromiseResolve = resolve
-    synchedToTargetPromiseReject = reject
-  })
-
-  runtime.stopSyncMessage = () => {
-    shouldStop = true
-    runtime.stopSyncMessage = null
-    runtime.shouldStopUpdateInfo = true
-
-    synchedToTargetPromiseFinished = true
-    synchedToTargetPromiseReject(null)
-  }
-
-  const startSyncMqEgress = async () => {
-    if (shouldStop) {
-      synchedToTargetPromiseFinished = true
-      synchedToTargetPromiseReject(null)
-      return true
-    }
-
-    const messages = phalaApi.createType(
-      'EgressMessages',
-      (await rpcClient.getEgressMessages({})).encodedMessages
-    )
-
-    const ret = []
-    for (const m of messages) {
-      const origin = m[0]
-      const onChainSequence = (
-        await phalaApi.query.phalaMq.offchainIngress(origin)
-      ).unwrapOrDefault()
-      const innerMessages = m[1]
-      for (const _m of innerMessages) {
-        if (_m.sequence.lt(onChainSequence)) {
-          logger.debug(
-            `${_m.sequence.toJSON()} has been submitted. Skipping...`
-          )
-        } else {
-          ret.push(_m.toHex())
-        }
-      }
-    }
-
-    if (ret.length) {
-      await dispatchTx({
-        action: 'BATCH_SYNC_MQ_MESSAGE',
-        payload: {
-          pid,
-          messages: ret,
-        },
-      })
-      logger.debug(workerBrief, `Synched worker ${ret.length} message(s).`)
-    } else {
-      if (!synchedToTargetPromiseFinished) {
-        synchedToTargetPromiseFinished = true
-        synchedToTargetPromiseResolve()
-      }
-    }
-
-    return false
-  }
-
-  const _startSyncMqEgress = async (_attempt = 0) => {
-    const attempt = _attempt + 1
-    logger.debug({ loopPromise, attempt, ...workerBrief }, 'Synching mq...')
-
-    try {
-      const _shouldStop = await startSyncMqEgress()
-      if (_shouldStop) {
-        return
-      }
-      await wait(36000)
-      return await _startSyncMqEgress(attempt)
-    } catch (e) {
-      if (synchedToTargetPromiseFinished) {
-        logger.warn(workerBrief, 'Unexpected rejection.', e)
-        return await _startSyncMqEgress(attempt)
-      } else {
-        logger.warn(workerBrief, 'Error occurred when synching mq...', e)
-        await wait(12000)
-        return await _startSyncMqEgress(attempt)
-      }
-    }
-  }
-
-  loopPromise = _startSyncMqEgress() // avoid GC
-
-  return () => synchedToTargetPromise
 }

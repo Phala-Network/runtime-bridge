@@ -17,8 +17,7 @@ const setupLocalServer = (db) =>
       socket.on('error', (err) => {
         logger.error('Socket error!', err)
       })
-      socket.on('close', (err) => {
-        logger.debug('Socket closed.', err)
+      socket.on('close', () => {
         socket.destroy()
       })
       socket.on('data', (data) => {
@@ -94,7 +93,6 @@ const start = async () => {
       logger.error('Socket error!', err)
     })
     socket.on('close', (err) => {
-      logger.debug('Socket closed.', err)
       socket.destroy()
     })
     pipeline(socket, multileveldownServer(db), socket, (err) => {

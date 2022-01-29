@@ -1,5 +1,6 @@
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
+import { throttle } from 'lodash'
 import { walkieBootNodes } from '../../utils/env'
 import PeerId from 'peer-id'
 import http from 'http'
@@ -8,9 +9,17 @@ import wait from '../../utils/wait'
 import type { WalkiePeer } from '@phala/runtime-bridge-walkie/src/peer'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 
+const TIMEOUT_DP_RESCAN = 12000
+const TIMEOUT_DP_WAIT = 3000
+
 export const keepAliveAgent = new http.Agent({ keepAlive: true })
 
-export const setupPtp = async () => {
+export type LifecycleRunnerPtpNode =
+  WalkiePtpNode<prb.WalkieRoles.WR_CLIENT> & {
+    dpManager: LifecycleRunnerDataProviderManager
+  }
+
+export const setupPtp = async (): Promise<LifecycleRunnerPtpNode> => {
   setLogger(logger)
 
   const ptpNode = await createPtpNode({
@@ -23,7 +32,9 @@ export const setupPtp = async () => {
   })
   await ptpNode.start()
 
-  return ptpNode
+  return Object.assign(ptpNode, {
+    dpManager: createDataProviderManager(ptpNode),
+  })
 }
 
 export type BlobServerContext = {
@@ -32,67 +43,127 @@ export type BlobServerContext = {
   port: number
 }
 
-const dataProviderBlobSessionTable: { [k: string]: BlobServerContext } = {}
+export type DataProviderContextTable = { [k: string]: BlobServerContext }
 
-export const connectToBlobServer = async (
-  peer: WalkiePeer
-): Promise<BlobServerContext> => {
-  const session = dataProviderBlobSessionTable[peer.peerId.toB58String()]
+class LifecycleRunnerDataProviderManager {
+  #candidates: DataProviderContextTable = {}
+  #refreshNeeded = false
 
-  try {
-    if (session) {
-      return session
-    } else {
-      const info = await peer.dial('GetDataProviderInfo', {})
-      const port = info.data.blobServerPort
-
-      if (!port) {
-        return null
+  makeCandidateUpdateIterator(
+    ptpNode: WalkiePtpNode<prb.WalkieRoles.WR_CLIENT>
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const _this = this
+    return async function* CandidateUpdateIterator(): AsyncGenerator {
+      while (true) {
+        yield* _this.CandidateUpdateIterator(
+          Object.values(ptpNode.peerManager.internalDataProviders).filter(
+            (p) => p.chainIdentity === ptpNode.chainIdentity
+          )
+        )
       }
-
-      const context: BlobServerContext = {
-        peer,
-        port,
-        hostname: peer.multiaddr.nodeAddress().address,
-      }
-
-      dataProviderBlobSessionTable[peer.peerId.toB58String()] = context
-      return context
     }
-  } catch (e) {
-    logger.warn(e)
-    return null
+  }
+
+  async *CandidateUpdateIterator(peers: WalkiePeer[]) {
+    const pendingCandidates: DataProviderContextTable = {}
+    for (const peer of peers) {
+      try {
+        const info = await peer.dial('GetDataProviderInfo', {})
+        const port = info.data.blobServerPort
+
+        if (port) {
+          const ret = {
+            peer,
+            port,
+            hostname: peer.multiaddr.nodeAddress().address,
+          }
+          pendingCandidates[peer.peerId.toB58String()] = ret
+          yield ret
+        }
+      } catch (e) {
+        logger.warn(e)
+      }
+    }
+    if (this.#refreshNeeded) {
+      this.#refreshNeeded = false
+    } else {
+      if (!Object.values(pendingCandidates).length) {
+        logger.warn('No data provider available, waiting...')
+      }
+      this.#candidates = pendingCandidates
+      await wait(TIMEOUT_DP_RESCAN)
+    }
+  }
+
+  getFirstCandidate() {
+    const ids = Object.keys(this.candidates || {})
+    if (!ids.length) {
+      return null
+    }
+    return this.candidates[ids[0]] || null
+  }
+  getRandomCandidate() {
+    const ids = Object.keys(this.candidates || {})
+    if (!ids.length) {
+      return null
+    }
+    if (ids.length === 1) {
+      return this.candidates[ids[0]] || null
+    }
+    return this.candidates[ids[Math.floor(Math.random() * ids.length)]] || null
+  }
+
+  async _refreshCandidates(ptpNode: WalkiePtpNode<prb.WalkieRoles.WR_CLIENT>) {
+    for await (const context of this.CandidateUpdateIterator(
+      Object.values(ptpNode.peerManager.internalDataProviders).filter(
+        (p) => p.chainIdentity === ptpNode.chainIdentity
+      )
+    )) {
+      logger.debug(context, 'Updated dp blob server.')
+    }
+    return this.#candidates
+  }
+
+  readonly refreshCandidates = throttle(
+    this._refreshCandidates,
+    TIMEOUT_DP_WAIT
+  )
+
+  get candidates() {
+    return this.#candidates
   }
 }
 
-export const selectDataProvider = (ptpNode: WalkiePtpNode<prb.WalkieRoles>) => {
-  // TODO: support redundancy
-  const candidate = Object.values(
-    ptpNode.peerManager.internalDataProviders
-  ).filter((p) => p.chainIdentity === ptpNode.chainIdentity)[0]
+const createDataProviderManager = (
+  ptpNode: WalkiePtpNode<prb.WalkieRoles.WR_CLIENT>
+): LifecycleRunnerDataProviderManager => {
+  const dpManager = new LifecycleRunnerDataProviderManager()
 
-  if (!candidate) {
-    return null
-  }
+  ;(async () => {
+    for await (const context of dpManager.makeCandidateUpdateIterator(
+      ptpNode
+    )()) {
+      logger.debug(context, 'Updated dp blob server.')
+    }
+  })().catch((e) => {
+    logger.error(e)
+  })
 
-  return connectToBlobServer(candidate)
-
-  //
-  // const ret = dataProviderBlobServerTable[candidate.peerId.toB58String()]
-  //
-  // if (ret?.open) {
-  //   return ret
-  // }
+  return dpManager
 }
+
+export const selectDataProvider = (ptpNode: LifecycleRunnerPtpNode) =>
+  ptpNode.dpManager.getRandomCandidate()
 
 export const waitForDataProvider = async (
-  ptpNode: WalkiePtpNode<prb.WalkieRoles>
+  ptpNode: LifecycleRunnerPtpNode
 ): Promise<BlobServerContext> => {
-  const ret = await selectDataProvider(ptpNode)
+  const ret = selectDataProvider(ptpNode)
   if (ret) {
     return ret
   } else {
-    await wait(1000)
+    await wait(TIMEOUT_DP_WAIT)
     return await waitForDataProvider(ptpNode)
   }
 }

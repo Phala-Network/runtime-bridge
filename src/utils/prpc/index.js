@@ -10,7 +10,6 @@ export const createRpcClient = (endpoint) => {
   return PhactoryAPI.create(
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
-      logger.debug({ url, requestData }, 'Sending HTTP request...')
       try {
         const res = await clientQueue.add(() =>
           runtimeRequest(url, {
