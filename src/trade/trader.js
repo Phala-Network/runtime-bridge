@@ -44,17 +44,11 @@ const start = async () => {
   await setupLocalDb(await getMyId(LIFECYCLE), true)
   await setupPhalaApi(env.chainEndpoint)
 
-  let deadCount = 0
-
   const processQueue = new PQueue({ concurrency: TX_SEND_QUEUE_SIZE })
   const addQueue = new PQueue({ concurrency: 1 })
 
   const addBatchJob = (batch) => addQueue.add(() => doAddJob(batch))
   const doAddJob = async (batch) => {
-    if (deadCount > TX_DEAD_COUNT_THRESHOLD) {
-      return rejectJob(batch)
-    }
-    deadCount += 1
     process.send({
       action: MA_BATCH_ADDED,
       payload: {
@@ -64,15 +58,6 @@ const start = async () => {
     processQueue
       .add(() => getPoolQueue(batch.pid).add(() => processBatch(batch)))
       .catch((e) => logger.error(e))
-  }
-  const rejectJob = async (batch) => {
-    await processQueue.onIdle()
-    process.send({
-      action: MA_BATCH_REJECTED,
-      payload: {
-        id: batch.id,
-      },
-    })
   }
 
   const formTx = (pool, calls) => {

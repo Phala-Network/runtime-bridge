@@ -11,7 +11,6 @@ import {
   Table,
   Unique,
 } from 'sequelize-typescript'
-import { DataTypes } from 'sequelize'
 import Pool from './pool_model'
 import type { prb } from '@phala/runtime-bridge-walkie'
 

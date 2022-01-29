@@ -48,9 +48,9 @@ export const lruCacheMaxAge = parseInt(env.lruCacheMaxAge) || 30 * 60 * 1000
 export const lruCacheDebugLogInterval =
   parseInt(env.lruCacheDebugLogInterval) || (isDev ? 3000 : 0)
 
-export const runnerMaxWorkerNumber = parseInt(env.runnerMaxWorkerNumber) || 27
+export const runnerMaxWorkerNumber = parseInt(env.runnerMaxWorkerNumber) || 150
 export const isConfigMode = env.configMode === 'true'
 
-export const blobQueueSize = parseInt(env.blobQueueSize) || 2
+export const blobQueueSize = parseInt(env.blobQueueSize) || 12
 
 export default env

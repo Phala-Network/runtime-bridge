@@ -22,10 +22,10 @@ import env from '../../utils/env'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 import type { LifecycleHandlerTable } from '../runner_ipc'
+import type { LifecycleRunnerPtpNode } from './ptp'
 import type { Message } from 'protobufjs'
 import type { Sequelize } from 'sequelize'
 import type { U8 } from '@polkadot/types'
-import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import type { WorkerContextMap } from './worker'
 import type BeeQueue from 'bee-queue'
 
@@ -33,7 +33,7 @@ export type RunnerContext = {
   localDb: Sequelize
   workers: WorkerContextMap
   sendToManager?: ReturnType<typeof setupIpcWorker>['send']
-  ptpNode: WalkiePtpNode<prb.WalkieRoles.WR_CLIENT>
+  ptpNode: LifecycleRunnerPtpNode
   fetchStatus?: prb.data_provider.Info
   txQueue: BeeQueue
 } & {
@@ -110,15 +110,20 @@ const startRunner = async () => {
   }
 
   const updateDataProviderInfoLoop = async (): Promise<never> => {
-    const info = await updateDataProviderInfo(context)
+    try {
+      const info = await updateDataProviderInfo(context)
 
-    if (info) {
-      if (context.fetchStatus) {
-        Object.assign(context.fetchStatus, info)
-      } else {
-        context.fetchStatus = info
+      if (info) {
+        if (context.fetchStatus) {
+          Object.assign(context.fetchStatus, info)
+        } else {
+          context.fetchStatus = info
+        }
       }
+    } catch (e) {
+      logger.warn(e)
     }
+
     await wait(3000)
     return updateDataProviderInfoLoop()
   }
