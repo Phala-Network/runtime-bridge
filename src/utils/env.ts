@@ -26,6 +26,11 @@ export const ENV_LIST = [
     'PHALA_LIFECYCLE_BLOB_SERVER_SESSION_MAX_MEMORY',
     'blobServerSessionMaxMemory',
   ],
+  ['PHALA_DATA_PROVIDER_BLOB_MAX_RANGE_COUNT', 'blobMaxRangeCount'],
+  [
+    'PHALA_DATA_PROVIDER_BLOB_MAX_PARA_BLOCK_RANGE_COUNT',
+    'blobMaxParaBlockRangeCount',
+  ],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]

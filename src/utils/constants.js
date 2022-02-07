@@ -1,5 +1,6 @@
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
+import env from './env'
 
 export const FETCH_PROCESSED_BLOB = 'FETCH_PROCESSED_BLOB'
 export const LAST_COMMITTED_PARA_BLOCK = 'LAST_COMMITTED_PARA_BLOCK'
@@ -32,8 +33,9 @@ export const TX_BATCH_DEQUEUE_TIMEOUT = 1000
 export const TX_DEAD_COUNT_THRESHOLD = 500
 export const TX_TIMEOUT = 1000 * 12 * 10
 
-export const BLOB_MAX_RANGE_COUNT = 900
-export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT = 300
+export const BLOB_MAX_RANGE_COUNT = parseInt(env.blobMaxRangeCount) || 60
+export const BLOB_MAX_PARA_BLOCK_RANGE_COUNT =
+  parseInt(env.blobMaxParaBlockRangeCount) || 15
 
 export const MIN_SYNCHED_DISTANCE = 3
 
