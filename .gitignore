@@ -129,6 +129,10 @@ docker/development/bridge/docker-compose.yml
 docker/development/bridge/data
 docker/development/testing/docker-compose.yml
 docker/development/testing/data
+docker/development/dp/docker-compose.yml
+docker/development/dp/data
+docker/development/alt/docker-compose.yml
+docker/development/alt/data
 *.dump
 test_data_alt.json
 **/*.generated.**
@@ -183,3 +187,7 @@ fabric.properties
 
 # *.iml
 # modules.xml
+
+dev.sh
+.vscode
+data
