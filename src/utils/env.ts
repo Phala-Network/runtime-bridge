@@ -8,6 +8,8 @@ export const ENV_LIST = [
   ['PHALA_CHAIN_ENDPOINT', 'chainEndpoint'],
   ['PHALA_Q_REDIS_ENDPOINT', 'qRedisEndpoint'],
 
+  ['PHALA_HOLD_ON_SUBPROCESS_EXIT', 'holdOnSubprocessExit'],
+
   ['PHALA_PEER_ID_PREFIX', 'peerIdPrefix'],
   ['PHALA_WALKIE_LISTEN_ADDRESSES', 'walkieListenAddresses'],
   ['PHALA_WALKIE_BOOT_NODES', 'walkieBootNodes'],
@@ -77,5 +79,7 @@ export const dataProviderLocalServerPort =
 
 export const blobServerSessionMaxMemory =
   parseInt(env.blobServerSessionMaxMemory) || 64
+
+export const holdOnSubprocessExit = env.holdOnSubprocessExit === 'true'
 
 export default env

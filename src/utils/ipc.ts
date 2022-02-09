@@ -1,4 +1,4 @@
-import { LifecycleHandlerTable } from '../lifecycle/runner_ipc'
+import { holdOnSubprocessExit } from './env'
 import cluster from 'cluster'
 import logger from '../utils/logger'
 
@@ -41,7 +41,9 @@ export const createIpcFork = <T extends IpcMessageHandlerTable>(
       if (code !== 0) {
         logger.info({ name, moduleName, code }, `Subprocess exited.`)
       }
-      process.exit(code)
+      if (!holdOnSubprocessExit) {
+        process.exit(code)
+      }
     })
 
     worker.on(
