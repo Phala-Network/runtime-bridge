@@ -33,6 +33,8 @@ export const ENV_LIST = [
     'PHALA_DATA_PROVIDER_BLOB_MAX_PARA_BLOCK_RANGE_COUNT',
     'blobMaxParaBlockRangeCount',
   ],
+  ['PHALA_BRIDGE_IDENTITY', 'bridgeIdentity'],
+  ['PHALA_PTP_IGNORE_BRIDGE_IDENTITY', 'ptpIgnoreBridgeIdentity'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -81,5 +83,7 @@ export const blobServerSessionMaxMemory =
   parseInt(env.blobServerSessionMaxMemory) || 64
 
 export const holdOnSubprocessExit = env.holdOnSubprocessExit === 'true'
+export const bridgeIdentity = env.bridgeIdentity || 'default'
+export const ptpIgnoreBridgeIdentity = env.ptpIgnoreBridgeIdentity === 'true'
 
 export default env

@@ -1,7 +1,11 @@
+import {
+  bridgeIdentity,
+  ptpIgnoreBridgeIdentity,
+  walkieBootNodes,
+} from '../../utils/env'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
 import { throttle } from 'lodash'
-import { walkieBootNodes } from '../../utils/env'
 import PeerId from 'peer-id'
 import http from 'http'
 import logger from '../../utils/logger'
@@ -26,7 +30,7 @@ export const setupPtp = async (): Promise<LifecycleRunnerPtpNode> => {
     peerId: await PeerId.create(),
     role: prb.WalkieRoles.WR_CLIENT,
     chainIdentity: (await phalaApi.rpc.chain.getBlockHash(1)).toHex(),
-    bridgeIdentity: '',
+    bridgeIdentity,
     listenAddresses: [],
     bootstrapAddresses: walkieBootNodes,
   })
@@ -58,7 +62,11 @@ class LifecycleRunnerDataProviderManager {
       while (true) {
         yield* _this.CandidateUpdateIterator(
           Object.values(ptpNode.peerManager.internalDataProviders).filter(
-            (p) => p.chainIdentity === ptpNode.chainIdentity
+            (p) =>
+              p.chainIdentity === ptpNode.chainIdentity &&
+              (ptpIgnoreBridgeIdentity
+                ? true
+                : p.bridgeIdentity === ptpNode.bridgeIdentity)
           )
         )
       }

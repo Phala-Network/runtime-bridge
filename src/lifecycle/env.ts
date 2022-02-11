@@ -21,6 +21,13 @@ export const ENV_LIST = [
   ['PHALA_RUNNER_MAX_WORKER_NUMBER', 'runnerMaxWorkerNumber'],
   ['PHALA_LIFECYCLE_CONFIG_MODE', 'configMode'],
   ['PHALA_LIFECYCLE_BLOB_QUEUE_SIZE', 'blobQueueSize'],
+
+  ['PHALA_PRPC_REQUEST_TIMEOUT', 'rpcRequestTimeout'],
+
+  [
+    'DEBUG_LIFECYCLE_ALLOW_BLOB_FROM_SYNCHING_STATE',
+    'debugAllowBlobFromSynchingState',
+  ],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -52,5 +59,9 @@ export const runnerMaxWorkerNumber = parseInt(env.runnerMaxWorkerNumber) || 150
 export const isConfigMode = env.configMode === 'true'
 
 export const blobQueueSize = parseInt(env.blobQueueSize) || 12
+export const debugAllowBlobFromSynchingState =
+  env.debugAllowBlobFromSynchingState === 'true'
+
+export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 8000
 
 export default env

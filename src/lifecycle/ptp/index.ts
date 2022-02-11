@@ -1,5 +1,9 @@
+import {
+  bridgeIdentity,
+  walkieBootNodes,
+  walkieListenAddresses,
+} from '../../utils/env'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
-import { walkieBootNodes, walkieListenAddresses } from '../../utils/env'
 import logger from '../../utils/logger'
 import type { LifecycleManagerContext } from '../index'
 import type { RpcMethodName } from '@phala/runtime-bridge-walkie/dist/rpc-types'
@@ -19,7 +23,7 @@ export const setupPtp = async (context: LifecycleManagerContext) => {
     peerId: context.myId,
     role: prb.WalkieRoles.WR_LIFECYCLE_MANAGER,
     chainIdentity: context.chainIdentity,
-    bridgeIdentity: 'default',
+    bridgeIdentity,
     listenAddresses: walkieListenAddresses,
     bootstrapAddresses: walkieBootNodes,
   })

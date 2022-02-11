@@ -1,4 +1,5 @@
 import { PRPC_QUEUE_SIZE } from '../constants'
+import { rpcRequestTimeout } from '../../lifecycle/env'
 import PQueue from 'p-queue'
 import axios from 'axios'
 
@@ -10,12 +11,13 @@ export const requestQueue__blob = new PQueue({
 })
 
 const axiosInstance = axios.create({
-  timeout: 8000,
+  timeout: rpcRequestTimeout,
   method: 'post',
   headers: {
     'Content-Type': 'application/octet-stream',
   },
   responseType: 'arraybuffer',
+  maxBodyLength: Infinity,
 })
 
 export const runtimeRequest = (options, queue = requestQueue) =>

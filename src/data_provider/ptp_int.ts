@@ -1,7 +1,11 @@
 import { DATA_PROVIDER, getMyId } from '../utils/my-id'
+import {
+  bridgeIdentity,
+  walkieBootNodes,
+  walkieListenAddresses,
+} from '../utils/env'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { getDb } from './io/db'
-import { walkieBootNodes, walkieListenAddresses } from '../utils/env'
 import PQueue from 'p-queue'
 import concat from 'it-concat'
 import logger from '../utils/logger'
@@ -45,7 +49,7 @@ export const setupInternalPtp = async (
     peerId: myId,
     role: prb.WalkieRoles.WR_DATA_PROVIDER_INT,
     chainIdentity,
-    bridgeIdentity: 'default',
+    bridgeIdentity,
     listenAddresses: walkieListenAddresses,
     bootstrapAddresses: walkieBootNodes,
   })
