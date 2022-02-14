@@ -191,3 +191,4 @@ fabric.properties
 dev.sh
 .vscode
 data
+src/vendor/proto
