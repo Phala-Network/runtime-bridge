@@ -6,13 +6,57 @@ import { server as multileveldownServer } from 'multileveldown'
 import { pipeline } from 'stream'
 import EncodingDown from 'encoding-down'
 import LevelUp from 'levelup'
+import duplexify from 'duplexify'
+import eos from 'end-of-stream'
 import fs from 'fs/promises'
 import logger from '../../utils/logger'
+import lpstream from 'length-prefixed-stream'
 import net from 'net'
 import rocksdb from 'rocksdb'
 
+const localServer = (db) => {
+  const encoder = lpstream.encode()
+  const decoder = lpstream.decode()
+  const stream = duplexify(encoder, decoder)
+
+  eos(stream, () => {
+    logger.debug('Stream ended!')
+  })
+
+  decoder.on('data', (data) => {
+    if (data.length < 17) {
+      logger.warn('Received invalid message.')
+      return
+    }
+    const id = data.slice(0, 16)
+    const key = data.slice(16).toString('utf8').trim()
+    db.get(key)
+      .then((ret) => {
+        if (!ret?.length) {
+          encoder.write(id)
+          return
+        }
+        const crc = crc32cBuffer(ret)
+        const buffer = Buffer.concat([id, crc, ret])
+        ;(isDev ? console.log : logger.debug)('Sending buffer...', {
+          key,
+          valueSize: ret.length,
+          bufferSize: buffer.length,
+        })
+      })
+      .catch((e) => {
+        if (!(e instanceof NotFoundError)) {
+          logger.error(e)
+        }
+        encoder.write(id)
+      })
+  })
+
+  return stream
+}
+
 const setupLocalServer = (db) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const server = net.createServer((socket) => {
       socket.on('error', (err) => {
         logger.error('Socket error!', err)
@@ -20,53 +64,44 @@ const setupLocalServer = (db) =>
       socket.on('close', () => {
         socket.destroy()
       })
-      socket.on('data', (data) => {
-        const key = data.toString('utf8').trim()
-        if (!key) {
-          socket.write('')
-          socket.end()
-        } else {
-          let t1, t2, t3, t4
-          t1 = Date.now()
-          db.get(key)
-            .then((ret) => {
-              t2 = Date.now()
-              if (!ret?.length) {
-                socket.write('')
-                socket.end()
-              }
-              const crc = crc32cBuffer(ret)
-              t3 = Date.now()
-              socket.write(crc, () =>
-                socket.write(ret, () =>
-                  socket.end(() => {
-                    t4 = Date.now()
-                    ;(isDev ? console.log : logger.debug)('Sending buffer...', {
-                      key,
-                      bufferSize: ret.length,
-                      timing: t4 - t1,
-                      timingQuery: t2 - t1,
-                      timingCrc: t3 - t2,
-                      timingSocket: t4 - t3,
-                    })
-                  })
-                )
-              )
-            })
-            .catch((e) => {
-              if (!(e instanceof NotFoundError)) {
-                logger.error(e)
-              }
-              socket.write('')
-              socket.end()
-            })
+      pipeline(socket, localServer(db), socket, (err) => {
+        if (err) {
+          logger.error('Pipeline error!', err)
         }
       })
     })
     server.on('error', (err) => {
       logger.error(err)
+      reject(err)
     })
     server.listen(dataProviderLocalServerPort, () => {
+      resolve()
+    })
+  })
+
+const setupInternalServer = (db) =>
+  new Promise((resolve, reject) => {
+    const ipcServer = net.createServer((socket) => {
+      socket.on('error', (err) => {
+        logger.error('Socket error!', err)
+      })
+      socket.on('close', () => {
+        socket.destroy()
+      })
+      pipeline(socket, multileveldownServer(db), socket, (err) => {
+        if (err) {
+          logger.error('Pipeline error!', err)
+        }
+      })
+    })
+
+    ipcServer.on('error', (err) => {
+      logger.error('Socket error!', err)
+      reject(err)
+    })
+
+    ipcServer.listen(dbListenPath, () => {
+      process.send('ok')
       resolve()
     })
   })
@@ -87,28 +122,8 @@ const start = async () => {
       valueEncoding: 'binary',
     })
   )
+  await setupInternalServer(db)
   await setupLocalServer(db)
-  const ipcServer = net.createServer((socket) => {
-    socket.on('error', (err) => {
-      logger.error('Socket error!', err)
-    })
-    socket.on('close', (err) => {
-      socket.destroy()
-    })
-    pipeline(socket, multileveldownServer(db), socket, (err) => {
-      if (err) {
-        logger.error('Pipeline error!', err)
-      }
-    })
-  })
-
-  ipcServer.on('error', (err) => {
-    logger.error('Socket error!', err)
-  })
-
-  ipcServer.listen(dbListenPath, () => {
-    process.send('ok')
-  })
 }
 
 export default start
