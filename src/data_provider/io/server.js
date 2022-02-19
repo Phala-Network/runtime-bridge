@@ -6,6 +6,7 @@ import { server as multileveldownServer } from 'multileveldown'
 import { pipeline } from 'stream'
 import EncodingDown from 'encoding-down'
 import LevelUp from 'levelup'
+import PQueue from 'p-queue'
 import duplexify from 'duplexify'
 import eos from 'end-of-stream'
 import fs from 'fs/promises'
@@ -14,10 +15,25 @@ import lpstream from 'length-prefixed-stream'
 import net from 'net'
 import rocksdb from 'rocksdb'
 
-const localServer = (db) => {
+const localServer = (db, writeQueue) => {
   const encoder = lpstream.encode()
   const decoder = lpstream.decode()
-  const stream = duplexify(encoder, decoder)
+  const stream = duplexify(decoder, encoder)
+
+  const write = (data) =>
+    writeQueue.add(
+      () =>
+        new Promise((resolve) => {
+          encoder.write(data, (e) => {
+            if (!e) {
+              resolve()
+            } else {
+              logger.warn('Error when writing to stream.', e)
+              resolve()
+            }
+          })
+        })
+    )
 
   eos(stream, () => {
     logger.debug('Stream ended!')
@@ -33,7 +49,7 @@ const localServer = (db) => {
     db.get(key)
       .then((ret) => {
         if (!ret?.length) {
-          encoder.write(id)
+          write(id)
           return
         }
         const crc = crc32cBuffer(ret)
@@ -43,12 +59,13 @@ const localServer = (db) => {
           valueSize: ret.length,
           bufferSize: buffer.length,
         })
+        write(buffer)
       })
       .catch((e) => {
         if (!(e instanceof NotFoundError)) {
           logger.error(e)
         }
-        encoder.write(id)
+        write(id)
       })
   })
 
@@ -58,13 +75,16 @@ const localServer = (db) => {
 const setupLocalServer = (db) =>
   new Promise((resolve, reject) => {
     const server = net.createServer((socket) => {
+      const writeQueue = new PQueue({ concurrency: 1 })
+      logger.info(socket.address(), 'New blob server connection.')
       socket.on('error', (err) => {
         logger.error('Socket error!', err)
       })
       socket.on('close', () => {
+        logger.info(socket.address(), 'Blob server connection closed.')
         socket.destroy()
       })
-      pipeline(socket, localServer(db), socket, (err) => {
+      pipeline(socket, localServer(db, writeQueue), socket, (err) => {
         if (err) {
           logger.error('Pipeline error!', err)
         }

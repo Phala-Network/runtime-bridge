@@ -8,6 +8,7 @@ import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
 import { pipeline } from 'stream'
 import { reject, throttle } from 'lodash'
+import PQueue from 'p-queue'
 import PeerId from 'peer-id'
 import duplexify from 'duplexify'
 import eos from 'end-of-stream'
@@ -70,20 +71,29 @@ export type LifecycleRunnerDataProviderConnectionResponseMap = Map<
 >
 
 class LifecycleRunnerDataProviderConnection {
-  closed = false
-  encoder = lpstream.encode()
-  decoder = lpstream.encode()
-  stream = duplexify()
-  responseMap: LifecycleRunnerDataProviderConnectionResponseMap = new Map()
+  closed: boolean
+  encoder
+  decoder
+  stream
+  responseMap: LifecycleRunnerDataProviderConnectionResponseMap
   connectPromise: Promise<void>
   socket: net.Socket
   dataProvider: BlobServerContext
+  getQueue
+  writeQueue
 
   constructor(dataProvider: BlobServerContext) {
+    this.closed = false
+    this.encoder = lpstream.encode()
+    this.decoder = lpstream.decode()
+    this.stream = duplexify()
+    this.responseMap = new Map()
     this.dataProvider = dataProvider
     this.stream.setWritable(this.decoder)
     this.stream.setReadable(this.encoder)
-    eos(this.stream, this.cleanup)
+    eos(this.stream, () => this.cleanup.bind(this))
+    this.getQueue = new PQueue({ concurrency: 3 })
+    this.writeQueue = new PQueue({ concurrency: 1 })
     this.connectPromise = this.connect()
   }
 
@@ -91,6 +101,7 @@ class LifecycleRunnerDataProviderConnection {
     const _this = this
     const id = crypto.randomBytes(8)
     const idStr = id.toString('hex')
+    const write = this._write.bind(this)
     return new Promise((resolve, reject) => {
       const responseCtx: LifecycleRunnerDataProviderConnectionResponse = {
         resolve,
@@ -98,13 +109,31 @@ class LifecycleRunnerDataProviderConnection {
         key,
         id: idStr,
       }
-      _this.encoder.write(Buffer.concat([id, Buffer.from(key, 'utf-8')]))
+
       _this.responseMap.set(idStr, responseCtx)
+      write(Buffer.concat([id, Buffer.from(key, 'utf-8')]))
       setTimeout(() => {
         reject(new Error(`Timeout when getting key '${key}'.`))
         _this.responseMap.delete(idStr)
       }, TIMEOUT_DP_GET)
     })
+  }
+
+  _write(data: Buffer): Promise<void> {
+    const encoder = this.encoder
+    return this.writeQueue.add(
+      () =>
+        new Promise((resolve) => {
+          encoder.write(data, (e) => {
+            if (!e) {
+              resolve()
+            } else {
+              logger.warn('Error when writing to stream.', e)
+              resolve()
+            }
+          })
+        })
+    )
   }
 
   connect(): Promise<void> {
@@ -124,6 +153,7 @@ class LifecycleRunnerDataProviderConnection {
     this.decoder.on('data', (data) => {
       if (data.length < 8) {
         logger.info('Received invalid data from data provider.')
+        return
       }
       const idStr = data.slice(0, 8).toString('hex')
       const responseCtx = ctxMap.get(idStr)
@@ -131,6 +161,7 @@ class LifecycleRunnerDataProviderConnection {
         logger.warn('Got unknown id from dp.')
         return
       }
+
       if (data.length < 17) {
         responseCtx.resolve(null)
         ctxMap.delete(idStr)
@@ -168,7 +199,7 @@ class LifecycleRunnerDataProviderConnection {
     })
   }
 
-  get waitForConnection() {
+  waitForConnection() {
     if (!this.connectPromise) {
       throw new Error('Connection not initialized')
     }
@@ -197,12 +228,12 @@ class LifecycleRunnerDataProviderManager {
 
   async getConnection(ctx: BlobServerContext) {
     const conn = this.#connections[ctx.idStr]
-    if (!conn?.closed) {
+    if (conn && !conn?.closed) {
       return conn
     }
     const newConn = new LifecycleRunnerDataProviderConnection(ctx)
     this.#connections[ctx.idStr] = newConn
-    await newConn.waitForConnection
+    await newConn.waitForConnection()
     return newConn
   }
 
