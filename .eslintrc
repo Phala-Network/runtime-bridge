@@ -22,7 +22,8 @@
         "memberSyntaxSortOrder": ["none", "multiple", "single", "all"]
       }
     ],
-    "@typescript-eslint/consistent-type-imports": "error"
+    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/no-this-alias": "off"
   },
   "globals": {
     "$logger": "writable",

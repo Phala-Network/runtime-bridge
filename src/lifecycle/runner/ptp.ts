@@ -3,18 +3,26 @@ import {
   ptpIgnoreBridgeIdentity,
   walkieBootNodes,
 } from '../../utils/env'
+import { crc32cBuffer } from '../../utils/crc'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
-import { throttle } from 'lodash'
+import { pipeline } from 'stream'
+import { reject, throttle } from 'lodash'
 import PeerId from 'peer-id'
+import duplexify from 'duplexify'
+import eos from 'end-of-stream'
 import http from 'http'
 import logger from '../../utils/logger'
+import lpstream from 'length-prefixed-stream'
+import net from 'net'
 import wait from '../../utils/wait'
+import * as crypto from 'crypto'
 import type { WalkiePeer } from '@phala/runtime-bridge-walkie/src/peer'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 
 const TIMEOUT_DP_RESCAN = 12000
 const TIMEOUT_DP_WAIT = 3000
+const TIMEOUT_DP_GET = 30000
 
 export const keepAliveAgent = new http.Agent({ keepAlive: true })
 
@@ -43,15 +51,160 @@ export const setupPtp = async (): Promise<LifecycleRunnerPtpNode> => {
 
 export type BlobServerContext = {
   peer: WalkiePeer
+  idStr: string
   hostname: string
   port: number
 }
 
 export type DataProviderContextTable = { [k: string]: BlobServerContext }
 
+export type LifecycleRunnerDataProviderConnectionResponse = {
+  resolve: (buffer: Buffer) => void
+  reject: (err: Error) => void
+  key: string
+  id: string
+}
+export type LifecycleRunnerDataProviderConnectionResponseMap = Map<
+  string,
+  LifecycleRunnerDataProviderConnectionResponse
+>
+
+class LifecycleRunnerDataProviderConnection {
+  closed = false
+  encoder = lpstream.encode()
+  decoder = lpstream.encode()
+  stream = duplexify()
+  responseMap: LifecycleRunnerDataProviderConnectionResponseMap = new Map()
+  connectPromise: Promise<void>
+  socket: net.Socket
+  dataProvider: BlobServerContext
+
+  constructor(dataProvider: BlobServerContext) {
+    this.dataProvider = dataProvider
+    this.stream.setWritable(this.decoder)
+    this.stream.setReadable(this.encoder)
+    eos(this.stream, this.cleanup)
+    this.connectPromise = this.connect()
+  }
+
+  get(key: string): Promise<Buffer> {
+    const _this = this
+    const id = crypto.randomBytes(8)
+    const idStr = id.toString('hex')
+    return new Promise((resolve, reject) => {
+      const responseCtx: LifecycleRunnerDataProviderConnectionResponse = {
+        resolve,
+        reject,
+        key,
+        id: idStr,
+      }
+      _this.encoder.write(Buffer.concat([id, Buffer.from(key, 'utf-8')]))
+      _this.responseMap.set(idStr, responseCtx)
+      setTimeout(() => {
+        reject(new Error(`Timeout when getting key '${key}'.`))
+        _this.responseMap.delete(idStr)
+      }, TIMEOUT_DP_GET)
+    })
+  }
+
+  connect(): Promise<void> {
+    if (this.connectPromise) {
+      return this.connectPromise
+    }
+
+    const dataProvider = this.dataProvider
+    const ctxMap = this.responseMap
+
+    const socket = net.createConnection({
+      port: dataProvider.port,
+      host: dataProvider.hostname,
+    })
+    this.socket = socket
+
+    this.decoder.on('data', (data) => {
+      if (data.length < 8) {
+        logger.info('Received invalid data from data provider.')
+      }
+      const idStr = data.slice(0, 8).toString('hex')
+      const responseCtx = ctxMap.get(idStr)
+      if (!responseCtx) {
+        logger.warn('Got unknown id from dp.')
+        return
+      }
+      if (data.length < 17) {
+        responseCtx.resolve(null)
+        ctxMap.delete(idStr)
+        return
+      }
+      const remoteCrc = data.slice(8, 16)
+      const buf = data.slice(16)
+      const localCrc = crc32cBuffer(buf)
+      if (remoteCrc.compare(localCrc) !== 0) {
+        responseCtx.reject(new Error('CRC Mismatch!'))
+        ctxMap.delete(idStr)
+        return
+      }
+      responseCtx.resolve(buf)
+      ctxMap.delete(idStr)
+    })
+
+    pipeline(socket, this.stream, socket, (err) => {
+      logger.warn('db ipc:', err)
+    })
+    return new Promise((resolve) => {
+      socket.on('error', (err) => {
+        logger.error('dp connection:', err)
+        reject(err)
+      })
+
+      socket.on('close', (err) => {
+        logger.error('dp connection:', err)
+      })
+
+      socket.on('connect', () => {
+        logger.info(dataProvider, `Connected to data provider.`)
+        resolve()
+      })
+    })
+  }
+
+  get waitForConnection() {
+    if (!this.connectPromise) {
+      throw new Error('Connection not initialized')
+    }
+    return this.connectPromise
+  }
+
+  cleanup() {
+    this.closed = true
+    this.connectPromise = Promise.reject(new Error('Connection closed!'))
+    const err = new Error('Connection closed.')
+    for (const r of this.responseMap.values()) {
+      r.reject(err)
+    }
+    this.responseMap.clear()
+  }
+}
+
+export type DataProviderConnectionTable = {
+  [k: string]: LifecycleRunnerDataProviderConnection
+}
+
 class LifecycleRunnerDataProviderManager {
   #candidates: DataProviderContextTable = {}
+  #connections: DataProviderConnectionTable = {}
   #refreshNeeded = false
+
+  async getConnection(ctx: BlobServerContext) {
+    const conn = this.#connections[ctx.idStr]
+    if (!conn?.closed) {
+      return conn
+    }
+    const newConn = new LifecycleRunnerDataProviderConnection(ctx)
+    this.#connections[ctx.idStr] = newConn
+    await newConn.waitForConnection
+    return newConn
+  }
 
   makeCandidateUpdateIterator(
     ptpNode: WalkiePtpNode<prb.WalkieRoles.WR_CLIENT>
@@ -83,6 +236,7 @@ class LifecycleRunnerDataProviderManager {
         if (port) {
           const ret = {
             peer,
+            idStr: peer.peerId.toB58String(),
             port,
             hostname: peer.multiaddr.nodeAddress().address,
           }

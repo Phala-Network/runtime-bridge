@@ -24,12 +24,12 @@ const localServer = (db) => {
   })
 
   decoder.on('data', (data) => {
-    if (data.length < 17) {
+    if (data.length < 9) {
       logger.warn('Received invalid message.')
       return
     }
-    const id = data.slice(0, 16)
-    const key = data.slice(16).toString('utf8').trim()
+    const id = data.slice(0, 8)
+    const key = data.slice(8).toString('utf8').trim()
     db.get(key)
       .then((ret) => {
         if (!ret?.length) {

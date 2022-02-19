@@ -27,3 +27,13 @@ declare module 'multileveldown' {
 
   export const client: (opts: { [k: string]: unknown }) => MultiLevelDownClient
 }
+
+declare module 'length-prefixed-stream' {
+  import type { Transform } from 'readable-stream'
+  type LpsType = {
+    decode: () => Transform
+    encode: () => Transform
+  }
+  declare const lps: LpsType
+  export default lps
+}

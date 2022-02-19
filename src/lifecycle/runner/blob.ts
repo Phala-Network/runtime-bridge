@@ -5,14 +5,12 @@ import {
   lruCacheMaxAge,
   lruCacheSize,
 } from '../env'
-import { crc32cBuffer } from '../../utils/crc'
 import { pbToObject } from '../../data_provider/io/db_encoding'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { waitForDataProvider } from './ptp'
 import LRU from 'lru-cache'
 import PQueue from 'p-queue'
 import logger from '../../utils/logger'
-import net from 'net'
 import promiseRetry from 'promise-retry'
 import wait from '../../utils/wait'
 import type { LifecycleRunnerPtpNode } from './ptp'
@@ -45,6 +43,12 @@ if (lruCacheDebugLogInterval > 0) {
   }, lruCacheDebugLogInterval)
 }
 
+const _getBuffer = async (ptpNode: LifecycleRunnerPtpNode, key: string) => {
+  const dataProvider = await waitForDataProvider(ptpNode)
+  const dpConn = await ptpNode.dpManager.getConnection(dataProvider)
+  return dpConn.get(key)
+}
+
 const getBuffer = async (
   ptpNode: LifecycleRunnerPtpNode,
   key: string,
@@ -54,64 +58,9 @@ const getBuffer = async (
     return await promiseStore[key]
   }
 
-  promiseStore[key] = queue.add(
-    async () => {
-      const t1 = Date.now()
-
-      let t3 = 0
-      const response: Buffer = await new Promise((resolve, reject) => {
-        ;(async () => {
-          const bufs: Buffer[] = []
-          let remoteCrc: Buffer
-          const dataProvider = await waitForDataProvider(ptpNode)
-
-          const socket = net.createConnection({
-            port: dataProvider.port,
-            host: dataProvider.hostname,
-          })
-          setTimeout(() => reject(new Error('Timeout!')), 60000)
-          socket.on('connect', () => {
-            socket.write(key)
-          })
-          socket.on('data', (buf) => {
-            if (buf.length >= 8 && !remoteCrc) {
-              remoteCrc = buf.slice(0, 8)
-              bufs.push(buf.slice(8))
-            } else {
-              bufs.push(buf)
-            }
-          })
-          socket.on('error', (e) => {
-            reject(e)
-          })
-          socket.on('end', () => {
-            t3 = Date.now()
-            const buf = bufs.length > 1 ? Buffer.concat(bufs) : bufs[0]
-            if (!buf?.length) {
-              resolve(null)
-              return
-            }
-            const localCrc = crc32cBuffer(buf)
-            if (remoteCrc.compare(localCrc) !== 0) {
-              reject(new Error('CRC Mismatch!'))
-              return
-            }
-            resolve(buf)
-          })
-        })().catch((e) => reject(e))
-      })
-      const t2 = Date.now()
-      logger.debug('getBuffer', {
-        key,
-        responseSize: response?.length || 0,
-        timing: t2 - t1,
-        timingFetch: t3 - t1,
-      })
-
-      return response?.length ? response : null
-    },
-    { priority }
-  )
+  promiseStore[key] = queue.add(() => _getBuffer(ptpNode, key), {
+    priority,
+  })
 
   try {
     const ret = await promiseStore[key]

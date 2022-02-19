@@ -32,6 +32,8 @@
     "@polkadot/util": "^8.4.1",
     "@polkadot/util-crypto": "^8.4.1",
     "@types/duplexify": "^3.6.1",
+    "@types/end-of-stream": "^1.4.1",
+    "@types/readable-stream": "^2.3.13",
     "agentkeepalive": "^4.1.4",
     "axios": "^0.25.0",
     "bee-queue": "^1.4.0",
