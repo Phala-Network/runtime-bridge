@@ -92,7 +92,7 @@ class LifecycleRunnerDataProviderConnection {
     this.stream.setWritable(this.decoder)
     this.stream.setReadable(this.encoder)
     eos(this.stream, () => this.cleanup.bind(this))
-    this.getQueue = new PQueue({ concurrency: 3 })
+    this.getQueue = new PQueue({ concurrency: 10 })
     this.writeQueue = new PQueue({ concurrency: 1 })
     this.connectPromise = this.connect()
   }

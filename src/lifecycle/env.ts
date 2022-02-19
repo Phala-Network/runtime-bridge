@@ -62,6 +62,6 @@ export const blobQueueSize = parseInt(env.blobQueueSize) || 12
 export const debugAllowBlobFromSynchingState =
   env.debugAllowBlobFromSynchingState === 'true'
 
-export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 8000
+export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 12000
 
 export default env

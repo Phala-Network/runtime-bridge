@@ -15,10 +15,19 @@ import lpstream from 'length-prefixed-stream'
 import net from 'net'
 import rocksdb from 'rocksdb'
 
-const localServer = (db, writeQueue) => {
+const localServer = (db, writeQueue, address) => {
   const encoder = lpstream.encode()
   const decoder = lpstream.decode()
   const stream = duplexify(decoder, encoder)
+  let i = 0
+  const statInterval = setInterval(() => {
+    const ii = i
+    i = 0
+    logger.info('Stats: ' + address, {
+      sentPerFiveSec: ii,
+      sentPerSecAvg: ii / 5,
+    })
+  }, 5000)
 
   const write = (data) =>
     writeQueue.add(
@@ -37,6 +46,7 @@ const localServer = (db, writeQueue) => {
 
   eos(stream, () => {
     logger.debug('Stream ended!')
+    clearInterval(statInterval)
   })
 
   decoder.on('data', (data) => {
@@ -54,12 +64,9 @@ const localServer = (db, writeQueue) => {
         }
         const crc = crc32cBuffer(ret)
         const buffer = Buffer.concat([id, crc, ret])
-        ;(isDev ? console.log : logger.debug)('Sending buffer...', {
-          key,
-          valueSize: ret.length,
-          bufferSize: buffer.length,
+        write(buffer).then(() => {
+          i += 1
         })
-        write(buffer)
       })
       .catch((e) => {
         if (!(e instanceof NotFoundError)) {
@@ -75,16 +82,17 @@ const localServer = (db, writeQueue) => {
 const setupLocalServer = (db) =>
   new Promise((resolve, reject) => {
     const server = net.createServer((socket) => {
+      const address = `${socket.remoteAddress}:${socket.remotePort}`
       const writeQueue = new PQueue({ concurrency: 1 })
-      logger.info(socket.address(), 'New blob server connection.')
+      logger.info({ address }, 'New blob server connection.')
       socket.on('error', (err) => {
         logger.error('Socket error!', err)
       })
       socket.on('close', () => {
-        logger.info(socket.address(), 'Blob server connection closed.')
+        logger.info({ address }, 'Blob server connection closed.')
         socket.destroy()
       })
-      pipeline(socket, localServer(db, writeQueue), socket, (err) => {
+      pipeline(socket, localServer(db, writeQueue, address), socket, (err) => {
         if (err) {
           logger.error('Pipeline error!', err)
         }
