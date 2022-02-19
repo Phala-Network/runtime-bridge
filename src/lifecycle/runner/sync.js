@@ -67,13 +67,6 @@ export const startSync = (runtime) => {
           parachain_synced_to: paraSynchedTo,
         },
       } = await request('/bin_api/sync_combined_headers', blobs[0])
-      logger.info(
-        2222,
-        headerSyncNumber,
-        { parentSynchedTo, paraSynchedTo },
-        blobs.meta,
-        workerBrief
-      )
       syncStatus.parentHeaderSynchedTo = parentSynchedTo
       if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
         syncStatus.paraHeaderSynchedTo = paraSynchedTo
