@@ -20,10 +20,10 @@ import IRangeMeta = prb.db.IRangeMeta
 
 const queue = new PQueue({ concurrency: blobQueueSize })
 
-const PRIORITY_META = 200
+const PRIORITY_META = 50
 // const PRIORITY_META_HURRY = 20
 const PRIORITY_HEADER_BLOB = 100
-const PRIORITY_PARA_BLOB = 100
+const PRIORITY_PARA_BLOB = 101
 
 type PromiseStore<T> = { [k: string]: Promise<T | null> }
 const promiseStore: PromiseStore<Buffer | Uint8Array> = {}
