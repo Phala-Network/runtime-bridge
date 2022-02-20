@@ -149,12 +149,23 @@ export const initRuntime = async (
 
   await runtime.updateInfo()
 
+  let updateInfoLoopRetries = 0
+
   const updateInfoLoop = async () => {
-    await runtime.updateInfo()
-    if (runtime.shouldStopUpdateInfo) {
-      return
+    try {
+      await runtime.updateInfo()
+      updateInfoLoopRetries = 0
+      if (runtime.shouldStopUpdateInfo) {
+        return
+      }
+      await wait(3000)
+    } catch (e) {
+      updateInfoLoopRetries += 1
+      if (updateInfoLoopRetries > 5) {
+        throw e
+      }
+      await wait(8000)
     }
-    await wait(3000)
     return updateInfoLoop()
   }
   updateInfoLoop().catch((e) => {

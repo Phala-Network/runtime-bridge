@@ -7,7 +7,7 @@ import { crc32cBuffer } from '../../utils/crc'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import { phalaApi } from '../../utils/api'
 import { pipeline } from 'stream'
-import { reject, throttle } from 'lodash'
+import { throttle } from 'lodash'
 import PQueue from 'p-queue'
 import PeerId from 'peer-id'
 import duplexify from 'duplexify'
@@ -77,6 +77,7 @@ class LifecycleRunnerDataProviderConnection {
   stream
   responseMap: LifecycleRunnerDataProviderConnectionResponseMap
   connectPromise: Promise<void>
+  connectPromiseReject: (e: Error) => void
   socket: net.Socket
   dataProvider: BlobServerContext
   getQueue
@@ -111,7 +112,11 @@ class LifecycleRunnerDataProviderConnection {
       }
 
       _this.responseMap.set(idStr, responseCtx)
-      write(Buffer.concat([id, Buffer.from(key, 'utf-8')]))
+      write(Buffer.concat([id, Buffer.from(key, 'utf-8')])).catch(
+        (e: Error) => {
+          reject(e)
+        }
+      )
       setTimeout(() => {
         reject(new Error(`Timeout when getting key '${key}'.`))
         _this.responseMap.delete(idStr)
@@ -141,6 +146,7 @@ class LifecycleRunnerDataProviderConnection {
       return this.connectPromise
     }
 
+    const _this = this
     const dataProvider = this.dataProvider
     const ctxMap = this.responseMap
 
@@ -182,14 +188,17 @@ class LifecycleRunnerDataProviderConnection {
     pipeline(socket, this.stream, socket, (err) => {
       logger.warn('db ipc:', err)
     })
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      _this.connectPromiseReject = reject
       socket.on('error', (err) => {
         logger.error('dp connection:', err)
         reject(err)
+        _this.cleanup()
       })
 
       socket.on('close', (err) => {
         logger.error('dp connection:', err)
+        _this.cleanup()
       })
 
       socket.on('connect', () => {
@@ -207,9 +216,12 @@ class LifecycleRunnerDataProviderConnection {
   }
 
   cleanup() {
+    if (this.closed) {
+      return
+    }
     this.closed = true
-    this.connectPromise = Promise.reject(new Error('Connection closed!'))
     const err = new Error('Connection closed.')
+    this.connectPromiseReject?.(err)
     for (const r of this.responseMap.values()) {
       r.reject(err)
     }
@@ -224,9 +236,30 @@ export type DataProviderConnectionTable = {
 class LifecycleRunnerDataProviderManager {
   #candidates: DataProviderContextTable = {}
   #connections: DataProviderConnectionTable = {}
+  #locks: Map<string, boolean> = new Map()
   #refreshNeeded = false
 
-  async getConnection(ctx: BlobServerContext) {
+  async getConnection(
+    ctx: BlobServerContext
+  ): Promise<LifecycleRunnerDataProviderConnection> {
+    if (this.#locks.get(ctx.idStr)) {
+      await wait(100)
+      return this.getConnection(ctx)
+    }
+    try {
+      this.#locks.set(ctx.idStr, true)
+      const ret = await this._getConnection(ctx)
+      this.#locks.set(ctx.idStr, false)
+      return ret
+    } catch (e) {
+      this.#locks.set(ctx.idStr, false)
+      throw e
+    }
+  }
+
+  async _getConnection(
+    ctx: BlobServerContext
+  ): Promise<LifecycleRunnerDataProviderConnection> {
     const conn = this.#connections[ctx.idStr]
     if (conn && !conn?.closed) {
       return conn
