@@ -23,6 +23,7 @@ export const ENV_LIST = [
   ['PHALA_LIFECYCLE_BLOB_QUEUE_SIZE', 'blobQueueSize'],
 
   ['PHALA_PRPC_REQUEST_TIMEOUT', 'rpcRequestTimeout'],
+  ['PHALA_BLOB_REQUEST_TIMEOUT', 'blobRequestTimeout'],
 
   [
     'DEBUG_LIFECYCLE_ALLOW_BLOB_FROM_SYNCHING_STATE',
@@ -62,6 +63,7 @@ export const blobQueueSize = parseInt(env.blobQueueSize) || 12
 export const debugAllowBlobFromSynchingState =
   env.debugAllowBlobFromSynchingState === 'true'
 
-export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 12000
+export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 8000
+export const blobRequestTimeout = parseInt(env.blobRequestTimeout) || 120000
 
 export default env

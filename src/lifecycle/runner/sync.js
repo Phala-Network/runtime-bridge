@@ -1,3 +1,4 @@
+import { blobRequestTimeout } from '../env'
 import { getHeaderBlob, getParaBlockBlob } from './blob'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
@@ -66,7 +67,11 @@ export const startSync = (runtime) => {
           relaychain_synced_to: parentSynchedTo,
           parachain_synced_to: paraSynchedTo,
         },
-      } = await request('/bin_api/sync_combined_headers', blobs[0])
+      } = await request(
+        '/bin_api/sync_combined_headers',
+        blobs[0],
+        blobRequestTimeout
+      )
       syncStatus.parentHeaderSynchedTo = parentSynchedTo
       if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
         syncStatus.paraHeaderSynchedTo = paraSynchedTo
@@ -105,7 +110,7 @@ export const startSync = (runtime) => {
     }
     const {
       payload: { dispatched_to: dispatchedTo },
-    } = await request('/bin_api/dispatch_block', data)
+    } = await request('/bin_api/dispatch_block', data, blobRequestTimeout)
     syncStatus.paraBlockDispatchedTo = dispatchedTo
     if (!synchedToTargetPromiseFinished) {
       if (dispatchedTo >= fetchStatus.paraProcessedHeight) {
