@@ -29,6 +29,7 @@ export const ENV_LIST = [
     'DEBUG_LIFECYCLE_ALLOW_BLOB_FROM_SYNCHING_STATE',
     'debugAllowBlobFromSynchingState',
   ],
+  ['PHALA_SYNC_ONLY', 'syncOnly'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -65,5 +66,6 @@ export const debugAllowBlobFromSynchingState =
 
 export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 8000
 export const blobRequestTimeout = parseInt(env.blobRequestTimeout) || 120000
+export const syncOnly = env.syncOnly === 'true'
 
 export default env

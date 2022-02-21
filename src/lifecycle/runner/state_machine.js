@@ -4,7 +4,7 @@ import {
   subscribeOnChainState,
 } from './worker'
 import { initRuntime, registerWorker } from './pruntime'
-import { minBenchScore, shouldSkipRa } from '../env'
+import { minBenchScore, shouldSkipRa, syncOnly } from '../env'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { startSync } from './sync'
@@ -80,6 +80,11 @@ const onSynching = async (fromState, toState, context) => {
 }
 
 const onSynched = async (fromState, toState, context) => {
+  if (syncOnly) {
+    context.stateMachine.rootStateMachine.workerContext.message =
+      'Sync only mode enabled, skipping on-chain operations.'
+    return
+  }
   const { runtime, workerBrief } =
     context.stateMachine.rootStateMachine.workerContext
   const waitUntilMqSynched = startSyncMessage(runtime)

@@ -115,7 +115,13 @@ const startRunner = async () => {
 
       if (info) {
         if (context.fetchStatus) {
-          Object.assign(context.fetchStatus, info)
+          if (
+            info.paraProcessedHeight >= context.fetchStatus.paraProcessedHeight
+          ) {
+            Object.assign(context.fetchStatus, info)
+          } else {
+            logger.warn('Received outdated dp info!')
+          }
         } else {
           context.fetchStatus = info
         }
