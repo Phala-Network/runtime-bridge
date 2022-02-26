@@ -14,8 +14,6 @@ import type { PrbLevelDownClient } from './io/db'
 import type { WalkieRpcHandler } from '@phala/runtime-bridge-walkie/src/rpc'
 import type BufferList from 'bl'
 
-const CHUNK_SIZE = 1048576 * 10
-
 export type _BufferList = BufferList & {
   _bufs?: Buffer[]
 }

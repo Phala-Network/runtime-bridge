@@ -352,43 +352,6 @@ export const setDryParaBlockRange = async (block) => {
   logger.info(`Saved dry cache for para block #${block.number}.`)
 }
 
-export const commitParaBlockRange = async (blocks) => {
-  const db = await getDb()
-  const firstBlockNumber = blocks[0].number
-  const lastBlockNumber = blocks[blocks.length - 1].number
-  const indexKey = `rangeParaBlock:key:${firstBlockNumber}`
-  const bufferKey = `rangeParaBlock:buffer:${firstBlockNumber}`
-  const markKey = `rangeParaBlock:mark:${firstBlockNumber}`
-  if (await getKeyExistence(db, markKey)) {
-    logger.info(
-      `Found range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
-    )
-    return
-  }
-  const batch = db.batch()
-  batch.put(
-    bufferKey,
-    Buffer.from(
-      phalaApi
-        .createType(
-          'Vec<BlockHeaderWithChanges>',
-          blocks.map((b) => b.dispatchBlockData)
-        )
-        .toU8a()
-    )
-  )
-  batch.put(
-    indexKey,
-    JSON.stringify({ bufferKey, firstBlockNumber, lastBlockNumber })
-  )
-  await batch.write()
-  await db.setBuffer(markKey, Buffer.from([1]))
-  await setLastCommittedParaBlock(lastBlockNumber)
-  logger.info(
-    `Saved range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
-  )
-}
-
 export const getParaBlockRange = async (number) => {
   const db = await getDb()
   const indexKey = `rangeParaBlock:key:${number}`

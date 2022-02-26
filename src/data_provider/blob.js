@@ -4,8 +4,6 @@ import {
 } from '../utils/constants'
 import {
   setDryRange as _setDryRange,
-  commitBlobRange,
-  commitParaBlockRange,
   getWindow,
   setDryParaBlockRange,
   setEmptyWindow,
@@ -47,22 +45,6 @@ const setDryRange = async (context, latestSetId, setIdChanged) => {
     latestSetId,
     setIdChanged
   )
-}
-
-const lazyCommitBlobRange = async (
-  rangePromises,
-  paraRanges,
-  currParentBlockNumber
-) => {
-  logger.info({ currParentBlockNumber }, 'lazyCommitBlobRange')
-  const rangePromises__copy = [...rangePromises]
-  const paraRanges__copy = [...paraRanges]
-  rangePromises.length = 0
-  paraRanges.length = 0
-  const ranges = await Promise.all(rangePromises__copy)
-  await commitBlobRange(ranges, paraRanges__copy)
-  send('setParentCommittedHeight', currParentBlockNumber)
-  return true
 }
 
 const walkBlock = async (
@@ -117,31 +99,13 @@ const walkBlock = async (
       nextContext = context
     }
 
-    let alreadyRequestedCommit = false
     let paraRanges__copy
 
     if (ranges.length >= BLOB_MAX_RANGE_COUNT) {
       paraRanges__copy = [...paraRanges]
-      await lazyCommitBlobRange(
-        ranges,
-        paraRanges,
-        currParentBlock.number,
-        currParaBlock.number
-      )
-      alreadyRequestedCommit = true
     }
 
     if (currParentBlock.setId > lastParentBlock?.setId) {
-      if (!alreadyRequestedCommit) {
-        paraRanges__copy = [...paraRanges]
-        await lazyCommitBlobRange(
-          ranges,
-          paraRanges,
-          currParentBlock.number,
-          currParaBlock.number
-        )
-      }
-
       const updated = {
         parentStopBlock:
           context.parentBlocks[context.parentBlocks.length - 1].number,
@@ -254,12 +218,10 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
 
 export const walkParaBlock = async (number, blocks) => {
   if (blocks.length > BLOB_MAX_PARA_BLOCK_RANGE_COUNT) {
-    await commitParaBlockRange(blocks)
     send('setParaCommittedHeight', number - 1)
     blocks.length = 0
   }
   const block = await waitForParaBlock(number)
-  blocks.push(block)
   await setDryParaBlockRange(block)
   setParaProcessedHeight(number)
 }

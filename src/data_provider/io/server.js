@@ -1,6 +1,6 @@
 import { NotFoundError } from 'level-errors'
 import { crc32cBuffer } from '../../utils/crc'
-import { dataProviderLocalServerPort, isDev } from '../../utils/env'
+import { dataProviderLocalServerPort } from '../../utils/env'
 import { dbListenPath, dbPath } from './db'
 import { server as multileveldownServer } from 'multileveldown'
 import { pipeline } from 'stream'
