@@ -140,6 +140,7 @@
     "proto:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && sed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
     "proto:darwin:build_prpc": "pbjs -t static-module --no-beautify -p ./src/vendor/prpc-proto -o ./src/utils/prpc/proto.generated.js -w es6 ./src/vendor/prpc-proto/*.proto && gsed -i \"s/import \\* as $protobuf/import $protobuf/g\" ./src/utils/prpc/proto.generated.js",
     "start_module": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/index",
-    "debug_cleanup": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/debug_cleanup.js"
+    "migrate_lifecycle": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/migrate_lifecycle",
+    "migrate_data_provider": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/migrate_data_provider"
   }
 }

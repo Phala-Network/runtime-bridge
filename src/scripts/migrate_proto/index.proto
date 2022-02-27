@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package migrator;
+
+message FullAccount {
+  string mnemonic = 1;
+  string polkadot_json = 2;
+  string ss58_phala = 3;
+  string ss58_polkadot = 4;
+}
+
+message Pool {
+  string uuid = 1;
+  FullAccount owner = 2;
+  uint64 pid = 3; // Pool ID
+  string name = 4;
+  bool enabled = 5;
+  bool deleted = 6;
+  string real_phala_ss58 = 7;
+}
+
+message Worker {
+  string uuid = 1;
+  uint64 pid = 2;
+  string name = 3;
+  string endpoint = 4;
+  bool enabled = 5;
+  bool deleted = 6;
+  string stake = 7;
+}

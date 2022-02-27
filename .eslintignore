@@ -4,3 +4,4 @@ src/vendor
 **/*.generated.**
 dist
 src/utils/phala-types
+src/scripts/migrate_proto
