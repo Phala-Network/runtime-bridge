@@ -4,7 +4,7 @@ import { setupParentApi, setupPhalaApi } from '../utils/api'
 import { walkParaBlock, walkWindow } from './blob'
 import env from '../utils/env'
 import logger from '../utils/logger'
-import type { AnyObject, BlockList } from './blob'
+import type { AnyObject } from './blob'
 
 const start = async () => {
   await setupDb()
@@ -15,7 +15,6 @@ const start = async () => {
   let lastWindow: AnyObject = null
 
   let currParaBlockNum = await getLastCommittedParaBlock()
-  const currParaBlocks: BlockList = []
 
   const iteratePara = async () => {
     let currPromise: Promise<void> = Promise.resolve()
@@ -28,7 +27,7 @@ const start = async () => {
       }
     }
     for await (const curr of iterable()) {
-      currPromise = walkParaBlock(curr, currParaBlocks)
+      currPromise = walkParaBlock(curr)
       await currPromise
     }
   }

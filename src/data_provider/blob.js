@@ -1,12 +1,9 @@
 import {
-  BLOB_MAX_PARA_BLOCK_RANGE_COUNT,
-  BLOB_MAX_RANGE_COUNT,
-} from '../utils/constants'
-import {
   setDryRange as _setDryRange,
   getWindow,
   setDryParaBlockRange,
   setEmptyWindow,
+  setLastCommittedParaBlock,
   setLastCommittedParentBlock,
   t_setLastCommittedParentBlock,
   updateWindow,
@@ -146,6 +143,9 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
   let currentWindow = await getWindow(windowId)
   if (currentWindow && currentWindow.isFinished) {
     logger.info(currentWindow, `Window found in cache.`)
+    if (currentWindow.parentStopBlock > 0) {
+      send('setParentCommittedHeight', currentWindow.parentStartBlock)
+    }
     return walkWindow(windowId + 1, currentWindow)
   }
 
@@ -156,7 +156,7 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
     parentStartBlock = currentWindow.parentStartBlock
     paraStartBlock = currentWindow.paraStartBlock
     send('setParentCommittedHeight', parentStartBlock - 1)
-    send('setParaCommittedHeight', paraStartBlock - 1)
+    // send('setParaCommittedHeight', paraStartBlock - 1)
   } else {
     if (windowId === 0) {
       const paraId = process.env.PHALA_PARA_ID
@@ -209,11 +209,9 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
   return currentWindow
 }
 
-export const walkParaBlock = async (number, blocks) => {
-  if (blocks.length > BLOB_MAX_PARA_BLOCK_RANGE_COUNT) {
-    send('setParaCommittedHeight', number - 1)
-    blocks.length = 0
-  }
+export const walkParaBlock = async (number) => {
+  await setLastCommittedParaBlock(number - 1)
+  send('setParaCommittedHeight', number - 1)
   const block = await waitForParaBlock(number)
   await setDryParaBlockRange(block)
   setParaProcessedHeight(number)
