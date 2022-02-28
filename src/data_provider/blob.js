@@ -99,21 +99,14 @@ const walkBlock = async (
       nextContext = context
     }
 
-    let paraRanges__copy
-
-    if (ranges.length >= BLOB_MAX_RANGE_COUNT) {
-      paraRanges__copy = [...paraRanges]
-    }
-
     if (currParentBlock.setId > lastParentBlock?.setId) {
       const updated = {
         parentStopBlock:
           context.parentBlocks[context.parentBlocks.length - 1].number,
-        paraStopBlock: !paraRanges__copy.length
-          ? currentWindow.paraStartBlock === currParaBlock.number
+        paraStopBlock:
+          currentWindow.paraStartBlock === currParaBlock.number
             ? currentWindow.paraStartBlock
-            : currParaBlock.number - 1
-          : paraRanges__copy[paraRanges__copy.length - 1],
+            : currParaBlock.number - 1,
         isFinished: true,
       }
 
