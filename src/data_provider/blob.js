@@ -146,7 +146,7 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
     if (currentWindow.parentStopBlock > 0) {
       send('setParentCommittedHeight', currentWindow.parentStartBlock)
     }
-    return walkWindow(windowId + 1, currentWindow)
+    return currentWindow
   }
 
   let parentStartBlock, paraStartBlock
