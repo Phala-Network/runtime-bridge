@@ -195,23 +195,13 @@ export const getHeaderBlob = async (
     PRIORITY_META
   )
   const ret: Uint8ArrayListWithMeta = []
-  if (blockNumber === meta.parentStartBlock) {
-    ret.push(
-      await getCachedBuffer(
-        ptpNode,
-        meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey,
-        PRIORITY_HEADER_BLOB
-      )
+  ret.push(
+    await getCachedBuffer(
+      ptpNode,
+      meta.drySyncHeaderReqKey,
+      PRIORITY_HEADER_BLOB
     )
-  } else {
-    ret.push(
-      await getCachedBuffer(
-        ptpNode,
-        meta.drySyncHeaderReqKey,
-        PRIORITY_HEADER_BLOB
-      )
-    )
-  }
+  )
   ret.meta = meta
   return ret
 }

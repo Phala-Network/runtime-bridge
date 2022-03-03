@@ -165,18 +165,10 @@ export const setDryRange = async (
   const rangeMetaPb = RangeMeta.create(rangeMeta)
   const rangeMetaPbBuffer = RangeMeta.encode(rangeMetaPb).finish()
 
-  const batch = windowDb.batch().put(drySyncHeaderReqKey, drySyncHeaderReq)
-
-  parentBlocks.reduce(
-    (b, { number }) =>
-      b.put(`rangeByParentBlock:${number}:pb`, rangeMetaPbBuffer),
-    batch
-  )
-  paraBlocks.reduce(
-    (b, { number }) =>
-      b.put(`rangeByParaBlock:${number}:pb`, rangeMetaPbBuffer),
-    batch
-  )
+  const batch = windowDb.batch()
+  batch.put(drySyncHeaderReqKey, drySyncHeaderReq)
+  batch.put(`rangeByParentBlock:${parentStartBlock}:pb`, rangeMetaPbBuffer)
+  batch.put(`rangeByParaBlock:${parentStartBlock}:pb`, rangeMetaPbBuffer)
   batch.put(rangeWrittenMarkKey, Buffer.from([1]))
   await batch.write()
 

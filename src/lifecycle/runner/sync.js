@@ -1,5 +1,6 @@
 import { blobRequestTimeout } from '../env'
 import { getHeaderBlob, getParaBlockBlob } from './blob'
+import { isDev } from '../../utils/env'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 
@@ -73,12 +74,19 @@ export const startSync = (runtime) => {
         blobRequestTimeout
       )
       syncStatus.parentHeaderSynchedTo = parentSynchedTo
-      if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
-        syncStatus.paraHeaderSynchedTo = paraSynchedTo
-      }
+      // if (paraSynchedTo > syncStatus.paraHeaderSynchedTo) {
+      syncStatus.paraHeaderSynchedTo = paraSynchedTo
+      // }
       headerSyncNumber = parentSynchedTo + 1
     } catch (e) {
-      logger.info(1111, headerSyncNumber, blobs.meta, workerBrief)
+      if (isDev) {
+        console.log({
+          info,
+          syncStatus,
+          headerSyncNumber,
+          meta: blobs.meta,
+        })
+      }
       throw e
     }
   }

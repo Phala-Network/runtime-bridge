@@ -74,14 +74,10 @@ const walkBlock = async (
 
     if (currParentBlock.hasJustification) {
       context.stopBlock = currParentBlock
-
-      ranges.push(
-        setDryRange(
-          context,
-          currParentBlock.setId,
-          currParentBlock.setId > lastParentBlock?.setId,
-          currParentBlock.number
-        )
+      await setDryRange(
+        context,
+        currParentBlock.setId,
+        currParentBlock.setId > lastParentBlock?.setId
       )
 
       nextContext = {
@@ -103,6 +99,8 @@ const walkBlock = async (
         paraStopBlock:
           currentWindow.paraStartBlock === currParaBlock.number
             ? currentWindow.paraStartBlock
+            : paraNumberMatched
+            ? currParaBlock.number
             : currParaBlock.number - 1,
         isFinished: true,
       }
@@ -156,7 +154,6 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
     parentStartBlock = currentWindow.parentStartBlock
     paraStartBlock = currentWindow.paraStartBlock
     send('setParentCommittedHeight', parentStartBlock - 1)
-    // send('setParaCommittedHeight', paraStartBlock - 1)
   } else {
     if (windowId === 0) {
       const paraId = process.env.PHALA_PARA_ID
@@ -167,13 +164,11 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
       lastParentBlockData = await waitForParentBlock(gParentNumber)
     } else {
       parentStartBlock = lastWindow.parentStopBlock + 1
-
       paraStartBlock =
         lastWindow.paraStartBlock === lastWindow.paraStopBlock
           ? lastWindow.paraStopBlock
           : lastWindow.paraStopBlock + 1
     }
-
     currentWindow = await setEmptyWindow(
       windowId,
       parentStartBlock,
@@ -204,15 +199,16 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
     lastParentBlockData
   )
   await setLastCommittedParentBlock(currentWindow.parentStartBlock - 1)
+  send('setParentCommittedHeight', currentWindow.parentStartBlock - 1)
 
   logger.info(currentWindow, `Processed window.`)
   return currentWindow
 }
 
 export const walkParaBlock = async (number) => {
-  await setLastCommittedParaBlock(number - 1)
-  send('setParaCommittedHeight', number - 1)
   const block = await waitForParaBlock(number)
   await setDryParaBlockRange(block)
   setParaProcessedHeight(number)
+  send('setParaCommittedHeight', number)
+  await setLastCommittedParaBlock(number - 1)
 }
