@@ -203,7 +203,8 @@ export const makeRunnerShouldRestartWorker =
           await destroyWorkerContext(i, false)
           context.workers[i._worker.id] = await createWorkerContext(
             i._worker,
-            context
+            context,
+            false
           )
         })
     )
@@ -221,7 +222,8 @@ export const makeRunnerShouldRefreshRaAndRestartWorker =
           await destroyWorkerContext(i, false)
           context.workers[i._worker.id] = await createWorkerContext(
             i._worker,
-            context
+            context,
+            true
           )
         })
     )
