@@ -20,12 +20,14 @@ export type WorkerContext = { [k: string]: unknown } & {
     ReturnType<Worker['toPbInterface']>
   stakeBn: BN
   stateMachine: StateMachine<string, string>
+  forceRa: boolean
 }
 export type WorkerContextMap = { [k: string]: WorkerContext }
 
 export const createWorkerContext: (
   worker: Worker,
-  context: RunnerContext
+  context: RunnerContext,
+  forceRa?: boolean
 ) => Promise<WorkerContext>
 
 export const destroyWorkerContext: (

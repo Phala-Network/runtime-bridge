@@ -5,6 +5,7 @@ import type { prb } from '@phala/runtime-bridge-walkie'
 export type LifecycleHandlerTable = {
   runnerShouldInit?: BatchWorkerActionFn
   runnerShouldRestartWorker?: BatchWorkerActionFn
+  runnerShouldRefreshRaAndRestartWorker?: BatchWorkerActionFn
   runnerShouldKickWorker?: BatchWorkerActionFn
   runnerShouldUpdateWorker?: BatchWorkerActionFn
   managerShouldInitRunner?: IpcMessageHandler<[string]>

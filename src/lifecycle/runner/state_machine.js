@@ -36,11 +36,15 @@ const wrapEventAction = (fn) => (fromState, toState, context) =>
   })
 
 const onStarting = async (fromState, toState, context) => {
-  const { pid, runtime, innerTxQueue } =
+  const { pid, snapshotBrief, runtime, innerTxQueue, forceRa } =
     context.stateMachine.rootStateMachine.workerContext
 
   await innerTxQueue.add(async () => {
     if (shouldSkipRa) {
+      logger.warn(
+        snapshotBrief,
+        'Requesting to force refreshing RA report is ignored when `snapshotBrief` is enabled. '
+      )
       return initRuntime(
         runtime,
         '0000000000000000000000000000000000000000000000000000000000000001',
@@ -99,7 +103,7 @@ const onSynched = async (fromState, toState, context) => {
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const { runtime, onChainState } =
+  const { runtime, onChainState, forceRa } =
     context.stateMachine.rootStateMachine.workerContext
   const { info, initInfo, rpcClient } = runtime
   const publicKey = '0x' + info.publicKey
@@ -107,12 +111,13 @@ const onPreMining = async (fromState, toState, context) => {
   await wait(12000) // wait for onChainState to be synched
 
   if (
+    forceRa ||
+    !info.registered ||
     !(
       (await phalaApi.query.phalaRegistry.workers(publicKey))
         .unwrapOrDefault()
         .initialScore.toJSON() > minBenchScore
-    ) ||
-    !info.registered
+    )
   ) {
     context.stateMachine.rootStateMachine.workerContext.message =
       'Ensuring registration on chain...'

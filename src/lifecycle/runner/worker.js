@@ -7,7 +7,7 @@ import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
 import logger from '../../utils/logger'
 
-export const createWorkerContext = async (worker, context) => {
+export const createWorkerContext = async (worker, context, forceRa = false) => {
   const stakeBn = new BN(worker.stake)
 
   if (stakeBn.lt(BN_1PHA)) {
@@ -50,6 +50,7 @@ export const createWorkerContext = async (worker, context) => {
     stateMachine,
     runtime: null,
     innerTxQueue,
+    forceRa,
 
     get stateMachineState() {
       return stateMachineState

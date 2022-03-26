@@ -93,8 +93,8 @@ class LifecycleRunnerDataProviderConnection {
     this.stream.setWritable(this.decoder)
     this.stream.setReadable(this.encoder)
     eos(this.stream, () => this.cleanup.bind(this))
-    this.getQueue = new PQueue({ concurrency: 10 })
-    this.writeQueue = new PQueue({ concurrency: 1 })
+    this.getQueue = new PQueue({ concurrency: 100 })
+    this.writeQueue = new PQueue({ concurrency: 10 })
     this.connectPromise = this.connect()
   }
 
@@ -229,6 +229,8 @@ class LifecycleRunnerDataProviderConnection {
   }
 }
 
+class LifecycleRunnerDataProviderConnectionGroup {}
+
 export type DataProviderConnectionTable = {
   [k: string]: LifecycleRunnerDataProviderConnection
 }
@@ -243,7 +245,7 @@ class LifecycleRunnerDataProviderManager {
     ctx: BlobServerContext
   ): Promise<LifecycleRunnerDataProviderConnection> {
     if (this.#locks.get(ctx.idStr)) {
-      await wait(100)
+      await wait(0)
       return this.getConnection(ctx)
     }
     try {

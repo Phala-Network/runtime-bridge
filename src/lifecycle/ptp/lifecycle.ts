@@ -28,6 +28,32 @@ export const makeRestartWorker: MakeLifecycleManagerPtpHandler<
   })
 }
 
+export const makeRefreshRaAndRestartWorker: MakeLifecycleManagerPtpHandler<
+  'RefreshRaAndRestartWorker'
+> = (context) => async (request) => {
+  const ids = request.ids
+  for (const id of ids) {
+    const workerObj = await Worker.findByPk(id)
+    if (!workerObj) {
+      throw new PrbError(
+        prb.error.ResponseErrorType.NOT_FOUND,
+        `Worker ${id} not found!`
+      )
+    }
+  }
+
+  for (const id of ids) {
+    context.runnerManager.workers[id].runner.ipcHandle.send(
+      'runnerShouldRefreshRaAndRestartWorker',
+      [id]
+    )
+  }
+
+  return prb.WorkerStateUpdate.create({
+    workerStates: ids.map((i) => context.runnerManager.workers[i]),
+  })
+}
+
 export const makeKickWorker: MakeLifecycleManagerPtpHandler<'KickWorker'> =
   (context) =>
   async ({ ids }) => {

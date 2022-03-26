@@ -178,7 +178,7 @@ export const initRuntime = async (
 
 export const registerWorker = async (runtime) => {
   const { initInfo, info, workerContext } = runtime
-  const { pid, dispatchTx, pool, poolSnapshot } = workerContext
+  const { pid, dispatchTx, pool, poolSnapshot, forceRa } = workerContext
 
   const publicKey = '0x' + info.publicKey
 
@@ -190,7 +190,7 @@ export const registerWorker = async (runtime) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
-  let shouldRegister = !info.registered
+  let shouldRegister = forceRa || !info.registered
 
   const workerInfo = (
     await phalaApi.query.phalaRegistry.workers(publicKey)

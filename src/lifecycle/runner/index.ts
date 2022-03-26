@@ -157,6 +157,8 @@ const startRunner = async () => {
         })
     },
     runnerShouldKickWorker: makeRunnerShouldKickWorker(context),
+    runnerShouldRefreshRaAndRestartWorker:
+      makeRunnerShouldRefreshRaAndRestartWorker(context),
     runnerShouldRestartWorker: makeRunnerShouldRestartWorker(context),
     runnerShouldUpdateWorker: makeRunnerShouldUpdateWorker(context),
   } as LifecycleHandlerTable)
@@ -206,6 +208,25 @@ export const makeRunnerShouldRestartWorker =
         })
     )
   }
+export const makeRunnerShouldRefreshRaAndRestartWorker =
+  (
+    context: RunnerContext
+  ): LifecycleHandlerTable['runnerShouldRefreshRaAndRestartWorker'] =>
+  async (ids) => {
+    await Promise.all(
+      ids
+        .map((i) => context.workers[i])
+        .filter((i) => i)
+        .map(async (i) => {
+          await destroyWorkerContext(i, false)
+          context.workers[i._worker.id] = await createWorkerContext(
+            i._worker,
+            context
+          )
+        })
+    )
+  }
+
 export const makeRunnerShouldUpdateWorker =
   (context: RunnerContext): LifecycleHandlerTable['runnerShouldUpdateWorker'] =>
   (ids) => {

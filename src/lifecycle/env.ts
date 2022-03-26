@@ -60,7 +60,7 @@ export const lruCacheDebugLogInterval =
 export const runnerMaxWorkerNumber = parseInt(env.runnerMaxWorkerNumber) || 150
 export const isConfigMode = env.configMode === 'true'
 
-export const blobQueueSize = parseInt(env.blobQueueSize) || 12
+export const blobQueueSize = parseInt(env.blobQueueSize) || 36
 export const debugAllowBlobFromSynchingState =
   env.debugAllowBlobFromSynchingState === 'true'
 

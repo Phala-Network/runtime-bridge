@@ -23,10 +23,12 @@ const localServer = (db, writeQueue, address) => {
   const statInterval = setInterval(() => {
     const ii = i
     i = 0
-    logger.info('Stats: ' + address, {
-      sentPerFiveSec: ii,
-      sentPerSecAvg: ii / 5,
-    })
+    if (ii > 0) {
+      logger.info('Stats: ' + address, {
+        sentPerFiveSec: ii,
+        sentPerSecAvg: ii / 5,
+      })
+    }
   }, 5000)
 
   const write = (data) =>
