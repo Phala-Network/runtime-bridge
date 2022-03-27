@@ -69,7 +69,7 @@
     "lru-cache": "^7.7.1",
     "multiaddr": "^10.0.1",
     "multileveldown": "^5.0.1",
-    "p-queue": "7.2.0",
+    "p-queue": "6",
     "peer-id": "^0.16.0",
     "promise-queue": "^2.2.5",
     "promise-retry": "^2.0.1",
