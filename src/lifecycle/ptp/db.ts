@@ -26,6 +26,7 @@ export const makeCreatePool: MakeLifecycleManagerPtpHandler<'CreatePool'> =
           name: r.name,
           enabled: r.enabled,
           proxiedAccountSs58: r.realPhalaSs58,
+          syncOnly: r.syncOnly,
         })
         pool.operatorMnemonic = r.owner.mnemonic
         await pool.save({ transaction })
@@ -83,6 +84,7 @@ export const makeUpdatePool: MakeLifecycleManagerPtpHandler<'UpdatePool'> =
           ret.name = pool.name
           ret.enabled = pool.enabled
           ret.proxiedAccountSs58 = pool.realPhalaSs58
+          ret.syncOnly = pool.syncOnly
           await ret.save({ transaction })
           retPools.push(ret)
         }
@@ -133,6 +135,7 @@ export const makeCreateWorker: MakeLifecycleManagerPtpHandler<'CreateWorker'> =
           enabled: w.enabled,
           stake: w.stake,
           poolId: poolLookupTable[pid].id,
+          syncOnly: w.syncOnly,
         })
 
         worker.pool = poolLookupTable[pid]
@@ -193,6 +196,7 @@ export const makeUpdateWorker: MakeLifecycleManagerPtpHandler<'UpdateWorker'> =
           ret.endpoint = worker.endpoint
           ret.enabled = worker.enabled
           ret.stake = worker.stake
+          ret.syncOnly = worker.syncOnly
           await ret.save({ transaction })
           retWorkers.push(ret)
         }
