@@ -81,6 +81,10 @@ class Pool extends Model {
   @Column
   enabled: boolean
 
+  @Default(false)
+  @Column
+  syncOnly: boolean
+
   @HasMany(() => Worker)
   workers: Worker[]
 
@@ -162,6 +166,7 @@ class Pool extends Model {
       enabled: this.enabled,
       deleted: false,
       realPhalaSs58: this.proxiedAccountSs58,
+      syncOnly: this.syncOnly,
     }
   }
 }

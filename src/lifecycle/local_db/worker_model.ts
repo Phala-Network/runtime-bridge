@@ -54,6 +54,10 @@ class Worker extends Model {
   @Column
   enabled: boolean
 
+  @Default(false)
+  @Column
+  syncOnly: boolean
+
   @ForeignKey(() => Pool) poolId: string
   @BelongsTo(() => Pool) pool: Pool
 
@@ -66,6 +70,7 @@ class Worker extends Model {
       enabled: this.enabled,
       deleted: false,
       stake: this.stake,
+      syncOnly: this.syncOnly,
     }
   }
 }

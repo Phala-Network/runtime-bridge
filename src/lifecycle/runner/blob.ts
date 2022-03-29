@@ -30,16 +30,16 @@ const promiseStore: PromiseStore<Buffer | Uint8Array> = {}
 
 const cache = new LRU({
   max: lruCacheSize,
-  maxAge: lruCacheMaxAge,
+  ttl: lruCacheMaxAge,
 })
 
 if (lruCacheDebugLogInterval > 0) {
   let prevLength = -1
   setInterval(() => {
-    if (prevLength !== cache.length) {
-      logger.info(`LRU cache length: ${cache.length}`)
+    if (prevLength !== cache.size) {
+      logger.info(`LRU cache length: ${cache.size}`)
     }
-    prevLength = cache.length
+    prevLength = cache.size
   }, lruCacheDebugLogInterval)
 }
 

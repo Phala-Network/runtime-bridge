@@ -25,7 +25,7 @@ export const setupLocalDb = async (myId: PrbPeerId, readonly = false) => {
   Pool.myId = myId
 
   if (cluster.isPrimary) {
-    await db.sync()
+    await db.sync({ alter: true })
   }
 
   return db
