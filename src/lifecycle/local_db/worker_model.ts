@@ -58,7 +58,10 @@ class Worker extends Model {
   @Column
   syncOnly: boolean
 
-  @ForeignKey(() => Pool) poolId: string
+  @ForeignKey(() => Pool)
+  @Column
+  poolId: string
+
   @BelongsTo(() => Pool) pool: Pool
 
   toPbInterface(): prb.db.IWorker {
