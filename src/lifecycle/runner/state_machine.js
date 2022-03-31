@@ -84,8 +84,14 @@ const onSynching = async (fromState, toState, context) => {
 }
 
 const onSynched = async (fromState, toState, context) => {
-  const { runtime, workerBrief, poolSnapshot, _worker } =
+  const { runtime, workerBrief, poolSnapshot, _worker, onChainState } =
     context.stateMachine.rootStateMachine.workerContext
+
+  if (onChainState.minerInfo.state.isMiningCoolingDown) {
+    context.stateMachine.rootStateMachine.workerContext.message =
+      'Worker is cooling down, skipping on-chain operations.'
+    return
+  }
 
   if (globalSyncOnly || poolSnapshot.syncOnly || _worker.syncOnly) {
     context.stateMachine.rootStateMachine.workerContext.message =
