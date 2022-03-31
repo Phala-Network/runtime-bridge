@@ -27,6 +27,7 @@
   },
   "globals": {
     "$logger": "writable",
-    "$redis": "writable"
+    "$redis": "writable",
+    "Proxy": "writable"
   }
 }

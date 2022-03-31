@@ -29,3 +29,16 @@ export const START_MINING = async ({ pid, publicKey, stake }) => {
 
 export const STOP_MINING = async ({ pid, publicKey }) =>
   wrapTx([api.tx.phalaStakePool.stopMining(pid, publicKey)], true)
+
+export const RESTART_MINING = async ({ pid, publicKey, stake }) => {
+  return wrapTx(
+    [
+      api.tx.phalaStakePool.restartMining(
+        pid,
+        publicKey,
+        _api.createType('BalanceOf', stake)
+      ),
+    ],
+    true
+  )
+}

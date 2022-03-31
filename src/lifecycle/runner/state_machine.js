@@ -9,6 +9,7 @@ import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
 import { startSync } from './sync'
 import { startSyncMessage } from './message'
+import BN from 'bn.js'
 import Finity from 'finity'
 import logger from '../../utils/logger'
 import toEnum from '../../utils/to_enum'
@@ -110,7 +111,7 @@ const onSynched = async (fromState, toState, context) => {
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const { runtime, onChainState, forceRa } =
+  const { runtime, onChainState, forceRa, snapshotBrief, dispatchTx, pid } =
     context.stateMachine.rootStateMachine.workerContext
   const { info, initInfo, rpcClient } = runtime
   const publicKey = '0x' + info.publicKey
@@ -144,8 +145,29 @@ const onPreMining = async (fromState, toState, context) => {
     onChainState.minerInfo.state.isMiningActive ||
     onChainState.minerInfo.state.isMiningUnresponsive
   ) {
-    context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
-    return
+    const onChainStakeBn = (
+      await phalaApi.query.phalaMining.stakes(
+        (
+          await phalaApi.query.phalaRegistry.workerBindings(publicKey)
+        ).unwrapOrDefault()
+      )
+    ).toBn()
+    const nextStakeBn = new BN(snapshotBrief.stake)
+    if (nextStakeBn.gt(onChainStakeBn)) {
+      context.stateMachine.rootStateMachine.workerContext.message =
+        'Updating stake on chain...'
+      await dispatchTx({
+        action: 'RESTART_MINING',
+        payload: {
+          pid,
+          publicKey,
+          stake: snapshotBrief.stake,
+        },
+      })
+    } else {
+      context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+      return
+    }
   }
 
   if (!runtime.skipRa) {

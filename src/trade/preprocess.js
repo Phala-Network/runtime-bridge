@@ -1,5 +1,6 @@
 import * as actions from './preprocess_actions'
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = () => {}
 
 export const preprocess = async (job) => {
