@@ -148,7 +148,7 @@ const onPreMining = async (fromState, toState, context) => {
     const onChainStakeBn = (
       await phalaApi.query.phalaMining.stakes(
         (
-          await phalaApi.query.phalaRegistry.workerBindings(publicKey)
+          await phalaApi.query.phalaMining.workerBindings(publicKey)
         ).unwrapOrDefault()
       )
     ).toBn()
