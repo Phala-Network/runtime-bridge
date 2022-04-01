@@ -145,13 +145,15 @@ const onPreMining = async (fromState, toState, context) => {
     onChainState.minerInfo.state.isMiningActive ||
     onChainState.minerInfo.state.isMiningUnresponsive
   ) {
-    const onChainStakeBn = (
-      await phalaApi.query.phalaMining.stakes(
-        (
-          await phalaApi.query.phalaMining.workerBindings(publicKey)
-        ).unwrapOrDefault()
-      )
-    ).toBn()
+    const onChainStakeBn = new BN(
+      (
+        await phalaApi.query.phalaMining.stakes(
+          (
+            await phalaApi.query.phalaMining.workerBindings(publicKey)
+          ).unwrapOrDefault()
+        )
+      ).toString()
+    )
     const nextStakeBn = new BN(snapshotBrief.stake)
     if (nextStakeBn.gt(onChainStakeBn)) {
       context.stateMachine.rootStateMachine.workerContext.message =
