@@ -190,7 +190,7 @@ export const registerWorker = async (runtime, forceRa = false) => {
     throw new Error('Worker is assigned to other pool!')
   }
 
-  let shouldRegister = forceRa || !info.registered
+  let shouldRegister = !info.registered
 
   const workerInfo = (
     await phalaApi.query.phalaRegistry.workers(publicKey)
@@ -204,7 +204,7 @@ export const registerWorker = async (runtime, forceRa = false) => {
       (pool.isProxy ? pool.proxiedAccountSs58 : poolSnapshot.owner.ss58Phala)
     )
 
-  if (shouldRegister) {
+  if (forceRa || shouldRegister) {
     await triggerRa(runtime)
     workerContext.message = 'Registering worker on chain...'
     await dispatchTx({

@@ -89,7 +89,13 @@ const onSynched = async (fromState, toState, context) => {
     context.stateMachine.rootStateMachine.workerContext
 
   if (forceRa) {
+    context.stateMachine.rootStateMachine.workerContext.message =
+      'forceRa detected.'
+    logger.info(workerBrief, 'forceRa detected.')
     await registerWorker(runtime, true)
+    context.stateMachine.rootStateMachine.workerContext.message =
+      'Re-register done.'
+    logger.info(workerBrief, 'Re-register done.')
   }
 
   if (onChainState.minerInfo.state.isMiningCoolingDown) {
