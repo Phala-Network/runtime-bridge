@@ -176,9 +176,9 @@ export const initRuntime = async (
   return initInfo
 }
 
-export const registerWorker = async (runtime) => {
+export const registerWorker = async (runtime, forceRa = false) => {
   const { initInfo, info, workerContext } = runtime
-  const { pid, dispatchTx, pool, poolSnapshot, forceRa } = workerContext
+  const { pid, dispatchTx, pool, poolSnapshot } = workerContext
 
   const publicKey = '0x' + info.publicKey
 
@@ -231,6 +231,11 @@ export const registerWorker = async (runtime) => {
       },
     })
   }
+
+  if (forceRa) {
+    return
+  }
+
   if (!currentPool.isSome) {
     const waitUntilWorkerHasInitialScore = async () => {
       const onChainWorkerInfo = (

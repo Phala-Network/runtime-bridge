@@ -85,8 +85,12 @@ const onSynching = async (fromState, toState, context) => {
 }
 
 const onSynched = async (fromState, toState, context) => {
-  const { runtime, workerBrief, poolSnapshot, _worker, onChainState } =
+  const { runtime, workerBrief, poolSnapshot, _worker, onChainState, forceRa } =
     context.stateMachine.rootStateMachine.workerContext
+
+  if (forceRa) {
+    await registerWorker(runtime, true)
+  }
 
   if (onChainState.minerInfo.state.isMiningCoolingDown) {
     context.stateMachine.rootStateMachine.workerContext.message =
@@ -111,33 +115,12 @@ const onSynched = async (fromState, toState, context) => {
 }
 
 const onPreMining = async (fromState, toState, context) => {
-  const { runtime, onChainState, forceRa, snapshotBrief, dispatchTx, pid } =
+  const { runtime, onChainState, snapshotBrief, dispatchTx, pid } =
     context.stateMachine.rootStateMachine.workerContext
-  const { info, initInfo, rpcClient } = runtime
+  const { info } = runtime
   const publicKey = '0x' + info.publicKey
 
   await wait(12000) // wait for onChainState to be synched
-
-  if (
-    forceRa ||
-    !info.registered ||
-    !(
-      (await phalaApi.query.phalaRegistry.workers(publicKey))
-        .unwrapOrDefault()
-        .initialScore.toJSON() > minBenchScore
-    )
-  ) {
-    context.stateMachine.rootStateMachine.workerContext.message =
-      'Ensuring registration on chain...'
-    let res = await rpcClient.getRuntimeInfo({})
-    res = res.constructor.toObject(res, {
-      defaults: true,
-      enums: String,
-      longs: Number,
-    })
-    Object.assign(initInfo, res)
-  }
-
   await registerWorker(runtime)
 
   if (
