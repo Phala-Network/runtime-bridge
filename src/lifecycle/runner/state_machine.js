@@ -155,10 +155,9 @@ const onPreMining = async (fromState, toState, context) => {
           stake: snapshotBrief.stake,
         },
       })
-    } else {
-      context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
-      return
     }
+    context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+    return
   }
 
   if (!runtime.skipRa) {
