@@ -37,14 +37,14 @@ const wrapEventAction = (fn) => (fromState, toState, context) =>
   })
 
 const onStarting = async (fromState, toState, context) => {
-  const { pid, snapshotBrief, runtime, innerTxQueue, forceRa } =
+  const { pid, snapshotBrief, runtime, innerTxQueue } =
     context.stateMachine.rootStateMachine.workerContext
 
   await innerTxQueue.add(async () => {
     if (shouldSkipRa) {
       logger.warn(
         snapshotBrief,
-        'Requesting to force refreshing RA report is ignored when `snapshotBrief` is enabled. '
+        'Requesting to force refreshing RA report is ignored when `forceRa` is enabled. '
       )
       return initRuntime(
         runtime,

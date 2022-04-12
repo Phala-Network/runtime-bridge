@@ -83,8 +83,17 @@ export const setupRuntime = (workerContext) => {
 
 const triggerRa = async (runtime) => {
   const { initInfo, rpcClient, workerContext } = runtime
+  const { pool } = workerContext
+
   workerContext.message = 'Getting RA report...'
-  let res = await rpcClient.getRuntimeInfo({})
+  let res = await rpcClient.getRuntimeInfo({
+    forceRefreshRa: true,
+    encodedOperator: Buffer.from(
+      pool.isProxy
+        ? phalaApi.createType('AccountId', pool.proxiedAccountSs58).toU8a()
+        : pool.pair.addressRaw
+    ),
+  })
   res = res.constructor.toObject(res, {
     defaults: true,
     enums: String,
