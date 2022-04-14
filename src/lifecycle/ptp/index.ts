@@ -1,6 +1,7 @@
 import {
   bridgeIdentity,
   walkieBootNodes,
+  walkieDisableMdnsDiscovery,
   walkieListenAddresses,
 } from '../../utils/env'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
@@ -26,6 +27,7 @@ export const setupPtp = async (context: LifecycleManagerContext) => {
     bridgeIdentity,
     listenAddresses: walkieListenAddresses,
     bootstrapAddresses: walkieBootNodes,
+    disableMdnsDiscovery: walkieDisableMdnsDiscovery,
   })
 
   await setupHandlers(ptpNode, context)

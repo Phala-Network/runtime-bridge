@@ -2,6 +2,7 @@ import { DATA_PROVIDER, getMyId } from '../utils/my-id'
 import {
   bridgeIdentity,
   walkieBootNodes,
+  walkieDisableMdnsDiscovery,
   walkieListenAddresses,
 } from '../utils/env'
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
@@ -50,6 +51,7 @@ export const setupInternalPtp = async (
     bridgeIdentity,
     listenAddresses: walkieListenAddresses,
     bootstrapAddresses: walkieBootNodes,
+    disableMdnsDiscovery: walkieDisableMdnsDiscovery,
   })
 
   const db = await getDb()

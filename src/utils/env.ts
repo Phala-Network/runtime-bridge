@@ -13,6 +13,7 @@ export const ENV_LIST = [
   ['PHALA_PEER_ID_PREFIX', 'peerIdPrefix'],
   ['PHALA_WALKIE_LISTEN_ADDRESSES', 'walkieListenAddresses'],
   ['PHALA_WALKIE_BOOT_NODES', 'walkieBootNodes'],
+  ['PHALA_WALKIE_DISABLE_MDNS_DISCOVERY', 'walkieDisableMdnsDiscovery'],
 
   [
     'PHALA_DATA_PROVIDER_EXTERNAL_LISTEN_ADDRESSES',
@@ -61,6 +62,9 @@ export const walkieListenAddresses = (
 export const walkieBootNodes = env.walkieBootNodes
   ? env.walkieBootNodes.split(',').map((i) => i.trim())
   : walkieListenAddresses
+export const walkieDisableMdnsDiscovery =
+  env.walkieDisableMdnsDiscovery === 'true'
+
 export const peerIdPrefix = env.peerIdPrefix ?? '/var/data/keys/id'
 
 export const dataProviderExternalListenAddress = (
