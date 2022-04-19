@@ -1,13 +1,12 @@
-import { PRPC_QUEUE_SIZE } from '../constants'
-import { rpcRequestTimeout } from '../../lifecycle/env'
+import { prpcQueueSize, rpcRequestTimeout } from '../../lifecycle/env'
 import PQueue from 'p-queue'
 import axios from 'axios'
 
 export const requestQueue = new PQueue({
-  concurrency: PRPC_QUEUE_SIZE,
+  concurrency: prpcQueueSize,
 })
 export const requestQueue__blob = new PQueue({
-  concurrency: PRPC_QUEUE_SIZE,
+  concurrency: prpcQueueSize,
 })
 
 const axiosInstance = axios.create({

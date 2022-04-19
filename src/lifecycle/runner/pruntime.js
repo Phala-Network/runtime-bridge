@@ -1,42 +1,9 @@
 import { EVENTS } from './state_machine'
-import { createRpcClient } from '../../utils/prpc'
-import { enforceMinBenchScore, minBenchScore, rpcRequestTimeout } from '../env'
+import { createRpcClient, wrapRequest } from '../../utils/prpc'
+import { enforceMinBenchScore, minBenchScore } from '../env'
 import { phalaApi } from '../../utils/api'
-import { requestQueue__blob, runtimeRequest } from '../../utils/prpc/request'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
-
-const wrapRequest =
-  (endpoint) =>
-  async (resource, body, timeout = rpcRequestTimeout) => {
-    const url = `${endpoint}${resource}`
-    const res = await runtimeRequest(
-      {
-        url,
-        data: body,
-        responseType: 'json',
-        timeout,
-      },
-      requestQueue__blob
-    )
-
-    const data = res.data
-    const payload = JSON.parse(data.payload)
-
-    if (data.status === 'ok') {
-      return {
-        ...data,
-        payload,
-      }
-    }
-
-    logger.warn({ url, data }, 'Receiving with error...')
-    throw {
-      ...data,
-      payload,
-      isRuntimeReturnedError: true,
-    }
-  }
 
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, rpcClient } = runtime

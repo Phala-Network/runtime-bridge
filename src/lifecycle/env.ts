@@ -30,6 +30,7 @@ export const ENV_LIST = [
     'debugAllowBlobFromSynchingState',
   ],
   ['PHALA_SYNC_ONLY', 'syncOnly'],
+  ['PRPC_QUEUE_SIZE', 'prpcQueueSize'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -67,5 +68,7 @@ export const debugAllowBlobFromSynchingState =
 export const rpcRequestTimeout = parseInt(env.rpcRequestTimeout) || 8000
 export const blobRequestTimeout = parseInt(env.blobRequestTimeout) || 120000
 export const syncOnly = env.syncOnly === 'true'
+
+export const prpcQueueSize = parseInt(env.prpcQueueSize) || 65535
 
 export default env

@@ -71,6 +71,7 @@ export const startSync = (runtime) => {
       } = await request(
         '/bin_api/sync_combined_headers',
         blobs[0],
+        800,
         blobRequestTimeout
       )
       syncStatus.parentHeaderSynchedTo = parentSynchedTo
@@ -118,7 +119,7 @@ export const startSync = (runtime) => {
     }
     const {
       payload: { dispatched_to: dispatchedTo },
-    } = await request('/bin_api/dispatch_block', data, blobRequestTimeout)
+    } = await request('/bin_api/dispatch_block', data, 1000, blobRequestTimeout)
     syncStatus.paraBlockDispatchedTo = dispatchedTo
     if (!synchedToTargetPromiseFinished) {
       if (dispatchedTo >= fetchStatus.paraProcessedHeight) {

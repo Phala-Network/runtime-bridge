@@ -41,6 +41,4 @@ export const MIN_SYNCHED_DISTANCE = 3
 
 export const BN_1PHA = new BN('1000000000000')
 
-export const PRPC_QUEUE_SIZE = 4096
-
 export const MINER_V_BASE = new Decimal(2).pow(64)
