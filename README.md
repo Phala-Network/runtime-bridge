@@ -1,7 +1,7 @@
 Phala Runtime Bridge(`prb`)
 -----
 
-Documents: https://wiki.phala.network/en-us/docs/prb/
+Documents: https://wiki.phala.network/en-us/mine/prb2/deployment-guide/
 
 Find the latest development progress of Phala Network from the links below:
 
