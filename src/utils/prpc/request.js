@@ -1,14 +1,27 @@
-import { PRPC_QUEUE_SIZE } from '../constants'
-import { rpcRequestTimeout } from '../../lifecycle/env'
+import {
+  prpcQueueSize,
+  rpcRequestTimeout,
+  workerKeepaliveEnabled,
+  workerKeepaliveTimeout,
+} from '../../lifecycle/env'
 import PQueue from 'p-queue'
 import axios from 'axios'
+import http from 'http'
+import https from 'https'
 
 export const requestQueue = new PQueue({
-  concurrency: PRPC_QUEUE_SIZE,
+  concurrency: prpcQueueSize,
 })
 export const requestQueue__blob = new PQueue({
-  concurrency: PRPC_QUEUE_SIZE,
+  concurrency: prpcQueueSize,
 })
+
+const agentOptions = workerKeepaliveEnabled
+  ? { keepAlive: true, timeout: workerKeepaliveTimeout }
+  : { keepAlive: false }
+
+const httpAgent = new http.Agent(agentOptions)
+const httpsAgent = new https.Agent(agentOptions)
 
 const axiosInstance = axios.create({
   timeout: rpcRequestTimeout,
@@ -18,6 +31,8 @@ const axiosInstance = axios.create({
   },
   responseType: 'arraybuffer',
   maxBodyLength: Infinity,
+  httpAgent,
+  httpsAgent,
 })
 
 export const runtimeRequest = (options, queue = requestQueue) =>

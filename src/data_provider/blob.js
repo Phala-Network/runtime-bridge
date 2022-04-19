@@ -1,5 +1,6 @@
 import {
   setDryRange as _setDryRange,
+  commitBlobRange,
   getWindow,
   setDryParaBlockRange,
   setEmptyWindow,
@@ -104,7 +105,7 @@ const walkBlock = async (
             : currParaBlock.number - 1,
         isFinished: true,
       }
-
+      await commitBlobRange({ ...context, ...updated })
       Object.assign(currentWindow, await updateWindow(currentWindow, updated))
       return
     }
@@ -119,7 +120,6 @@ const walkBlock = async (
     }
 
     setParentProcessedHeight(currParentBlock.number)
-    t_setLastCommittedParentBlock(currParentBlock.number)
 
     return walkBlock(
       currentWindow,

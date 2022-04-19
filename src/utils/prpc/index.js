@@ -1,12 +1,66 @@
 import { prpc, pruntime_rpc } from './proto.generated'
-import { runtimeRequest } from './request'
+import { requestQueue__blob, runtimeRequest } from './request'
+import { rpcRequestTimeout } from '../../lifecycle/env'
 import PQueue from 'p-queue'
 import logger from '../logger'
 
 export const PhactoryAPI = pruntime_rpc.PhactoryAPI
 
+export const queueStore = new Map()
+export const getQueue = (endpoint) => {
+  let ret = queueStore.get(endpoint)
+  if (ret) {
+    return ret
+  }
+  ret = new PQueue({ concurrency: 1 })
+  queueStore.set(endpoint, ret)
+  return ret
+}
+
+export const wrapRequest = (endpoint) => {
+  const clientQueue = getQueue(endpoint)
+  return async (
+    resource,
+    body,
+    priority = 1000,
+    timeout = rpcRequestTimeout
+  ) => {
+    const url = `${endpoint}${resource}`
+    const res = await clientQueue.add(
+      () =>
+        runtimeRequest(
+          {
+            url,
+            data: body,
+            responseType: 'json',
+            timeout,
+          },
+          requestQueue__blob
+        ),
+      { priority }
+    )
+
+    const data = res.data
+    const payload = JSON.parse(data.payload)
+
+    if (data.status === 'ok') {
+      return {
+        ...data,
+        payload,
+      }
+    }
+
+    logger.warn({ url, data }, 'Receiving with error...')
+    throw {
+      ...data,
+      payload,
+      isRuntimeReturnedError: true,
+    }
+  }
+}
+
 export const createRpcClient = (endpoint) => {
-  const clientQueue = new PQueue({ concurrency: 5 })
+  const clientQueue = getQueue(endpoint)
   return PhactoryAPI.create(
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`

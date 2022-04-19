@@ -1,6 +1,7 @@
 import { blobRequestTimeout } from '../env'
 import { getHeaderBlob, getParaBlockBlob } from './blob'
 import { isDev } from '../../utils/env'
+import iterate from '../../utils/iterate'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 
@@ -71,6 +72,7 @@ export const startSync = (runtime) => {
       } = await request(
         '/bin_api/sync_combined_headers',
         blobs[0],
+        1200,
         blobRequestTimeout
       )
       syncStatus.parentHeaderSynchedTo = parentSynchedTo
@@ -96,8 +98,8 @@ export const startSync = (runtime) => {
         return asyncNoop
       }
       if (fetchStatus.parentProcessedHeight < headerSyncNumber) {
-        await wait(2000)
-        yield asyncNoop
+        await wait(50)
+        yield
       } else {
         yield doHeaderSync
       }
@@ -118,7 +120,7 @@ export const startSync = (runtime) => {
     }
     const {
       payload: { dispatched_to: dispatchedTo },
-    } = await request('/bin_api/dispatch_block', data, blobRequestTimeout)
+    } = await request('/bin_api/dispatch_block', data, 800, blobRequestTimeout)
     syncStatus.paraBlockDispatchedTo = dispatchedTo
     if (!synchedToTargetPromiseFinished) {
       if (dispatchedTo >= fetchStatus.paraProcessedHeight) {
@@ -134,8 +136,10 @@ export const startSync = (runtime) => {
         return asyncNoop
       }
       if (syncStatus.paraHeaderSynchedTo < paraBlockSyncNumber) {
-        await wait(2000)
-        yield asyncNoop
+        await wait(
+          paraBlockSyncNumber - syncStatus.paraHeaderSynchedTo > 100 ? 1200 : 50
+        )
+        yield
       } else {
         yield doParaBlockSync
       }
@@ -215,37 +219,4 @@ export const startSync = (runtime) => {
   })
 
   return () => synchedToTargetPromise
-}
-
-export const iterate = async (iterator, processError, throwFatal) => {
-  let attempt = 0
-  let shouldIgnoreError = false
-  const setShouldIgnoreError = () => {
-    shouldIgnoreError = true
-  }
-  for await (const fn of iterator()) {
-    attempt = 0
-    shouldIgnoreError = false
-    const process = async () => {
-      try {
-        await fn()
-      } catch (e) {
-        if (attempt <= 5) {
-          try {
-            await processError(e, attempt, setShouldIgnoreError)
-            if (shouldIgnoreError) {
-              return
-            }
-          } catch (e) {
-            logger.warn(e)
-          }
-          attempt += 1
-          await process()
-        } else {
-          return await throwFatal(e)
-        }
-      }
-    }
-    await process()
-  }
 }

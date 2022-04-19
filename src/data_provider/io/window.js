@@ -181,14 +181,12 @@ export const setDryRange = async (
   return rangeMeta
 }
 
-export const commitBlobRange = async (ranges, paraRanges) => {
+export const commitBlobRange = async (context) => {
   const windowDb = await getDb()
-  const parentStartBlock = ranges[0].parentStartBlock
-  const parentStopBlock = ranges[ranges.length - 1].parentStopBlock
-  const paraStartBlock = paraRanges.length ? paraRanges[0] : -1
-  const paraStopBlock = paraRanges.length
-    ? paraRanges[paraRanges.length - 1]
-    : -1
+  const { parentStartBlock, parentStopBlock, parentBlocks, paraBlocks } =
+    context
+  const paraStartBlock = paraBlocks.length ? context.paraStartBlock : -1
+  const paraStopBlock = paraBlocks.length ? context.paraStopBlock : -1
 
   const keySuffix = `${parentStartBlock}:${parentStopBlock}:${paraStartBlock}:${paraStopBlock}`
 
@@ -201,52 +199,33 @@ export const commitBlobRange = async (ranges, paraRanges) => {
       { parentStartBlock, parentStopBlock, paraStartBlock, paraStopBlock },
       `Found blobRange, skipping.`
     )
-    ranges.length = 0 // trigger GC
+
+    // trigger GC
+    parentBlocks.length = 0
+    paraBlocks.length = 0
+
     return
   }
 
-  const parent__headers = []
-  let parent__authoritySetChange
+  const parent__headers = phalaApi.createType(
+    'Vec<HeaderToSync>',
+    parentBlocks.map((b, id) =>
+      id === parentBlocks.length - 1
+        ? b.syncHeaderData
+        : {
+            header: b.header,
+            justification: null,
+          }
+    )
+  )
+  const parent__authoritySetChange =
+    parentBlocks[parentBlocks.length - 1].authoritySetChange
 
-  const para__headers = []
-  const para__proof = (await getParentBlock(parentStopBlock)).paraProof
-
-  // const blocks = []
-
-  for (const [index, range] of ranges.entries()) {
-    if (range.rawScaleData) {
-      for (const h of range.rawScaleData.SyncHeaderReq.relaychainHeaders) {
-        parent__headers.push(h)
-      }
-      if (index === ranges.length - 1) {
-        parent__authoritySetChange =
-          range.rawScaleData.SyncHeaderReq.authoritySetChange
-      }
-
-      if (range.paraRange.length) {
-        for (const b of range.rawScaleData.SyncHeaderReq.parachainHeaders) {
-          para__headers.push(b)
-        }
-      }
-    } else {
-      const drySyncHeader = phalaApi.createType(
-        'SyncCombinedHeadersReq',
-        await windowDb.getBuffer(range.drySyncHeaderReqKey)
-      )
-      for (const h of drySyncHeader.relaychainHeaders) {
-        parent__headers.push(h)
-      }
-      if (index === ranges.length - 1) {
-        parent__authoritySetChange = drySyncHeader.authoritySetChange
-      }
-
-      if (range.paraRange.length) {
-        for (const b of drySyncHeader.parachainHeaders) {
-          para__headers.push(b)
-        }
-      }
-    }
-  }
+  const para__headers = phalaApi.createType(
+    'Vec<Header>',
+    paraBlocks.map((b) => b.header)
+  )
+  const para__proof = parentBlocks[parentBlocks.length - 1].paraProof
 
   const blobSyncHeaderReq = phalaApi.createType('SyncCombinedHeadersReq', {
     relaychainHeaders: parent__headers,
@@ -288,7 +267,9 @@ export const commitBlobRange = async (ranges, paraRanges) => {
     `Committed blobRange.`
   )
 
-  ranges.length = 0
+  // trigger GC
+  parentBlocks.length = 0
+  paraBlocks.length = 0
 }
 
 export const getLastCommittedParaBlock = async () => {

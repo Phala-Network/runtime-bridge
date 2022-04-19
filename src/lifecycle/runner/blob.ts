@@ -1,6 +1,7 @@
 import { NOT_FOUND_ERROR } from '../../data_provider/io/db'
 import {
   blobQueueSize,
+  disableLru,
   lruCacheDebugLogInterval,
   lruCacheMaxAge,
   lruCacheSize,
@@ -79,9 +80,12 @@ const _getCachedBuffer = async (
 ) => {
   const ret = await getBuffer(ptpNode, key, priority)
 
-  if (ret) {
-    cache.set(key, ret)
+  if (!disableLru) {
+    if (ret) {
+      cache.set(key, ret)
+    }
   }
+
   return ret
 }
 
@@ -90,10 +94,12 @@ const getCachedBuffer = async (
   key: string,
   priority: number
 ) => {
-  const cached = cache.get(key)
+  if (!disableLru) {
+    const cached = cache.get(key)
 
-  if (typeof cached !== 'undefined') {
-    return cached as Uint8Array
+    if (typeof cached !== 'undefined') {
+      return cached as Uint8Array
+    }
   }
 
   return _getCachedBuffer(ptpNode, key, priority)

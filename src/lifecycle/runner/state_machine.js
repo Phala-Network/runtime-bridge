@@ -3,11 +3,17 @@ import {
   startMining,
   subscribeOnChainState,
 } from './worker'
-import { syncOnly as globalSyncOnly, minBenchScore, shouldSkipRa } from '../env'
+import {
+  syncOnly as globalSyncOnly,
+  minBenchScore,
+  shouldSkipRa,
+  useLegacySync,
+} from '../env'
 import { initRuntime, registerWorker } from './pruntime'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
-import { startSync } from './sync'
+import { startSync as startSeparatedSync } from './separated_sync'
+import { startSync as startSingleSync } from './single_sync'
 import { startSyncMessage } from './message'
 import BN from 'bn.js'
 import Finity from 'finity'
@@ -75,7 +81,9 @@ const onSynching = async (fromState, toState, context) => {
   const { runtime, workerBrief } =
     context.stateMachine.rootStateMachine.workerContext
 
-  const waitUntilSynched = startSync(runtime)
+  const waitUntilSynched = useLegacySync
+    ? startSeparatedSync(runtime)
+    : startSingleSync(runtime)
   context.stateMachine.rootStateMachine.workerContext.message =
     'Synching block data...'
   logger.debug(workerBrief, 'Synching block data...')
