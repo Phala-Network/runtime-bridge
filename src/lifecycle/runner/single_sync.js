@@ -59,7 +59,8 @@ export const startSync = (runtime) => {
     const blobs = await getHeaderBlob(
       ptpNode,
       headerSyncNumber,
-      fetchStatus.parentCommittedHeight
+      fetchStatus.parentCommittedHeight,
+      paraHeaderSyncNumber
     )
     if (!blobs[0]) {
       await wait(1000)

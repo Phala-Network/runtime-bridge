@@ -192,7 +192,8 @@ type Uint8ArrayListWithMeta = Uint8Array[] & { meta?: { [k: string]: unknown } }
 export const getHeaderBlob = async (
   ptpNode: LifecycleRunnerPtpNode,
   blockNumber: number,
-  currentCommittedNumber: number
+  currentCommittedNumber: number,
+  paraHeaderSyncNumber = -1
 ) => {
   const meta = await waitForRangeByParentNumber(
     ptpNode,
@@ -204,7 +205,9 @@ export const getHeaderBlob = async (
   ret.push(
     await getCachedBuffer(
       ptpNode,
-      meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey,
+      paraHeaderSyncNumber === 1
+        ? meta.drySyncHeaderReqKey
+        : meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey,
       PRIORITY_HEADER_BLOB
     )
   )
