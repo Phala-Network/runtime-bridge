@@ -183,8 +183,12 @@ export const setDryRange = async (
 
 export const commitBlobRange = async (context) => {
   const windowDb = await getDb()
-  const { parentStartBlock, parentStopBlock, parentBlocks, paraBlocks } =
-    context
+  const {
+    parentStartBlock,
+    parentStopBlock,
+    accParentBlocks: parentBlocks,
+    accParaBlocks: paraBlocks,
+  } = context
   const paraStartBlock = paraBlocks.length ? context.paraStartBlock : -1
   const paraStopBlock = paraBlocks.length ? context.paraStopBlock : -1
 
@@ -234,31 +238,29 @@ export const commitBlobRange = async (context) => {
     proof: para__proof,
   })
 
-  const startBlockRangeMetaKey = `rangeByParentBlock:${parentStartBlock}:pb`
-  const startBlockRangeMetaPb = RangeMeta.decode(
-    await windowDb.getBuffer(startBlockRangeMetaKey)
-  )
-
-  const paraStartBlockRangeMetaKey =
-    startBlockRangeMetaPb.paraStartBlock >= 0
-      ? `rangeByParaBlock:${startBlockRangeMetaPb.paraStartBlock}:pb`
-      : null
-
-  startBlockRangeMetaPb.blobParentStopBlock = parentStopBlock
-  startBlockRangeMetaPb.blobParaStopBlock = paraStopBlock
-  startBlockRangeMetaPb.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
-  const startBlockRangeMetaPbBuffer = RangeMeta.encode(
-    startBlockRangeMetaPb
-  ).finish()
-
   const batch = windowDb.batch()
 
-  batch
-    .put(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()))
-    .put(startBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
-  if (paraStartBlockRangeMetaKey) {
-    batch.put(paraStartBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
+  for (const b of parentBlocks) {
+    const startBlockRangeMetaKey = `rangeByParentBlock:${b.number}:pb`
+    const buffer = await windowDb.getBuffer(startBlockRangeMetaKey)
+
+    if (buffer) {
+      const startBlockRangeMetaPb = RangeMeta.decode(
+        await windowDb.getBuffer(startBlockRangeMetaKey)
+      )
+      startBlockRangeMetaPb.blobParentStopBlock = parentStopBlock
+      startBlockRangeMetaPb.blobParaStopBlock = paraStopBlock
+      startBlockRangeMetaPb.blobSyncHeaderReqKey = blobRangeKey_SyncHeaderReq
+      const startBlockRangeMetaPbBuffer = RangeMeta.encode(
+        startBlockRangeMetaPb
+      ).finish()
+
+      batch.put(startBlockRangeMetaKey, startBlockRangeMetaPbBuffer)
+    }
   }
+
+  batch.put(blobRangeKey_SyncHeaderReq, Buffer.from(blobSyncHeaderReq.toU8a()))
+
   await batch.write()
   await windowDb.setBuffer(blobRangeCommittedMarkKey, Buffer.from([1]))
 

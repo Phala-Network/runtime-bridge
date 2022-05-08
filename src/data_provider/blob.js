@@ -66,9 +66,11 @@ const walkBlock = async (
         : await waitForParaBlock(paraNumberOrBlock)
 
     context.parentBlocks.push(currParentBlock)
+    context.accParentBlocks.push(currParentBlock)
 
     if (currParaBlock.number === currParentBlock.paraNumber) {
       context.paraBlocks.push(currParaBlock)
+      context.accParaBlocks.push(currParaBlock)
       paraRanges.push(currParaBlock.number)
       paraNumberMatched = true
     }
@@ -88,6 +90,8 @@ const walkBlock = async (
           : currParaBlock.number,
         paraBlocks: [],
         parentBlocks: [],
+        accParaBlocks: context.accParaBlocks,
+        accParentBlocks: context.accParentBlocks,
       }
     } else {
       nextContext = context
@@ -105,7 +109,12 @@ const walkBlock = async (
             : currParaBlock.number - 1,
         isFinished: true,
       }
-      await commitBlobRange({ ...context, ...updated })
+      await commitBlobRange({
+        ...currentWindow,
+        ...updated,
+        accParentBlocks: context.accParentBlocks,
+        accParaBlocks: context.accParaBlocks,
+      })
       Object.assign(currentWindow, await updateWindow(currentWindow, updated))
       return
     }
@@ -183,6 +192,8 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
     paraStartBlock,
     paraBlocks: [],
     parentBlocks: [],
+    accParaBlocks: [],
+    accParentBlocks: [],
   }
 
   const ranges = []

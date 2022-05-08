@@ -204,7 +204,7 @@ export const getHeaderBlob = async (
   ret.push(
     await getCachedBuffer(
       ptpNode,
-      meta.drySyncHeaderReqKey,
+      meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey,
       PRIORITY_HEADER_BLOB
     )
   )
