@@ -201,16 +201,15 @@ export const getHeaderBlob = async (
     currentCommittedNumber - blockNumber > 600,
     PRIORITY_META
   )
+  const bufferKey =
+    paraHeaderSyncNumber === 1
+      ? meta.drySyncHeaderReqKey
+      : meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey
   const ret: Uint8ArrayListWithMeta = []
-  ret.push(
-    await getCachedBuffer(
-      ptpNode,
-      paraHeaderSyncNumber === 1
-        ? meta.drySyncHeaderReqKey
-        : meta.blobSyncHeaderReqKey || meta.drySyncHeaderReqKey,
-      PRIORITY_HEADER_BLOB
-    )
-  )
+  ret.push(await getCachedBuffer(ptpNode, bufferKey, PRIORITY_HEADER_BLOB))
+
+  logger.debug(`Byte length of ${bufferKey}: ${ret[0]?.length || 0}`)
+
   ret.meta = meta
   return ret
 }

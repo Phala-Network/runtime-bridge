@@ -1,5 +1,5 @@
-import { iterate } from './separated_sync'
 import { phalaApi } from '../../utils/api'
+import iterate from '../../utils/iterate'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 
