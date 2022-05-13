@@ -1,11 +1,13 @@
 import { LIFECYCLE, getMyId } from '../utils/my-id'
 import { createRunnerManager } from './runner_manager'
-import { isConfigMode } from './env'
+import { isConfigMode, useBuiltInTrader } from './env'
 import { phalaApi, setupPhalaApi } from '../utils/api'
 import { setupLocalDb } from './local_db'
 import { setupPtp } from './ptp'
 import env from '../utils/env'
+import fork from '../utils/fork'
 import logger from '../utils/logger'
+import startTrader from '../trade'
 import type { RunnerManagerContext } from './runner_manager'
 import type { Sequelize } from 'sequelize'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
@@ -39,7 +41,17 @@ const start = async () => {
   if (isConfigMode) {
     logger.info("Runners won't start since config mode enabled.")
   } else {
-    context.runnerManager = await createRunnerManager(context)
+    const works = []
+    works.push(
+      (async () => {
+        context.runnerManager = await createRunnerManager(context)
+      })()
+    )
+    if (useBuiltInTrader) {
+      works.push(startTrader())
+      fork('arena', 'utils/arena')
+    }
+    await Promise.all(works)
   }
 }
 

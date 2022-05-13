@@ -1,9 +1,5 @@
 import { LIFECYCLE, getMyId } from '../utils/my-id'
-import {
-  TX_DEAD_COUNT_THRESHOLD,
-  TX_SEND_QUEUE_SIZE,
-  TX_TIMEOUT,
-} from '../utils/constants'
+import { TX_SEND_QUEUE_SIZE, TX_TIMEOUT } from '../utils/constants'
 import { phalaApi, setupPhalaApi } from '../utils/api'
 import { setupLocalDb } from '../lifecycle/local_db'
 import PQueue from 'p-queue'

@@ -36,6 +36,8 @@ export const ENV_LIST = [
 
   ['WORKER_KEEPALIVE_ENABLED', 'workerKeepaliveEnabled'],
   ['WORKER_KEEPALIVE_TIMEOUT', 'workerKeepaliveTimeout'],
+
+  ['USE_BUILT_IN_TRADER', 'useBuiltInTrader'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -81,5 +83,7 @@ export const useLegacySync = env.useLegacySync === 'true'
 export const workerKeepaliveEnabled = env.workerKeepaliveEnabled === 'true'
 export const workerKeepaliveTimeout =
   parseInt(env.workerKeepaliveTimeout) || 5000
+
+export const useBuiltInTrader = env.useBuiltInTrader == 'true'
 
 export default env

@@ -8,6 +8,7 @@ import {
 import { preprocess } from './preprocess'
 import { setupPhalaApi } from '../utils/api'
 import { traderManager } from './trader_manager'
+import { useBuiltInTrader } from '../lifecycle/env'
 import { v4 as uuid } from 'uuid'
 import createTradeQueue from './trade_queue'
 import env from '../utils/env'
@@ -175,7 +176,9 @@ const getPoolQueue = (pid) => {
 }
 
 const startMessageBus = async (appContext) => {
-  await setupPhalaApi(env.chainEndpoint)
+  if (!useBuiltInTrader) {
+    await setupPhalaApi(env.chainEndpoint)
+  }
   await appContext.traderManager.waitUntilUp()
   Object.assign(messageBus, { appContext })
 

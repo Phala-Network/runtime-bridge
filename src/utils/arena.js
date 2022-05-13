@@ -6,7 +6,10 @@ import express from 'express'
 export default async () => {
   const router = express.Router()
 
-  const url = process.env.REDIS_ENDPOINT || 'redis://redis-q:6379/'
+  const url =
+    process.env.PHALA_Q_REDIS_ENDPOINT ||
+    process.env.REDIS_ENDPOINT ||
+    'redis://redis-q:6379/'
 
   const arena = Arena({
     Bee,
