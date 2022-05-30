@@ -139,7 +139,8 @@ const startRunner = async () => {
   const { send: sendToManager } = setupIpcWorker({
     runnerShouldInit: (ids) => {
       logger.info(`Initializing runner ${runnerId} with ${ids.length} workers.`)
-      startWorkers(ids, context)
+      wait(500)
+        .then(() => startWorkers(ids, context))
         .then(() => {
           const updateStateLoop = async (): Promise<never> => {
             context.sendToManager(
@@ -149,7 +150,7 @@ const startRunner = async () => {
             await wait(500)
             return updateStateLoop()
           }
-          updateStateLoop()
+          wait(500).then(() => updateStateLoop())
         })
         .catch((e) => {
           logger.error(e)

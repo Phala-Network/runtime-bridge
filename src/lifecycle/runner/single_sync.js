@@ -56,6 +56,9 @@ export const startSync = (runtime) => {
   let paraBlockSyncNumber = info.blocknum
 
   const doIncrementalHeaderSync = async () => {
+    if (shouldStop) {
+      return
+    }
     const blobs = await getHeaderBlob(
       ptpNode,
       headerSyncNumber,
@@ -96,6 +99,9 @@ export const startSync = (runtime) => {
   }
 
   const doBatchHeaderSync = async (count = 0) => {
+    if (shouldStop) {
+      return
+    }
     if (count >= 5) {
       return
     }
@@ -104,6 +110,9 @@ export const startSync = (runtime) => {
   }
 
   const doParaBlockDifferenceSync = async () => {
+    if (shouldStop) {
+      return
+    }
     const data = await getParaBlockBlob(
       ptpNode,
       paraBlockSyncNumber,
@@ -116,7 +125,7 @@ export const startSync = (runtime) => {
     }
     const {
       payload: { dispatched_to: dispatchedTo },
-    } = await request('/bin_api/dispatch_block', data, 800, blobRequestTimeout)
+    } = await request('/bin_api/dispatch_block', data, 1200, blobRequestTimeout)
     syncStatus.paraBlockDispatchedTo = dispatchedTo
     if (!synchedToTargetPromiseFinished) {
       if (dispatchedTo >= fetchStatus.paraProcessedHeight) {
@@ -126,7 +135,7 @@ export const startSync = (runtime) => {
     }
     paraBlockSyncNumber = dispatchedTo + 1
 
-    if (paraBlockSyncNumber < paraHeaderSyncNumber) {
+    if (paraHeaderSyncNumber > paraBlockSyncNumber) {
       return doParaBlockDifferenceSync()
     }
   }
@@ -142,7 +151,7 @@ export const startSync = (runtime) => {
         await wait(2000)
         yield
       } else {
-        if (paraBlockSyncNumber < paraHeaderSyncNumber) {
+        if (paraHeaderSyncNumber > paraBlockSyncNumber) {
           yield doParaBlockDifferenceSync
         }
         // todo: check if header numbers of relaychain and parachain are mismatched and sync the difference

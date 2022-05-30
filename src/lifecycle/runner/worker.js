@@ -133,7 +133,11 @@ export const subscribeOnChainState = async (workerContext) => {
                 ve: new Decimal(_minerInfo?.ve?.toJSON() || '0')
                   .div(MINER_V_BASE)
                   .toFixed(8),
+                stats: {
+                  totalReward: _minerInfo?.stats.totalReward.toHuman(),
+                },
                 raw: _minerInfo,
+                runtimeInfo: info,
               }
               ret.minerInfo = _minerInfo
               if (ret.minerInfo.state.isMiningUnresponsive) {
@@ -213,7 +217,9 @@ export const getWorkerStates = (ids, workers) => {
       lastMessage: w?.message,
       minerAccountId: w?.onChainState?.accountId?.toString(),
       minerInfoJson: JSON.stringify(
-        w?.onChainState?.minerInfo?.humanReadable || {},
+        w?.onChainState?.minerInfo?.humanReadable || {
+          runtimeInfo: info || {},
+        },
         null,
         2
       ),
