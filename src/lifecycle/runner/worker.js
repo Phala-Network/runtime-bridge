@@ -134,7 +134,11 @@ export const subscribeOnChainState = async (workerContext) => {
                   .div(MINER_V_BASE)
                   .toFixed(8),
                 stats: {
-                  totalReward: _minerInfo?.stats.totalReward.toHuman(),
+                  totalReward: _minerInfo
+                    ? phalaApi
+                        .createType('BalanceOf', _minerInfo.stats.totalReward)
+                        .toHuman()
+                    : '0',
                 },
                 raw: _minerInfo,
                 runtimeInfo: info,
