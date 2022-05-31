@@ -5,6 +5,7 @@ import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import PQueue from 'p-queue'
 import _stateMachine, { EVENTS } from './state_machine'
+import dayjs from 'dayjs'
 import logger from '../../utils/logger'
 
 export const createWorkerContext = async (worker, context, forceRa = false) => {
@@ -67,7 +68,7 @@ export const createWorkerContext = async (worker, context, forceRa = false) => {
         return ''
       }
       const m = messages[messages.length - 1]
-      return `${m.timestamp} - ${m.message}`
+      return `[${dayjs(m.timestamp).format()}] ${m.message}`
     },
     set message(message) {
       messages.push({ message, timestamp: Date.now() })

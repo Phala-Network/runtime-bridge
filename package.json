@@ -44,7 +44,7 @@
     "commander": "^9.1.0",
     "core-js": "^3.21.1",
     "datagram-stream": "^1.1.1",
-    "dayjs": "^1.11.0",
+    "dayjs": "^1.11.2",
     "decimal.js": "^10.3.1",
     "duplexify": "^4.1.2",
     "encoding-down": "^7.1.0",
