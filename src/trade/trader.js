@@ -63,7 +63,7 @@ const start = async () => {
         phalaApi
       )
     )
-    const batchTx = phalaApi.tx.utility.batchTry(txs)
+    const batchTx = phalaApi.tx.utility.forceBatch(txs)
     return pool.isProxy
       ? phalaApi.tx.proxy.proxy(pool.proxiedAccountSs58, null, batchTx)
       : batchTx
@@ -172,16 +172,14 @@ const sendTx = (tx, pool, nonce = -1) =>
               .filter(({ event }) =>
                 phalaApi.events.utility.ItemFailed.is(event)
               )
-              .map(
-                ({
-                  event: {
-                    data: [index, dispatchError],
-                  },
-                }) => ({
+              .map(({ event }) => {
+                const index = event?.index
+                const error = event?.data?.error
+                return {
                   index: index.toNumber(),
-                  reason: resolveDispatchError(dispatchError),
-                })
-              )
+                  reason: resolveDispatchError(error),
+                }
+              })
             clearCurrentTimeout()
             unsub?.()
             return resolve(failedCalls)
@@ -200,9 +198,9 @@ const sendTx = (tx, pool, nonce = -1) =>
 const resolveDispatchError = (dispatchError) => {
   if (dispatchError.isModule) {
     const decoded = phalaApi.registry.findMetaError(dispatchError.asModule)
-    const { documentation, name, section } = decoded
+    const { docs, name, section } = decoded
 
-    return `${section}.${name}: ${documentation?.join(' ')}`
+    return `${section}.${name}: ${docs?.join(' ')}`
   } else {
     return dispatchError.toString()
   }
