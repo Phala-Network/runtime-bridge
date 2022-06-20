@@ -151,6 +151,7 @@ const processParaBlock = (number) =>
           'processParaBlock: header hash mismatch, the database of current Substrate node may be corrupted.'
         )
       )
+      process.exit(254)
     }
 
     const storageChangeStartTime = Date.now()
