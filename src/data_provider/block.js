@@ -1,4 +1,5 @@
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
+import { blake2AsHex } from '@polkadot/util-crypto'
 import {
   encodeBlockScale,
   getGenesis,
@@ -9,6 +10,7 @@ import {
   setParentBlock,
 } from './io/block'
 import { parentApi, phalaApi } from '../utils/api'
+import { u8aToHex } from '@polkadot/util'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
@@ -102,18 +104,32 @@ export const walkParaBlock = (paraBlockNumber) =>
     }
   )
 
-const _walkParaBlock = async (paraBlockNumber) => {
-  let paraBlock = await getParaBlock(paraBlockNumber)
-  if (paraBlock) {
+const _walkParaBlock = async (paraBlockNumber, _lastHeaderHashHex) => {
+  const lastBlock = await getParaBlock(paraBlockNumber)
+  if (lastBlock) {
     logger.debug({ paraBlockNumber }, 'ParaBlock found in cache.')
   } else {
-    paraBlock = await setParaBlock(
-      paraBlockNumber,
-      encodeBlockScale(await processParaBlock(paraBlockNumber))
-    )
+    const blockData = await processParaBlock(paraBlockNumber)
+    let lastHeaderHashHex = _lastHeaderHashHex
+    if (paraBlockNumber < 2 && !lastHeaderHashHex) {
+      const lastHeader = phalaApi.createType('Header', lastBlock.header)
+      lastHeaderHashHex = u8aToHex(lastHeader.parentHash)
+    }
+    if (
+      paraBlockNumber < 2 ||
+      blockData.parentHeaderHashHex !== lastHeaderHashHex
+    ) {
+      logger.debug(
+        { paraBlockNumber },
+        '_walkParaBlock: parent header hash mismatch, the database of current Substrate node may be corrupted.'
+      )
+      process.exit(255)
+    }
+
+    await setParaBlock(paraBlockNumber, encodeBlockScale(blockData))
     logger.debug({ paraBlockNumber }, 'Fetched parachain block.')
+    return blockData.headerHashHex
   }
-  return paraBlock
 }
 
 const processParaBlock = (number) =>
@@ -123,9 +139,19 @@ const processParaBlock = (number) =>
     const getBlockHashStartTime = Date.now()
     const hash = await phalaApi.rpc.chain.getBlockHash(number)
     const hashHex = hash.toHex()
+    const hashHexAlt = u8aToHex(hash)
 
     const getHeaderStartTime = Date.now()
     const header = await phalaApi.rpc.chain.getHeader(hash)
+
+    if (hashHexAlt !== blake2AsHex(header.toU8a())) {
+      logger.error(
+        { number },
+        new Error(
+          'processParaBlock: header hash mismatch, the database of current Substrate node may be corrupted.'
+        )
+      )
+    }
 
     const storageChangeStartTime = Date.now()
     const rawStorageChanges = await phalaApi._rpcCore.provider.send(
@@ -154,6 +180,8 @@ const processParaBlock = (number) =>
       number,
       hash,
       header,
+      headerHashHex: hashHexAlt,
+      parentHeaderHashHex: u8aToHex(header.parentHash),
       dispatchBlockData,
     }
   })().catch((e) => {

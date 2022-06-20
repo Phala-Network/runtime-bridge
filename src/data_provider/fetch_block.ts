@@ -100,7 +100,7 @@ const start = async () => {
 
 const iteratePara = async (getTarget: () => number) => {
   let i = (await getLastCommittedParaBlock()) - 1
-  let currPromise: Promise<prb.db.IParaBlock> = Promise.resolve({})
+  let currPromise: Promise<string | void> = Promise.resolve()
   async function* paraIterable(): AsyncGenerator<number, void, void> {
     while (true) {
       await currPromise
@@ -113,7 +113,7 @@ const iteratePara = async (getTarget: () => number) => {
     }
   }
   for await (const curr of paraIterable()) {
-    currPromise = walkParaBlock(curr)
+    currPromise = walkParaBlock(curr, await currPromise)
     await currPromise
     send('setParaFetchedHeight', curr)
   }
