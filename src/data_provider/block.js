@@ -87,10 +87,10 @@ export const processGenesis = async () => {
   return genesis
 }
 
-export const walkParaBlock = (paraBlockNumber) =>
+export const walkParaBlock = (paraBlockNumber, _lastHeaderHashHex) =>
   promiseRetry(
     (retry, number) =>
-      _walkParaBlock(paraBlockNumber).catch((...args) => {
+      _walkParaBlock(paraBlockNumber, _lastHeaderHashHex).catch((...args) => {
         logger.warn(
           { paraBlockNumber, retryTimes: number },
           'Failed setting block, retrying...'
@@ -105,25 +105,24 @@ export const walkParaBlock = (paraBlockNumber) =>
   )
 
 const _walkParaBlock = async (paraBlockNumber, _lastHeaderHashHex) => {
-  const lastBlock = await getParaBlock(paraBlockNumber)
-  if (lastBlock) {
+  if (await getParaBlock(paraBlockNumber)) {
     logger.debug({ paraBlockNumber }, 'ParaBlock found in cache.')
   } else {
     const blockData = await processParaBlock(paraBlockNumber)
-    let lastHeaderHashHex = _lastHeaderHashHex
-    if (paraBlockNumber < 2 && !lastHeaderHashHex) {
-      const lastHeader = phalaApi.createType('Header', lastBlock.header)
-      lastHeaderHashHex = u8aToHex(lastHeader.parentHash)
-    }
-    if (
-      paraBlockNumber < 2 ||
-      blockData.parentHeaderHashHex !== lastHeaderHashHex
-    ) {
-      logger.debug(
-        { paraBlockNumber },
-        '_walkParaBlock: parent header hash mismatch, the database of current Substrate node may be corrupted.'
-      )
-      process.exit(255)
+
+    if (paraBlockNumber >= 2) {
+      let lastHeaderHashHex = _lastHeaderHashHex
+      if (!lastHeaderHashHex) {
+        const lastBlock = await getParaBlock(paraBlockNumber - 1)
+        lastHeaderHashHex = blake2AsHex(lastBlock.header)
+      }
+      if (blockData.parentHeaderHashHex !== lastHeaderHashHex) {
+        logger.debug(
+          { paraBlockNumber },
+          '_walkParaBlock: parent header hash mismatch, the database of current Substrate node may be corrupted.'
+        )
+        process.exit(255)
+      }
     }
 
     await setParaBlock(paraBlockNumber, encodeBlockScale(blockData))
@@ -139,12 +138,11 @@ const processParaBlock = (number) =>
     const getBlockHashStartTime = Date.now()
     const hash = await phalaApi.rpc.chain.getBlockHash(number)
     const hashHex = hash.toHex()
-    const hashHexAlt = u8aToHex(hash)
 
     const getHeaderStartTime = Date.now()
     const header = await phalaApi.rpc.chain.getHeader(hash)
 
-    if (hashHexAlt !== blake2AsHex(header.toU8a())) {
+    if (hashHex !== blake2AsHex(header.toU8a())) {
       logger.error(
         { number },
         new Error(
@@ -181,7 +179,7 @@ const processParaBlock = (number) =>
       number,
       hash,
       header,
-      headerHashHex: hashHexAlt,
+      headerHashHex: hashHex,
       parentHeaderHashHex: u8aToHex(header.parentHash),
       dispatchBlockData,
     }
