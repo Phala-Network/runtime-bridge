@@ -49,7 +49,11 @@ export const bridgeTypes = {
   EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
 }
 
-const localOverrides = {}
+const localOverrides = {
+  WrappedDispatchError: {
+    error: 'SpRuntimeDispatchError',
+  },
+}
 
 export const phalaTypes = {
   ...bridgeTypes,

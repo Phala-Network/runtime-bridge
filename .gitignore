@@ -194,3 +194,4 @@ dev_dp.sh
 .vscode
 data
 src/vendor/proto
+*.rdb

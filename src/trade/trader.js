@@ -130,20 +130,25 @@ const sendTx = (tx, pool, nonce = -1) =>
     const clearCurrentTimeout = () => clearTimeout(timeout)
 
     tx.signAndSend(pool.pair, { nonce }, (result) => {
-      const { status, dispatchError, events } = result
       logger.debug(
         { hash: tx.hash.toHex() },
         'Tx status changed.',
-        status.toString()
+        result.status.toString()
       )
       try {
-        if (status.isUsurped || status.isDropped || status.isInvalid) {
-          return doUnsub(`Tx has unexpected status: ${status}`)
+        if (
+          result.status.isUsurped ||
+          result.status.isDropped ||
+          result.status.isInvalid
+        ) {
+          return doUnsub(`Tx has unexpected status: ${result.status}`)
         }
-        if (status.isInBlock) {
-          if (dispatchError) {
-            doUnsub(resolveDispatchError(dispatchError))
+        if (result.status.isInBlock) {
+          if (result.dispatchError) {
+            doUnsub(resolveDispatchError(result.dispatchError))
           } else {
+            const { events } = result
+
             if (pool.isProxy) {
               const {
                 event: {
@@ -158,28 +163,46 @@ const sendTx = (tx, pool, nonce = -1) =>
               }
             }
 
-            const batchFailed = !events.filter(
-              ({ event }) =>
-                phalaApi.events.utility.BatchCompleted.is(event) ||
+            const batchCompletedWithErrors =
+              events.filter(({ event }) =>
                 phalaApi.events.utility.BatchCompletedWithErrors.is(event)
-            ).length
+              ).length > 0
+            const batchCompleted = batchCompletedWithErrors
+              ? true
+              : events.filter(({ event }) =>
+                  phalaApi.events.utility.BatchCompleted.is(event)
+                ).length > 0
+            const batchFailed = !batchCompleted
 
             if (batchFailed) {
               return doUnsub(new Error('Batch failed with no reason!'))
             }
 
-            const failedCalls = events
-              .filter(({ event }) =>
-                phalaApi.events.utility.ItemFailed.is(event)
-              )
-              .map(({ event }) => {
-                const index = event?.index
-                const error = event?.data?.error
-                return {
-                  index: index.toNumber(),
-                  reason: resolveDispatchError(error),
-                }
-              })
+            const failedCalls = batchCompletedWithErrors
+              ? events
+                  .filter(
+                    ({ event }) =>
+                      phalaApi.events.utility.ItemCompleted.is(event) ||
+                      phalaApi.events.utility.ItemFailed.is(event)
+                  )
+                  .map(({ event }, idx) => {
+                    event.__tradeIndex = idx
+                    return event
+                  })
+                  .filter((event) =>
+                    phalaApi.events.utility.ItemFailed.is(event)
+                  )
+                  .map((event) => {
+                    const { error } = phalaApi.createType(
+                      'WrappedDispatchError',
+                      event.data
+                    )
+                    return {
+                      index: event.__tradeIndex,
+                      reason: resolveDispatchError(error),
+                    }
+                  })
+              : []
             clearCurrentTimeout()
             unsub?.()
             return resolve(failedCalls)
