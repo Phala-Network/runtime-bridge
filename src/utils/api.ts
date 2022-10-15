@@ -1,13 +1,13 @@
 import { ApiPromise, HttpProvider, WsProvider } from '@polkadot/api'
 import { Keyring } from '@polkadot/keyring'
 import { PHALA_SS58_FORMAT } from './constants'
-import { khala } from '@phala/typedefs'
+// import { khala } from '@phala/typedefs'
 import { typesChain as phalaTypesChain } from '@phala/typedefs'
 import logger from './logger'
 import phalaTypes from './typedefs'
-import typesChain from '@polkadot/apps-config/api/chain'
+import typesBundle from '@polkadot/apps-config/api/typesBundle'
 import type { Decorate } from '@polkadot/api/base/Decorate'
-import type { OverrideBundleType } from '@polkadot/types/types'
+// import type { OverrideBundleType } from '@polkadot/types/types'
 
 export type PossibleApiPromise = ApiPromise | undefined
 
@@ -18,11 +18,11 @@ export const keyring = new Keyring({
   ss58Format: PHALA_SS58_FORMAT,
 })
 
-const typesBundle = {
-  spec: {
-    khala,
-  },
-}
+// const typesBundle = {
+//   spec: {
+//     khala,
+//   },
+// }
 
 const rpc = {
   pha: {
@@ -64,10 +64,10 @@ const setupPhalaApi = async (
     provider: phalaProvider,
     types: phalaTypes,
     typesChain: {
-      ...typesChain,
+      // ...typesChain,
       ...phalaTypesChain,
     },
-    typesBundle: typesBundle as OverrideBundleType,
+    // typesBundle: typesBundle as OverrideBundleType,
     rpc,
   })
 
@@ -153,7 +153,7 @@ export type MonkeyApiPromise = ApiPromise & {
 
 export {
   typesBundle,
-  typesChain,
+  // typesChain,
   setupPhalaApi,
   setupParentApi,
   _phalaApi as phalaApi,
