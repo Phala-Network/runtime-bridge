@@ -1,5 +1,6 @@
 import {
   LAST_COMMITTED_PARA_BLOCK,
+  LAST_COMMITTED_PARA_BLOCK_BATCH,
   LAST_COMMITTED_PARENT_BLOCK,
 } from '../../utils/constants'
 import { getDb, getKeyExistence, waitFor } from './db'
@@ -284,6 +285,16 @@ export const setLastCommittedParaBlock = async (number) => {
   return db.setJson(LAST_COMMITTED_PARA_BLOCK, number)
 }
 
+export const getLastCommittedParaBlockBatch = async () => {
+  const db = await getDb()
+  return parseInt(await db.getJson(LAST_COMMITTED_PARA_BLOCK_BATCH)) || 0
+}
+
+export const setLastCommittedParaBlockBatch = async (number) => {
+  const db = await getDb()
+  return db.setJson(LAST_COMMITTED_PARA_BLOCK_BATCH, number)
+}
+
 export const getLastCommittedParentBlock = async () => {
   const db = await getDb()
   return parseInt(await db.getJson(LAST_COMMITTED_PARENT_BLOCK)) || 0
@@ -325,6 +336,39 @@ export const setDryParaBlockRange = async (block) => {
   )
   await batch.write()
   logger.info(`Saved dry cache for para block #${block.number}.`)
+}
+
+export const setRangeParaBlockBuffer = async (blocks) => {
+  const db = await getDb()
+  const firstBlockNumber = blocks[0].number
+  const lastBlockNumber = blocks[blocks.length - 1].number
+  const indexKey = `rangeParaBlock:key:${firstBlockNumber}`
+  const bufferKey = `rangeParaBlock:buffer:${firstBlockNumber}`
+  if (await getKeyExistence(db, bufferKey)) {
+    logger.info(
+      `Found range cache for para block #${firstBlockNumber} to #${lastBlockNumber}, will override.`
+    )
+  }
+  const batch = db.batch()
+  batch.put(
+    bufferKey,
+    Buffer.from(
+      phalaApi
+        .createType(
+          'Vec<BlockHeaderWithChanges>',
+          blocks.map((b) => b.dispatchBlockData)
+        )
+        .toU8a()
+    )
+  )
+  batch.put(
+    indexKey,
+    JSON.stringify({ bufferKey, firstBlockNumber, lastBlockNumber })
+  )
+  await batch.write()
+  logger.info(
+    `Saved range cache for para block #${firstBlockNumber} to #${lastBlockNumber}.`
+  )
 }
 
 export const getParaBlockRange = async (number) => {

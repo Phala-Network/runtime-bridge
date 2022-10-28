@@ -1,8 +1,11 @@
-import { getLastCommittedParaBlock } from './io/window'
+import { enableParaBatchSync, env } from '../utils/env'
+import {
+  getLastCommittedParaBlock,
+  getLastCommittedParaBlockBatch,
+} from './io/window'
 import { setupDb } from './io/db'
 import { setupParentApi, setupPhalaApi } from '../utils/api'
-import { walkParaBlock, walkWindow } from './blob'
-import env from '../utils/env'
+import { walkParaBlock, walkParaBlockBatch, walkWindow } from './blob'
 import logger from '../utils/logger'
 import type { AnyObject } from './blob'
 
@@ -15,6 +18,7 @@ const start = async () => {
   let lastWindow: AnyObject = null
 
   let currParaBlockNum = await getLastCommittedParaBlock()
+  let currParaBlockBatchNum = await getLastCommittedParaBlockBatch()
 
   const iteratePara = async () => {
     let currPromise: Promise<void> = Promise.resolve()
@@ -29,6 +33,14 @@ const start = async () => {
     for await (const curr of iterable()) {
       currPromise = walkParaBlock(curr)
       await currPromise
+    }
+  }
+
+  const iterateParaBatch = async () => {
+    for (;;) {
+      currParaBlockBatchNum = await walkParaBlockBatch(
+        currParaBlockBatchNum + 1
+      )
     }
   }
 
@@ -57,6 +69,12 @@ const start = async () => {
     logger.error(e)
     process.exit(255)
   })
+
+  if (enableParaBatchSync)
+    iterateParaBatch().catch((e) => {
+      logger.error(e)
+      process.exit(255)
+    })
 }
 
 export default start
