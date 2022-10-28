@@ -1,11 +1,15 @@
+import { BLOB_MAX_PARA_BLOCK_RANGE_COUNT } from '../utils/constants'
 import {
   setDryRange as _setDryRange,
   commitBlobRange,
+  getParaBlockRange,
   getWindow,
   setDryParaBlockRange,
   setEmptyWindow,
   setLastCommittedParaBlock,
+  setLastCommittedParaBlockBatch,
   setLastCommittedParentBlock,
+  setRangeParaBlockBuffer,
   t_setLastCommittedParentBlock,
   updateWindow,
 } from '../data_provider/io/window'
@@ -222,4 +226,26 @@ export const walkParaBlock = async (number) => {
   setParaProcessedHeight(number)
   send('setParaCommittedHeight', number)
   await setLastCommittedParaBlock(number - 1)
+}
+
+export const walkParaBlockBatch = async (number) => {
+  let meta = getParaBlockRange(number)
+  if (
+    meta &&
+    meta.bufferKey &&
+    meta.lastBlockNumber - meta.firstBlockNumber + 1 ==
+      BLOB_MAX_PARA_BLOCK_RANGE_COUNT
+  ) {
+    return meta.lastBlockNumber
+  }
+
+  let blocks = []
+  for (; blocks.length < BLOB_MAX_PARA_BLOCK_RANGE_COUNT; number++) {
+    const block = await waitForParaBlock(number)
+    blocks.push(block)
+  }
+  const lastBlockNumber = blocks[blocks.length - 1].number
+  await setRangeParaBlockBuffer(blocks)
+  await setLastCommittedParaBlockBatch(lastBlockNumber)
+  return lastBlockNumber
 }
