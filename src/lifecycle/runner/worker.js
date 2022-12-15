@@ -196,7 +196,7 @@ export const stopMining = async (workerContext) => {
   const { pid, dispatchTx, runtime } = workerContext
   const { info } = runtime
   const publicKey = '0x' + info.publicKey
-  workerContext.message = 'Stopping mining on chain...'
+  workerContext.message = 'Stopping worker on chain...'
   await dispatchTx({
     action: 'STOP_MINING',
     payload: {

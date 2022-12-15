@@ -3,12 +3,7 @@ import {
   startMining,
   subscribeOnChainState,
 } from './worker'
-import {
-  syncOnly as globalSyncOnly,
-  minBenchScore,
-  shouldSkipRa,
-  useLegacySync,
-} from '../env'
+import { syncOnly as globalSyncOnly, shouldSkipRa, useLegacySync } from '../env'
 import { initRuntime, registerWorker } from './pruntime'
 import { phalaApi } from '../../utils/api'
 import { prb } from '@phala/runtime-bridge-walkie'
@@ -27,8 +22,8 @@ export const EVENTS = toEnum([
   'SHOULD_START',
   'SHOULD_MARK_SYNCHING',
   'SHOULD_MARK_SYNCHED',
-  'SHOULD_MARK_PRE_MINING',
-  'SHOULD_MARK_MINING',
+  'SHOULD_MARK_PRE_ACTIVE',
+  'SHOULD_MARK_ACTIVE',
   'SHOULD_KICK',
   'ERROR',
 ])
@@ -125,10 +120,10 @@ const onSynched = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.message =
     'Message queue synched.'
   logger.debug(workerBrief, 'Message queue synched.')
-  context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_MINING)
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_PRE_ACTIVE)
 }
 
-const onPreMining = async (fromState, toState, context) => {
+const onPreActive = async (fromState, toState, context) => {
   const { runtime, onChainState, snapshotBrief, dispatchTx, pid } =
     context.stateMachine.rootStateMachine.workerContext
   const { info } = runtime
@@ -156,7 +151,7 @@ const onPreMining = async (fromState, toState, context) => {
       context.stateMachine.rootStateMachine.workerContext.message =
         'Updating stake on chain...'
       await dispatchTx({
-        action: 'RESTART_MINING',
+        action: 'RESTART_WORKER',
         payload: {
           pid,
           publicKey,
@@ -164,7 +159,7 @@ const onPreMining = async (fromState, toState, context) => {
         },
       })
     }
-    context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+    context.stateMachine.handle(EVENTS.SHOULD_MARK_ACTIVE)
     return
   }
 
@@ -180,16 +175,16 @@ const onPreMining = async (fromState, toState, context) => {
     }
     await waitUntilWorkerReady()
     context.stateMachine.rootStateMachine.workerContext.message =
-      'Starting mining on chain...'
+      'Starting worker on chain...'
     await startMining(context.stateMachine.rootStateMachine.workerContext)
   }
 
-  context.stateMachine.handle(EVENTS.SHOULD_MARK_MINING)
+  context.stateMachine.handle(EVENTS.SHOULD_MARK_ACTIVE)
 }
 
-const onMining = async (fromState, toState, context) => {
+const onActive = async (fromState, toState, context) => {
   context.stateMachine.rootStateMachine.workerContext.message =
-    'Now the worker should be mining.'
+    'Now the worker should be active.'
   // Gracefully do nothing.
 }
 
@@ -300,19 +295,19 @@ wrapStateMachineState(
 wrapStateMachineState(
   stateMachine,
   StatusEnumValues.S_SYNCHED,
-  EVENTS.SHOULD_MARK_PRE_MINING,
-  StatusEnumValues.S_PRE_MINING,
-  onPreMining
+  EVENTS.SHOULD_MARK_PRE_ACTIVE,
+  StatusEnumValues.S_PRE_ACTIVE,
+  onPreActive
 )
 wrapStateMachineState(
   stateMachine,
-  StatusEnumValues.S_PRE_MINING,
-  EVENTS.SHOULD_MARK_MINING,
-  StatusEnumValues.S_MINING,
-  onMining
+  StatusEnumValues.S_PRE_ACTIVE,
+  EVENTS.SHOULD_MARK_ACTIVE,
+  StatusEnumValues.S_ACTIVE,
+  onActive
 )
 
-wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_MINING))
+wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_ACTIVE))
 wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_KICKED))
 wrapStateMachineStateError(stateMachine.state(StatusEnumValues.S_ERROR))
 
