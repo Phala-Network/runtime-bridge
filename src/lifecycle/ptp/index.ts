@@ -7,7 +7,7 @@ import {
 import { createPtpNode, prb, setLogger } from '@phala/runtime-bridge-walkie'
 import logger from '../../utils/logger'
 import type { LifecycleManagerContext } from '../index'
-import type { RpcMethodName } from '@phala/runtime-bridge-walkie/dist/rpc-types'
+import type { RpcMethodName } from '@phala/runtime-bridge-walkie/src/rpc-types'
 import type { WalkiePtpNode } from '@phala/runtime-bridge-walkie/src/ptp'
 import type { WalkieRpcHandler } from '@phala/runtime-bridge-walkie/src/rpc'
 
