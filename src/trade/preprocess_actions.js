@@ -9,15 +9,18 @@ export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }) =>
   )
 
 export const REGISTER_WORKER = async ({ runtimeInfo, attestation }) =>
-  wrapTx([api.tx.phalaRegistry.registerWorker(runtimeInfo, attestation)], true)
+  wrapTx(
+    [api.tx.phalaRegistry.registerWorkerV2(runtimeInfo, attestation)],
+    true
+  )
 
 export const ADD_WORKER = async ({ publicKey, pid }) =>
-  wrapTx([api.tx.phalaStakePool.addWorker(pid, publicKey)], true)
+  wrapTx([api.tx.phalaStakePoolv2.addWorker(pid, publicKey)], true)
 
-export const START_MINING = async ({ pid, publicKey, stake }) => {
+export const START_COMPUTING = async ({ pid, publicKey, stake }) => {
   return wrapTx(
     [
-      api.tx.phalaStakePool.startMining(
+      api.tx.phalaStakePoolv2.startComputing(
         pid,
         publicKey,
         _api.createType('BalanceOf', stake)
@@ -27,13 +30,13 @@ export const START_MINING = async ({ pid, publicKey, stake }) => {
   )
 }
 
-export const STOP_MINING = async ({ pid, publicKey }) =>
-  wrapTx([api.tx.phalaStakePool.stopMining(pid, publicKey)], true)
+export const STOP_COMPUTING = async ({ pid, publicKey }) =>
+  wrapTx([api.tx.phalaStakePoolv2.stopComputing(pid, publicKey)], true)
 
-export const RESTART_MINING = async ({ pid, publicKey, stake }) => {
+export const RESTART_COMPUTING = async ({ pid, publicKey, stake }) => {
   return wrapTx(
     [
-      api.tx.phalaStakePool.restartMining(
+      api.tx.phalaStakePoolv2.restartComputing(
         pid,
         publicKey,
         _api.createType('BalanceOf', stake)

@@ -1,4 +1,4 @@
-import { BN_1PHA, MINER_V_BASE } from '../../utils/constants'
+import { BN_1PHA, SESSION_V_BASE } from '../../utils/constants'
 import { phalaApi } from '../../utils/api'
 import { setupRuntime } from './pruntime'
 import BN from 'bn.js'
@@ -130,10 +130,10 @@ export const subscribeOnChainState = async (workerContext) => {
                 _sessionInfo.humanReadable = {
                   ..._sessionInfo.toHuman(),
                   v: new Decimal(_sessionInfo?.v?.toJSON() || '0')
-                    .div(MINER_V_BASE)
+                    .div(SESSION_V_BASE)
                     .toFixed(8),
                   ve: new Decimal(_sessionInfo?.ve?.toJSON() || '0')
-                    .div(MINER_V_BASE)
+                    .div(SESSION_V_BASE)
                     .toFixed(8),
                   stats: {
                     totalReward: _sessionInfo
@@ -149,7 +149,7 @@ export const subscribeOnChainState = async (workerContext) => {
                   runtimeInfo: info,
                 }
                 ret.sessionInfo = _sessionInfo
-                if (ret.sessionInfo.state.isMiningUnresponsive) {
+                if (ret.sessionInfo.state.isWorkerUnresponsive) {
                   workerContext.message = 'Notice: worker unresponsive!'
                 }
               }
@@ -181,14 +181,14 @@ export const destroyWorkerContext = async (
   }
 }
 
-export const startMining = async (workerContext) => {
+export const startComputing = async (workerContext) => {
   const { pid, dispatchTx, snapshotBrief, runtime } = workerContext
   const { stake } = snapshotBrief
   const { info } = runtime
   const publicKey = '0x' + info.publicKey
-  workerContext.message = 'Starting mining on chain...'
+  workerContext.message = 'Starting computing on chain...'
   await dispatchTx({
-    action: 'START_MINING',
+    action: 'START_COMPUTING',
     payload: {
       pid,
       publicKey,
@@ -196,13 +196,13 @@ export const startMining = async (workerContext) => {
     },
   })
 }
-export const stopMining = async (workerContext) => {
+export const stopComputing = async (workerContext) => {
   const { pid, dispatchTx, runtime } = workerContext
   const { info } = runtime
   const publicKey = '0x' + info.publicKey
   workerContext.message = 'Stopping worker on chain...'
   await dispatchTx({
-    action: 'STOP_MINING',
+    action: 'STOP_COMPUTING',
     payload: {
       pid,
       publicKey,
