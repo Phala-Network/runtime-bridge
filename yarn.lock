@@ -1423,10 +1423,10 @@
   resolved "https://registry.yarnpkg.com/@pcan/leveldb-viewer/-/leveldb-viewer-0.1.3.tgz#91cc88558fdf63d24c0db21b52cde938bd238540"
   integrity sha512-fMM1Ey+/6VQpG37ABtAJ2qVduSv+R/kX3e01MHPU+8YW6NbxRXnsnbbE0R86oZt/qZ4zLZ0F38YjVwzit0AE0A==
 
-"@phala/runtime-bridge-walkie@^1.3.0":
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/@phala/runtime-bridge-walkie/-/runtime-bridge-walkie-1.3.0.tgz#c708dcf9e77ad6fec1a4fa911c378d6d002cb39d"
-  integrity sha512-5jQ3c40/CszJ9C7MJGutROMgr2MrEMBY2bqODUad9gPDNJlm5ppqOkoUjPQfwI3i5oCAJc5jNN9QaiAo0+cldg==
+"@phala/runtime-bridge-walkie@^1.3.1":
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/@phala/runtime-bridge-walkie/-/runtime-bridge-walkie-1.3.1.tgz#1ea7372f52c084e4afdcd4f34ebe5ccbdc973210"
+  integrity sha512-WEHklV6OI7ygUpkY6/Sr81+Sc7F7f/2YLtkrwjRPEzteYkZiv96F3GRndlbms7DcdYcZtKhCvEUqGldaNdk0Nw==
   dependencies:
     "@chainsafe/libp2p-noise" "^5.0.3"
     "@types/bunyan" "^1.8.8"

@@ -101,7 +101,7 @@ const onSynched = async (fromState, toState, context) => {
     logger.info(workerBrief, 'Re-register done.')
   }
 
-  if (onChainState.minerInfo.state.isMiningCoolingDown) {
+  if (onChainState.sessionInfo.state.isWorkerCoolingDown) {
     context.stateMachine.rootStateMachine.workerContext.message =
       'Worker is cooling down, skipping on-chain operations.'
     return
@@ -133,15 +133,15 @@ const onPreActive = async (fromState, toState, context) => {
   await registerWorker(runtime)
 
   if (
-    onChainState.minerInfo.state.isMiningIdle ||
-    onChainState.minerInfo.state.isMiningActive ||
-    onChainState.minerInfo.state.isMiningUnresponsive
+    onChainState.sessionInfo.state.isWorkerIdle ||
+    onChainState.sessionInfo.state.isWorkerActive ||
+    onChainState.sessionInfo.state.isWorkerUnresponsive
   ) {
     const onChainStakeBn = new BN(
       (
-        await phalaApi.query.phalaMining.stakes(
+        await phalaApi.query.phalaComputation.stakes(
           (
-            await phalaApi.query.phalaMining.workerBindings(publicKey)
+            await phalaApi.query.phalaComputation.workerBindings(publicKey)
           ).unwrapOrDefault()
         )
       ).toString()
@@ -167,7 +167,7 @@ const onPreActive = async (fromState, toState, context) => {
     context.stateMachine.rootStateMachine.workerContext.message =
       'Waiting until worker ready...'
     const waitUntilWorkerReady = async () => {
-      if (onChainState.minerInfo.state.isReady) {
+      if (onChainState.sessionInfo.state.isReady) {
         return
       }
       await wait(12000)
