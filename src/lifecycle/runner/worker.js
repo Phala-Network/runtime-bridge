@@ -97,19 +97,19 @@ export const subscribeOnChainState = async (workerContext) => {
   const ret = {
     publicKey,
     accountId: '',
-    minerInfo: null,
-    _unsubscribeMinerInfo: null,
+    sessionInfo: null,
+    _unsubscribeSessionInfo: null,
     unsubscribe: () => Promise.all(unFns.map((i) => i())),
   }
 
   const unFns = [
     () => {
       shouldStop = true
-      ret._unsubscribeMinerInfo?.()
+      ret._unsubscribeSessionInfo?.()
     },
   ]
   unFns.push(
-    await phalaApi.query.phalaMining.workerBindings(
+    await phalaApi.query.phalaComputation.workerBindings(
       publicKey,
       async (account) => {
         if (shouldStop) {
@@ -117,42 +117,46 @@ export const subscribeOnChainState = async (workerContext) => {
         }
         ret.accountId = account.unwrapOrDefault().toString()
         if (account.isSome) {
-          ret._unsubscribeMinerInfo?.()
-          ret._unsubscribeMinerInfo = await phalaApi.query.phalaMining.miners(
-            ret.accountId,
-            (minerInfo) => {
-              if (shouldStop) {
-                ret._unsubscribeMinerInfo?.()
-                return
+          ret._unsubscribeSessionInfo?.()
+          ret._unsubscribeSessionInfo =
+            await phalaApi.query.phalaComputation.sessions(
+              ret.accountId,
+              (sessionInfo) => {
+                if (shouldStop) {
+                  ret._unsubscribeSessionInfo?.()
+                  return
+                }
+                const _sessionInfo = sessionInfo.unwrapOrDefault()
+                _sessionInfo.humanReadable = {
+                  ..._sessionInfo.toHuman(),
+                  v: new Decimal(_sessionInfo?.v?.toJSON() || '0')
+                    .div(MINER_V_BASE)
+                    .toFixed(8),
+                  ve: new Decimal(_sessionInfo?.ve?.toJSON() || '0')
+                    .div(MINER_V_BASE)
+                    .toFixed(8),
+                  stats: {
+                    totalReward: _sessionInfo
+                      ? phalaApi
+                          .createType(
+                            'BalanceOf',
+                            _sessionInfo.stats.totalReward
+                          )
+                          .toHuman()
+                      : '0',
+                  },
+                  raw: _sessionInfo,
+                  runtimeInfo: info,
+                }
+                ret.sessionInfo = _sessionInfo
+                if (ret.sessionInfo.state.isMiningUnresponsive) {
+                  workerContext.message = 'Notice: worker unresponsive!'
+                }
               }
-              const _minerInfo = minerInfo.unwrapOrDefault()
-              _minerInfo.humanReadable = {
-                ..._minerInfo.toHuman(),
-                v: new Decimal(_minerInfo?.v?.toJSON() || '0')
-                  .div(MINER_V_BASE)
-                  .toFixed(8),
-                ve: new Decimal(_minerInfo?.ve?.toJSON() || '0')
-                  .div(MINER_V_BASE)
-                  .toFixed(8),
-                stats: {
-                  totalReward: _minerInfo
-                    ? phalaApi
-                        .createType('BalanceOf', _minerInfo.stats.totalReward)
-                        .toHuman()
-                    : '0',
-                },
-                raw: _minerInfo,
-                runtimeInfo: info,
-              }
-              ret.minerInfo = _minerInfo
-              if (ret.minerInfo.state.isMiningUnresponsive) {
-                workerContext.message = 'Notice: worker unresponsive!'
-              }
-            }
-          )
+            )
         } else {
-          ret.minerInfo = (
-            await phalaApi.query.phalaMining.miners(ret.accountId)
+          ret.sessionInfo = (
+            await phalaApi.query.phalaComputation.sessions(ret.accountId)
           ).unwrapOrDefault()
         }
       }
@@ -220,9 +224,9 @@ export const getWorkerStates = (ids, workers) => {
       worker: w?.snapshotBrief,
       publicKey: runtimeInfo?.publicKey,
       lastMessage: w?.message,
-      minerAccountId: w?.onChainState?.accountId?.toString(),
-      minerInfoJson: JSON.stringify(
-        w?.onChainState?.minerInfo?.humanReadable || {
+      workerAccountId: w?.onChainState?.accountId?.toString(),
+      sessionInfoJson: JSON.stringify(
+        w?.onChainState?.sessionInfo?.humanReadable || {
           runtimeInfo: info || {},
         },
         null,
