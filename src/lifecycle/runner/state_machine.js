@@ -1,6 +1,6 @@
 import {
   destroyWorkerContext,
-  startMining,
+  startComputing,
   subscribeOnChainState,
 } from './worker'
 import { syncOnly as globalSyncOnly, shouldSkipRa, useLegacySync } from '../env'
@@ -134,7 +134,7 @@ const onPreActive = async (fromState, toState, context) => {
 
   if (
     onChainState.sessionInfo.state.isWorkerIdle ||
-    onChainState.sessionInfo.state.isWorkerActive ||
+    onChainState.sessionInfo.state.isUnused ||
     onChainState.sessionInfo.state.isWorkerUnresponsive
   ) {
     const onChainStakeBn = new BN(
@@ -151,7 +151,7 @@ const onPreActive = async (fromState, toState, context) => {
       context.stateMachine.rootStateMachine.workerContext.message =
         'Updating stake on chain...'
       await dispatchTx({
-        action: 'RESTART_WORKER',
+        action: 'RESTART_COMPUTING',
         payload: {
           pid,
           publicKey,
@@ -176,7 +176,7 @@ const onPreActive = async (fromState, toState, context) => {
     await waitUntilWorkerReady()
     context.stateMachine.rootStateMachine.workerContext.message =
       'Starting worker on chain...'
-    await startMining(context.stateMachine.rootStateMachine.workerContext)
+    await startComputing(context.stateMachine.rootStateMachine.workerContext)
   }
 
   context.stateMachine.handle(EVENTS.SHOULD_MARK_ACTIVE)
