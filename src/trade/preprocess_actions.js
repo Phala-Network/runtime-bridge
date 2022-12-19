@@ -9,10 +9,7 @@ export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }) =>
   )
 
 export const REGISTER_WORKER = async ({ runtimeInfo, attestation }) =>
-  wrapTx(
-    [api.tx.phalaRegistry.registerWorkerV2(runtimeInfo, attestation)],
-    true
-  )
+  wrapTx([api.tx.phalaRegistry.registerWorker(runtimeInfo, attestation)], true)
 
 export const ADD_WORKER = async ({ publicKey, pid }) =>
   wrapTx([api.tx.phalaStakePoolv2.addWorker(pid, publicKey)], true)
