@@ -158,7 +158,7 @@ export const registerWorker = async (runtime, forceRa = false) => {
 
   const publicKey = '0x' + info.publicKey
 
-  const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
+  const currentPool = await phalaApi.query.phalaStakePoolv2.workerAssignments(
     publicKey
   )
 
