@@ -17,8 +17,8 @@ const start = async () => {
   let currWindowNum = -1
   let lastWindow: AnyObject = null
 
-  let currParaBlockNum = await getLastCommittedParaBlock()
-  let currParaBlockBatchNum = await getLastCommittedParaBlockBatch()
+  let currParaBlockNum = (await getLastCommittedParaBlock()) - 1
+  let currParaBlockBatchNum = (await getLastCommittedParaBlockBatch()) - 1
 
   const iteratePara = async () => {
     let currPromise: Promise<void> = Promise.resolve()
