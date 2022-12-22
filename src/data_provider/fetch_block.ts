@@ -99,7 +99,7 @@ const start = async () => {
 }
 
 const iteratePara = async (getTarget: () => number) => {
-  let i = (await getLastCommittedParaBlock()) - 1
+  let i = (await getLastCommittedParaBlock()) - 2
   let currPromise: Promise<string | void> = Promise.resolve()
   async function* paraIterable(): AsyncGenerator<number, void, void> {
     while (true) {

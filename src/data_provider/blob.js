@@ -173,7 +173,7 @@ export const walkWindow = async (windowId = 0, lastWindow = null) => {
       const genesis = await getGenesis(paraId)
       const { paraNumber: gParaNumber, parentNumber: gParentNumber } = genesis
       parentStartBlock = gParentNumber + 1
-      paraStartBlock = gParaNumber + 1
+      paraStartBlock = gParaNumber
       lastParentBlockData = await waitForParentBlock(gParentNumber)
     } else {
       parentStartBlock = lastWindow.parentStopBlock + 1
