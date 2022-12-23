@@ -188,22 +188,7 @@ export const registerWorker = async (runtime, forceRa = false) => {
       payload: {
         pid,
         runtimeInfo: '0x' + initInfo.encodedRuntimeInfo.toString('hex'),
-        attestation: phalaApi
-          .createType('Attestation', {
-            SgxIas: {
-              raReport:
-                '0x' +
-                Buffer.from(
-                  initInfo.attestation.payload.report,
-                  'utf8'
-                ).toString('hex'),
-              signature:
-                '0x' + initInfo.attestation.payload.signature.toString('hex'),
-              rawSigningCert:
-                '0x' + initInfo.attestation.payload.signingCert.toString('hex'),
-            },
-          })
-          .toHex(),
+        attestation: '0x' + initInfo.attestation.encodedReport.toString('hex'),
       },
     })
   }
