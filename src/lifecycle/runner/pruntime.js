@@ -52,7 +52,7 @@ export const setupRuntime = (workerContext) => {
 
 const triggerRa = async (runtime) => {
   const { initInfo, rpcClient, workerContext } = runtime
-  const { pool } = workerContext
+  const { workerBrief, pool } = workerContext
 
   workerContext.message = 'Getting RA report...'
   let res = await rpcClient.getRuntimeInfo({
@@ -69,6 +69,7 @@ const triggerRa = async (runtime) => {
     longs: Number,
   })
   Object.assign(initInfo, res)
+  logger.info(workerBrief, 'triggerRa', res)
   return initInfo
 }
 
@@ -122,7 +123,7 @@ export const initRuntime = async (
 
       Object.assign(initInfo, res)
       workerContext.message = 'Runtime initialized.'
-      logger.debug(workerBrief, `Initialized pRuntime.`)
+      logger.debug(workerBrief, `Initialized pRuntime.`, res)
     }
   }
 
