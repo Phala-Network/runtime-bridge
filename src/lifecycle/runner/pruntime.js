@@ -183,6 +183,10 @@ export const registerWorker = async (runtime, forceRa = false) => {
   if (forceRa || shouldRegister) {
     await triggerRa(runtime)
     workerContext.message = 'Registering worker on chain...'
+    logger.info('Registering worker on chain...', {
+      initInfo,
+      attestation: initInfo.attestation,
+    })
     await dispatchTx({
       action: 'REGISTER_WORKER',
       payload: {
