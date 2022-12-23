@@ -5,6 +5,8 @@ import { phalaApi } from '../../utils/api'
 import logger from '../../utils/logger'
 import wait from '../../utils/wait'
 
+const AP_IAS = Buffer.from('0100', 'hex')
+
 const wrapUpdateInfo = (runtime) => async () => {
   const { runtimeInfo, rpcClient } = runtime
   const res = await rpcClient.getInfo({})
@@ -104,6 +106,7 @@ export const initRuntime = async (
             : pool.pair.addressRaw
         ),
         isParachain: true,
+        attestationProvider: AP_IAS,
       }
       if (skipRa) {
         initRequestPayload.skipRa = true
