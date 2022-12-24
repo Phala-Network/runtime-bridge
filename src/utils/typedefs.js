@@ -47,6 +47,7 @@ export const bridgeTypes = {
     proof: 'StorageProof',
   },
   EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
+  PhalaTypesAttestationReport: 'Vec<u8>',
 }
 
 const localOverrides = {
