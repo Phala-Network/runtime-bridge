@@ -8,19 +8,19 @@ export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }) =>
     )
   )
 
-export const REGISTER_WORKER = async ({ runtimeInfo, attestation }) =>
-  wrapTx(
-    [
-      api.tx.phalaRegistry.registerWorkerV2(
-        _api.createType('Vec<u8>', runtimeInfo),
-        _api.createType('Vec<u8>', attestation)
-      ),
-    ],
-    true
+export const REGISTER_WORKER = async ({ runtimeInfo, attestation }) => {
+  const decodedAttestation = _api.createType(
+    'Option<PhalaTypesAttestationReport>',
+    _api.createType('Vec<u8>', attestation)
   )
+  return wrapTx(
+    [api.tx.phalaRegistry.registerWorkerV2(runtimeInfo, decodedAttestation)],
+    false
+  )
+}
 
 export const ADD_WORKER = async ({ publicKey, pid }) =>
-  wrapTx([api.tx.phalaStakePoolv2.addWorker(pid, publicKey)], true)
+  wrapTx([api.tx.phalaStakePoolv2.addWorker(pid, publicKey)], false)
 
 export const START_COMPUTING = async ({ pid, publicKey, stake }) => {
   return wrapTx(
@@ -31,7 +31,7 @@ export const START_COMPUTING = async ({ pid, publicKey, stake }) => {
         _api.createType('BalanceOf', stake)
       ),
     ],
-    true
+    false
   )
 }
 
@@ -47,6 +47,6 @@ export const RESTART_COMPUTING = async ({ pid, publicKey, stake }) => {
         _api.createType('BalanceOf', stake)
       ),
     ],
-    true
+    false
   )
 }
