@@ -47,13 +47,14 @@ export const bridgeTypes = {
     proof: 'StorageProof',
   },
   EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
-  PhalaTypesAttestationReport: 'Vec<u8>',
 }
 
 const localOverrides = {
   WrappedDispatchError: {
     error: 'SpRuntimeDispatchError',
   },
+  PhalaTypesAttestationReport: 'Vec<u8>',
+  AttestationReport: 'Vec<u8>',
 }
 
 export const phalaTypes = {
