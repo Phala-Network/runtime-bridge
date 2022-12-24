@@ -53,8 +53,6 @@ const localOverrides = {
   WrappedDispatchError: {
     error: 'SpRuntimeDispatchError',
   },
-  PhalaTypesAttestationReport: 'Vec<u8>',
-  AttestationReport: 'Vec<u8>',
 }
 
 export const phalaTypes = {

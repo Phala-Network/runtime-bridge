@@ -10,7 +10,12 @@ export const BATCH_SYNC_MQ_MESSAGE = async ({ messages }) =>
 
 export const REGISTER_WORKER = async ({ runtimeInfo, attestation }) =>
   wrapTx(
-    [api.tx.phalaRegistry.registerWorkerV2(runtimeInfo, attestation)],
+    [
+      api.tx.phalaRegistry.registerWorkerV2(
+        _api.createType('Vec<u8>', runtimeInfo),
+        _api.createType('Vec<u8>', attestation)
+      ),
+    ],
     true
   )
 
