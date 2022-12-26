@@ -115,7 +115,7 @@ export const startSync = (runtime) => {
     }
     if (paraHeaderSyncNumber <= paraBlockSyncNumber) {
       // jump to next iteration step on error
-      return doParaBlockDifferenceSync()
+      return
     }
     const data = await getParaBlockBlob(
       ptpNode,
