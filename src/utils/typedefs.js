@@ -46,6 +46,17 @@ export const bridgeTypes = {
     parachainHeaders: 'Vec<Header>',
     proof: 'StorageProof',
   },
+  MessageOrigin: {
+    _enum: {
+      Pallet: 'Vec<u8>',
+      Contract: 'H256',
+      Worker: 'Sr25519PublicKey',
+      AccountId: 'H256',
+      MultiLocation: 'Vec<u8>',
+      Gatekeeper: null,
+      Cluster: 'H256',
+    },
+  },
   EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
 }
 
