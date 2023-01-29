@@ -59,6 +59,10 @@ export const startSync = (runtime) => {
     if (shouldStop) {
       return
     }
+    logger.debug(
+      { headerSyncNumber, paraHeaderSyncNumber, paraBlockSyncNumber },
+      `pre getHeaderBlob`
+    )
     const blobs = await getHeaderBlob(
       ptpNode,
       headerSyncNumber,

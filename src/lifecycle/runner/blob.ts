@@ -157,6 +157,7 @@ const waitForRangeByParentNumber = async (
   priority: number
 ) =>
   waitFor(async () => {
+    logger.debug({ number, cached, priority }, 'waitForRangeByParentNumber')
     const buffer = await (cached ? getCachedBuffer : getBuffer)(
       ptpNode,
       `rangeByParentBlock:${number}:pb`,
@@ -195,6 +196,10 @@ export const getHeaderBlob = async (
   currentCommittedNumber: number,
   paraHeaderSyncNumber = -1
 ) => {
+  logger.debug(
+    { blockNumber, currentCommittedNumber, paraHeaderSyncNumber },
+    `pre waitForRangeByParentNumber`
+  )
   const meta = await waitForRangeByParentNumber(
     ptpNode,
     blockNumber,

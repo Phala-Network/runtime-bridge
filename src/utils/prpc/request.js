@@ -35,5 +35,8 @@ const axiosInstance = axios.create({
   httpsAgent,
 })
 
-export const runtimeRequest = (options, queue = requestQueue) =>
-  queue.add(() => axiosInstance.request(options))
+export const runtimeRequest = (
+  options,
+  queue = requestQueue,
+  priority = 1000
+) => queue.add(() => axiosInstance.request(options), { priority })

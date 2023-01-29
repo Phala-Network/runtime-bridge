@@ -26,18 +26,15 @@ export const wrapRequest = (endpoint) => {
     timeout = rpcRequestTimeout
   ) => {
     const url = `${endpoint}${resource}`
-    const res = await clientQueue.add(
-      () =>
-        runtimeRequest(
-          {
-            url,
-            data: body,
-            responseType: 'json',
-            timeout,
-          },
-          requestQueue__blob
-        ),
-      { priority }
+    const res = await runtimeRequest(
+      {
+        url,
+        data: body,
+        responseType: 'json',
+        timeout,
+      },
+      clientQueue,
+      priority
     )
 
     const data = res.data
@@ -65,12 +62,13 @@ export const createRpcClient = (endpoint) => {
     async (method, requestData, callback) => {
       const url = `${endpoint}/prpc/PhactoryAPI.${method.name}`
       try {
-        const res = await clientQueue.add(() =>
-          runtimeRequest({
+        const res = await runtimeRequest(
+          {
             url,
             data: requestData,
             responseType: 'arraybuffer',
-          })
+          },
+          clientQueue
         )
 
         if (res.status === 200) {
