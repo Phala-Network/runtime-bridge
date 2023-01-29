@@ -31,6 +31,7 @@ export const ENV_LIST = [
   ],
   ['PHALA_SYNC_ONLY', 'syncOnly'],
   ['PRPC_QUEUE_SIZE', 'prpcQueueSize'],
+  ['PRPC_SUBQUEUE_SIZE', 'prpcSubqueueSize'],
   ['DISABLE_LRU', 'disableLru'],
   ['USE_LEGACY_SYNC', 'useLegacySync'],
 
@@ -77,6 +78,7 @@ export const blobRequestTimeout = parseInt(env.blobRequestTimeout) || 60000
 export const syncOnly = env.syncOnly === 'true'
 
 export const prpcQueueSize = parseInt(env.prpcQueueSize) || 65535
+export const prpcSubqueueSize = parseInt(env.prpcSubqueueSize) || 10
 export const disableLru = env.disableLru === 'true'
 export const useLegacySync = env.useLegacySync === 'true'
 
