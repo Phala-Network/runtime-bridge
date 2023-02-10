@@ -1,5 +1,6 @@
 import { FRNK, GRANDPA_AUTHORITIES_KEY } from '../utils/constants'
 import { blake2AsHex } from '@polkadot/util-crypto'
+import { disableDpPrefix } from '../utils/env'
 import {
   encodeBlockScale,
   getGenesis,
@@ -11,8 +12,14 @@ import {
 } from './io/block'
 import { parentApi, phalaApi } from '../utils/api'
 import { u8aToHex } from '@polkadot/util'
+import PQueue from 'p-queue'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
+
+const PREFETCH_PROMISES = {}
+const prefetchQueue = new PQueue({
+  concurrency: 1,
+})
 
 export const _processGenesis = async (paraId) => {
   const paraNumber = 0
@@ -87,16 +94,18 @@ export const processGenesis = async () => {
   return genesis
 }
 
-export const walkParaBlock = (paraBlockNumber, _lastHeaderHashHex) =>
+export const walkParaBlock = (paraBlockNumber, getTarget, _lastHeaderHashHex) =>
   promiseRetry(
     (retry, number) =>
-      _walkParaBlock(paraBlockNumber, _lastHeaderHashHex).catch((...args) => {
-        logger.warn(
-          { paraBlockNumber, retryTimes: number },
-          'Failed setting block, retrying...'
-        )
-        return retry(...args)
-      }),
+      _walkParaBlock(paraBlockNumber, getTarget, _lastHeaderHashHex).catch(
+        (...args) => {
+          logger.warn(
+            { paraBlockNumber, retryTimes: number },
+            'Failed setting block, retrying...'
+          )
+          return retry(...args)
+        }
+      ),
     {
       retries: 3,
       minTimeout: 1000,
@@ -104,11 +113,17 @@ export const walkParaBlock = (paraBlockNumber, _lastHeaderHashHex) =>
     }
   )
 
-const _walkParaBlock = async (paraBlockNumber, _lastHeaderHashHex) => {
+const _walkParaBlock = async (
+  paraBlockNumber,
+  getTarget,
+  _lastHeaderHashHex
+) => {
   if (await getParaBlock(paraBlockNumber)) {
     logger.debug({ paraBlockNumber }, 'ParaBlock found in cache.')
+    delete PREFETCH_PROMISES[paraBlockNumber]
   } else {
-    const blockData = await processParaBlock(paraBlockNumber)
+    const blockData = await processParaBlock(paraBlockNumber, getTarget)
+    delete PREFETCH_PROMISES[paraBlockNumber]
 
     if (paraBlockNumber >= 2) {
       let lastHeaderHashHex = _lastHeaderHashHex
@@ -131,46 +146,74 @@ const _walkParaBlock = async (paraBlockNumber, _lastHeaderHashHex) => {
   }
 }
 
-const processParaBlock = (number) =>
-  (async () => {
-    const startTime = Date.now()
+const _fetchParaBlock = async (number) => {
+  const startTime = Date.now()
 
-    const getBlockHashStartTime = Date.now()
-    const hash = await phalaApi.rpc.chain.getBlockHash(number)
-    const hashHex = hash.toHex()
+  const getBlockHashStartTime = Date.now()
+  const hash = await phalaApi.rpc.chain.getBlockHash(number)
+  const hashHex = hash.toHex()
 
-    const getHeaderStartTime = Date.now()
-    const header = await phalaApi.rpc.chain.getHeader(hash)
+  const getHeaderStartTime = Date.now()
+  const header = await phalaApi.rpc.chain.getHeader(hash)
 
-    if (hashHex !== blake2AsHex(header.toU8a())) {
-      logger.error(
-        { number },
-        new Error(
-          'processParaBlock: header hash mismatch, the database of current Substrate node may be corrupted.'
-        )
+  if (hashHex !== blake2AsHex(header.toU8a())) {
+    logger.error(
+      { number },
+      new Error(
+        'processParaBlock: header hash mismatch, the database of current Substrate node may be corrupted.'
       )
-      process.exit(254)
+    )
+    process.exit(254)
+  }
+
+  const storageChangeStartTime = Date.now()
+  const rawStorageChanges = await phalaApi._rpcCore.provider.send(
+    'pha_getStorageChangesAt',
+    [hashHex],
+    false
+  )
+
+  const endTime = Date.now()
+  logger.debug(
+    {
+      getBlockHash: getHeaderStartTime - getBlockHashStartTime,
+      getHeader: storageChangeStartTime - getHeaderStartTime,
+      getStorageChangesAt: endTime - storageChangeStartTime,
+    },
+    `timing: processParaBlock(${number}): fetched from chain using ${
+      endTime - startTime
+    }ms`
+  )
+  return {
+    hash,
+    hashHex,
+    header,
+    rawStorageChanges,
+  }
+}
+
+const fetchParaBlock = disableDpPrefix
+  ? _fetchParaBlock
+  : (number, getTarget) => {
+      const prefetchNumbers = []
+      for (let n = number; n < number + 5; n++) {
+        if (!PREFETCH_PROMISES[number]) {
+          if (number < getTarget()) {
+            PREFETCH_PROMISES[number] = prefetchQueue.add(() =>
+              _fetchParaBlock(number)
+            )
+          }
+        }
+      }
+      return PREFETCH_PROMISES[number]
     }
 
-    const storageChangeStartTime = Date.now()
-    const rawStorageChanges = await phalaApi._rpcCore.provider.send(
-      'pha_getStorageChangesAt',
-      [hashHex],
-      false
+const processParaBlock = (number, getTarget) =>
+  (async () => {
+    const { hash, hashHex, header, rawStorageChanges } = await fetchParaBlock(
+      number,
+      getTarget
     )
-
-    const endTime = Date.now()
-    logger.debug(
-      {
-        getBlockHash: getHeaderStartTime - getBlockHashStartTime,
-        getHeader: storageChangeStartTime - getHeaderStartTime,
-        getStorageChangesAt: endTime - storageChangeStartTime,
-      },
-      `timing: processParaBlock(${number}): fetched from chain using ${
-        endTime - startTime
-      }ms`
-    )
-
     const dispatchBlockData = phalaApi.createType('BlockHeaderWithChanges', {
       blockHeader: header,
       storageChanges: rawStorageChanges,

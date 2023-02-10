@@ -37,6 +37,7 @@ export const ENV_LIST = [
   ['PHALA_BRIDGE_IDENTITY', 'bridgeIdentity'],
   ['PHALA_PTP_IGNORE_BRIDGE_IDENTITY', 'ptpIgnoreBridgeIdentity'],
   ['PHALA_ENABLE_PARA_BATCH_SYNC', 'enableParaBatchSync'],
+  ['PHALA_DISABLE_DP_PREFETCH', 'disableDpPrefix'],
 ] as const
 
 type EnvPair = typeof ENV_LIST[number]
@@ -91,5 +92,6 @@ export const holdOnSubprocessExit = env.holdOnSubprocessExit === 'true'
 export const bridgeIdentity = env.bridgeIdentity || 'default'
 export const ptpIgnoreBridgeIdentity = env.ptpIgnoreBridgeIdentity === 'true'
 export const enableParaBatchSync = env.enableParaBatchSync === 'true'
+export const disableDpPrefix = env.disableDpPrefix === 'true'
 
 export default env

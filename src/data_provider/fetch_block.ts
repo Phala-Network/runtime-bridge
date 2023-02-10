@@ -113,7 +113,7 @@ const iteratePara = async (getTarget: () => number) => {
     }
   }
   for await (const curr of paraIterable()) {
-    currPromise = walkParaBlock(curr, await currPromise)
+    currPromise = walkParaBlock(curr, getTarget, await currPromise)
     await currPromise
     send('setParaFetchedHeight', curr)
   }
