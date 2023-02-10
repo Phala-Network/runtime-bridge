@@ -12,14 +12,10 @@ import {
 } from './io/block'
 import { parentApi, phalaApi } from '../utils/api'
 import { u8aToHex } from '@polkadot/util'
-import PQueue from 'p-queue'
 import logger from '../utils/logger'
 import promiseRetry from 'promise-retry'
 
 const PREFETCH_PROMISES = {}
-const prefetchQueue = new PQueue({
-  concurrency: 1,
-})
 
 export const _processGenesis = async (paraId) => {
   const paraNumber = 0
@@ -196,12 +192,10 @@ const fetchParaBlock = disableDpPrefix
   ? _fetchParaBlock
   : (number, getTarget) => {
       const prefetchNumbers = []
-      for (let n = number; n < number + 5; n++) {
+      for (let n = number; n < number + 3; n++) {
         if (!PREFETCH_PROMISES[number]) {
           if (number < getTarget()) {
-            PREFETCH_PROMISES[number] = prefetchQueue.add(() =>
-              _fetchParaBlock(number)
-            )
+            PREFETCH_PROMISES[number] = _fetchParaBlock(number)
           }
         }
       }
