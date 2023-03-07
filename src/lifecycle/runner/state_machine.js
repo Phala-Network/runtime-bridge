@@ -57,7 +57,7 @@ const onStarting = async (fromState, toState, context) => {
     }
   })
 
-  const currentPool = await phalaApi.query.phalaStakePool.workerAssignments(
+  const currentPool = await phalaApi.query.phalaStakePoolv2.workerAssignments(
     '0x' + runtime.info.publicKey
   )
   if (currentPool.isSome && currentPool.toString() !== pid) {
