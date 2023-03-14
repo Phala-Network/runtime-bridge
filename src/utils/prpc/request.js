@@ -41,5 +41,6 @@ export const runtimeRequest = (options, queue = requestQueue) =>
     const t1 = Date.now()
     const ret = await axiosInstance.request(options)
     const t2 = Date.now()
-    logger.info(`requesting to ${options.url} used {t2 - t1}ms`)
+    logger.info(`requesting to ${options.url} used ${t2 - t1}ms`)
+    return ret
   })
