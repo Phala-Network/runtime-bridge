@@ -26,6 +26,7 @@ export const wrapRequest = (endpoint) => {
     timeout = rpcRequestTimeout
   ) => {
     const url = `${endpoint}${resource}`
+    const t1 = Date.now()
     const res = await clientQueue.add(
       () =>
         runtimeRequest(
@@ -42,6 +43,9 @@ export const wrapRequest = (endpoint) => {
 
     const data = res.data
     const payload = JSON.parse(data.payload)
+    const t2 = Date.now()
+
+    logger.info(`Waiting for result from ${url} used ${t2 - t1}ms`)
 
     if (data.status === 'ok') {
       return {

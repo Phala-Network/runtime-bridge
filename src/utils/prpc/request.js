@@ -8,6 +8,7 @@ import PQueue from 'p-queue'
 import axios from 'axios'
 import http from 'http'
 import https from 'https'
+import logger from '../logger'
 
 export const requestQueue = new PQueue({
   concurrency: prpcQueueSize,
@@ -36,4 +37,9 @@ const axiosInstance = axios.create({
 })
 
 export const runtimeRequest = (options, queue = requestQueue) =>
-  queue.add(() => axiosInstance.request(options))
+  queue.add(async () => {
+    const t1 = Date.now()
+    const ret = await axiosInstance.request(options)
+    const t2 = Date.now()
+    logger.info(`requesting to ${options.url} used {t2 - t1}ms`)
+  })
