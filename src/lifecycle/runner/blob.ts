@@ -45,9 +45,13 @@ if (lruCacheDebugLogInterval > 0) {
 }
 
 const _getBuffer = async (ptpNode: LifecycleRunnerPtpNode, key: string) => {
+  const t0 = Date.now()
   const dataProvider = await waitForDataProvider(ptpNode)
   const dpConn = await ptpNode.dpManager.getConnection(dataProvider)
-  return dpConn.get(key)
+  const ret = await dpConn.get(key)
+  const t1 = Date.now()
+  logger.info('_getBuffer', key, t1 - t0)
+  return ret
 }
 
 const getBuffer = async (

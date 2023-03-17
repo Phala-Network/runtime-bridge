@@ -10,6 +10,9 @@
         <ImportPathEntry>
           <option name="location" value="file://$USER_HOME$/Library/Caches/JetBrains/WebStorm2021.3/protoeditor" />
         </ImportPathEntry>
+        <ImportPathEntry>
+          <option name="location" value="file://$USER_HOME$/Library/Caches/JetBrains/WebStorm2022.3/protoeditor" />
+        </ImportPathEntry>
       </list>
     </option>
     <option name="descriptorPath" value="google/protobuf/descriptor.proto" />
