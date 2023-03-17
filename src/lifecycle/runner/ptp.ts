@@ -246,24 +246,6 @@ class LifecycleRunnerDataProviderManager {
   async getConnection(
     ctx: BlobServerContext
   ): Promise<LifecycleRunnerDataProviderConnection> {
-    if (this.#locks.get(ctx.idStr)) {
-      await wait(0)
-      return this.getConnection(ctx)
-    }
-    try {
-      this.#locks.set(ctx.idStr, true)
-      const ret = await this._getConnection(ctx)
-      this.#locks.set(ctx.idStr, false)
-      return ret
-    } catch (e) {
-      this.#locks.set(ctx.idStr, false)
-      throw e
-    }
-  }
-
-  async _getConnection(
-    ctx: BlobServerContext
-  ): Promise<LifecycleRunnerDataProviderConnection> {
     const conn = this.#connections[ctx.idStr]
     if (conn && !conn?.closed) {
       return conn
