@@ -117,12 +117,15 @@ export const startSync = (runtime) => {
       // jump to next iteration step on error
       return
     }
+    const t0 = Date.now()
     const data = await getParaBlockBlob(
       ptpNode,
       paraBlockSyncNumber,
       syncStatus.paraHeaderSynchedTo,
       fetchStatus.paraCommittedHeight
     )
+    const t1 = Date.now()
+    logger.info('calling getParaBlockBlob', paraBlockSyncNumber, t1 - t0)
     if (!data?.length) {
       await wait(2000)
       return

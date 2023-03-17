@@ -220,12 +220,16 @@ export const getParaBlockBlob = async (
   headerSynchedTo: number,
   currentCommittedNumber: number
 ) => {
+  const t0 = Date.now()
   const meta = await waitForParaBlockRange(
     ptpNode,
     blockNumber,
     currentCommittedNumber - blockNumber > 300 &&
       currentCommittedNumber - headerSynchedTo > 300
   )
+  const t1 = Date.now()
+  logger.info('calling waitForParaBlockRange', blockNumber, t1 - t0)
+
   const dryKey = `dryParaBlock:${blockNumber}`
   const retKey =
     meta.bufferKey && headerSynchedTo >= meta.lastBlockNumber
@@ -237,6 +241,9 @@ export const getParaBlockBlob = async (
     retKey,
     PRIORITY_PARA_BLOB
   )) as Uint8ArrayWithMeta
+  const t2 = Date.now()
+  logger.info('calling getCachedBuffer', blockNumber, t2 - t1)
+
   ret.meta = meta
   return ret
 }
