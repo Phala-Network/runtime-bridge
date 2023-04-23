@@ -58,6 +58,7 @@ export const bridgeTypes = {
     },
   },
   EgressMessages: 'Vec<(MessageOrigin, Vec<SignedMessage>)>',
+  Sr25519PublicKey: 'AccountId32'
 }
 
 const localOverrides = {
