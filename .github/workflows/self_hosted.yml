@@ -1,0 +1,47 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Push to every commit Dockerhub
+
+# Controls when the action will run.
+on: [push, workflow_dispatch]
+
+jobs:
+  push_dockerhub:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - uses: docker/build-push-action@v1.1.1
+        with:
+          username: ${{ secrets.PACKAGE_MANAGER_USERNAME }}
+          password: ${{ secrets.PACKAGE_MANAGER_TOKEN }}
+          repository: phalanetwork/prb
+          tag_with_ref: false
+          tag_with_sha: true
+          tags: git-${{ steps.extract_branch.outputs.branch }}
+          dockerfile: 'docker/testing/Dockerfile'
+  push_cn:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - uses: docker/build-push-action@v1.1.1
+        with:
+          registry: swr.cn-east-3.myhuaweicloud.com
+          username: ${{ secrets.HW_USERNAME }}
+          password: ${{ secrets.HW_TOKEN }}
+          repository: phala/prb
+          tag_with_ref: false
+          tag_with_sha: true
+          tags: git-${{ steps.extract_branch.outputs.branch }}
+          dockerfile: 'docker/testing/Dockerfile'
