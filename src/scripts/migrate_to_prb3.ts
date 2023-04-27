@@ -6,7 +6,8 @@ import Pool from '../lifecycle/local_db/pool_model'
 import Worker from '../lifecycle/local_db/worker_model'
 import axios from 'axios'
 
-const PRB3_API_ENDPOINT = process.env.OLD_DATA_PATH ?? 'http://127.0.0.1:3001'
+const PRB3_API_ENDPOINT =
+  process.env.PRB3_API_ENDPOINT ?? 'http://127.0.0.1:3001'
 const PRB3_API_CONFIG = '/wm/config'
 
 const prb3Http = axios.create({
