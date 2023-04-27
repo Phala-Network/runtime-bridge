@@ -143,6 +143,7 @@
     "migrate_lifecycle": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/migrate_lifecycle",
     "migrate_data_provider": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/migrate_data_provider",
     "dump_blob": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/dump_blob",
-    "manipulate_db": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/manipulate_db"
+    "manipulate_db": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/manipulate_db",
+    "migrate_to_prb3": "node --trace-warnings --experimental-json-modules --es-module-specifier-resolution=node --harmony-top-level-await dist/scripts/migrate_to_prb3"
   }
 }
