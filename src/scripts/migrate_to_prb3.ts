@@ -3,6 +3,7 @@ import { base64Decode } from '@polkadot/util-crypto'
 import { decodePair } from '@polkadot/keyring/pair/decode'
 import { setupLocalDb } from '../lifecycle/local_db'
 import Pool from '../lifecycle/local_db/pool_model'
+import Worker from '../lifecycle/local_db/worker_model'
 import axios from 'axios'
 
 const PRB3_API_ENDPOINT = process.env.OLD_DATA_PATH ?? 'http://127.0.0.1:3001'
@@ -44,21 +45,21 @@ async function main() {
       },
     })
     console.log(`Migrated Pool #${p.pid}`)
-    const workers = p.workers
-    for (const w of workers) {
-      await prb3Http.post(PRB3_API_CONFIG, {
-        AddWorker: {
-          name: w.name,
-          endpoint: w.endpoint,
-          stake: w.stake,
-          pid: p.pid,
-          disabled: !w.enabled,
-          sync_only: w.syncOnly,
-          gatekeeper: false,
-        },
-      })
-      console.log(`Migrated Worker ${w.name}(#${w.endpoint})`)
-    }
+  }
+  const workers = await Worker.findAll()
+  for (const w of workers) {
+    await prb3Http.post(PRB3_API_CONFIG, {
+      AddWorker: {
+        name: w.name,
+        endpoint: w.endpoint,
+        stake: w.stake,
+        pid: w.pool.pid,
+        disabled: !w.enabled,
+        sync_only: w.syncOnly,
+        gatekeeper: false,
+      },
+    })
+    console.log(`Migrated Worker ${w.name}(#${w.endpoint})`)
   }
 }
 
