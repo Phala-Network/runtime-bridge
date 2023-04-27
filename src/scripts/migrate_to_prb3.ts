@@ -46,7 +46,7 @@ async function main() {
     })
     console.log(`Migrated Pool #${p.pid}`)
   }
-  const workers = await Worker.findAll()
+  const workers = await Worker.findAll({ include: [Pool] })
   for (const w of workers) {
     await prb3Http.post(PRB3_API_CONFIG, {
       AddWorker: {
