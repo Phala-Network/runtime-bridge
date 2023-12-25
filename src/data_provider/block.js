@@ -32,14 +32,23 @@ export const _processGenesis = async (paraId) => {
   const setIdKey = parentApi.query.grandpa.currentSetId.key()
   const setId = await parentApi.query.grandpa.currentSetId.at(parentHash)
 
-  const grandpaAuthorities = parentApi.createType(
-    'VersionedAuthorityList',
-    (await parentApi.rpc.state.getStorage(GRANDPA_AUTHORITIES_KEY, parentHash))
-      .value
-  )
+  let grandpaAuthoritiesKey = GRANDPA_AUTHORITIES_KEY;
+  let grandpaAuthoritiesValue = (await parentApi.rpc.state.getStorage(grandpaAuthoritiesKey, parentHash))
+    .value;
+  let grandpaAuthorities;
+  if (grandpaAuthoritiesValue) {
+    const versionedAuthorities = parentApi.createType(
+      'VersionedAuthorityList',
+      grandpaAuthoritiesValue
+    );
+    grandpaAuthorities = versionedAuthorities.authorityList;
+  } else {
+    grandpaAuthoritiesKey = parentApi.query.grandpa.authorities.key();
+    grandpaAuthorities = await parentApi.query.grandpa.authorities.at(parentHash);
+  };
   const grandpaAuthoritiesStorageProof = (
     await parentApi.rpc.state.getReadProof(
-      [GRANDPA_AUTHORITIES_KEY, setIdKey],
+      [grandpaAuthoritiesKey, setIdKey],
       parentHash
     )
   ).proof
@@ -49,7 +58,7 @@ export const _processGenesis = async (paraId) => {
       .createType('GenesisInfo', {
         header: parentHeader,
         authoritySet: {
-          authoritySet: grandpaAuthorities.authorityList,
+          authoritySet: grandpaAuthorities,
           setId,
         },
         proof: grandpaAuthoritiesStorageProof,
